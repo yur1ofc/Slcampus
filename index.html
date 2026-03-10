@@ -3,19 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Study Life Control</title>
+    <title>Study Life Control - Sistema Inteligente para Universitários</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
     <div id="app">
-        <div id="setup-screen" class="setup-container">
+        <!-- Loading Screen -->
+        <div id="loading-screen" class="loading-container" style="display: none;">
+            <div class="loading-spinner"></div>
+            <p>Carregando...</p>
+        </div>
+
+        <!-- Login Screen -->
+        <div id="login-screen" class="login-container">
+            <div class="login-card">
+                <div class="login-header">
+                    <i class="fas fa-brain"></i>
+                    <h1>Study Life Control</h1>
+                    <p>Sistema Inteligente para Universitários</p>
+                </div>
+                <div class="login-body">
+                    <button class="btn-google" id="login-google">
+                        <i class="fab fa-google"></i>
+                        Entrar com Google
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Setup Screen -->
+        <div id="setup-screen" class="setup-container" style="display: none;">
             <div class="setup-card">
                 <div class="setup-header">
-                    <i class="fas fa-brain"></i>
-                    <h1>Bem-vindo ao Study Life Control</h1>
-                    <p>Vamos configurar seu perfil para uma experiência personalizada</p>
+                    <i class="fas fa-rocket"></i>
+                    <h1>Configuração Inicial</h1>
+                    <p>Vamos personalizar sua experiência</p>
                 </div>
                 
                 <form id="setup-form" class="setup-form">
@@ -28,7 +57,7 @@
                             </div>
                             <div class="form-group">
                                 <label>Curso</label>
-                                <input type="text" id="curso" placeholder="Ex: Engenharia de Computação" required>
+                                <input type="text" id="curso" placeholder="Ex: Engenharia Civil" required>
                             </div>
                         </div>
                         <div class="form-row">
@@ -141,6 +170,14 @@
                         </button>
                     </div>
 
+                    <div class="form-section">
+                        <h2><i class="fas fa-calendar-alt"></i> Grade de Aulas</h2>
+                        <div id="aulas-container"></div>
+                        <button type="button" id="add-aula" class="btn-secondary">
+                            <i class="fas fa-plus"></i> Adicionar Aula
+                        </button>
+                    </div>
+
                     <div class="form-actions">
                         <button type="submit" class="btn-primary">
                             <i class="fas fa-rocket"></i> Iniciar Jornada
@@ -150,8 +187,10 @@
             </div>
         </div>
 
+        <!-- Main Dashboard -->
         <div id="main-dashboard" style="display: none;">
             <div class="dashboard-layout">
+                <!-- Sidebar -->
                 <aside class="sidebar">
                     <div class="sidebar-header">
                         <div class="logo">
@@ -160,9 +199,10 @@
                         </div>
                     </div>
                     
-                    <nav class="sidebar-nav">
+                    <nav class="sidebar-nav" id="sidebar-nav">
                         <a href="#" class="nav-item active" data-view="dashboard"><i class="fas fa-chart-pie"></i><span>Dashboard</span></a>
-                        <a href="#" class="nav-item" data-view="planejador-inteligente"><i class="fas fa-robot"></i><span>Planejador Inteligente</span><span class="badge">IA</span></a>
+                        <a href="#" class="nav-item" data-view="mentor-ia"><i class="fas fa-robot"></i><span>Mentor IA</span><span class="badge">IA</span></a>
+                        <a href="#" class="nav-item" data-view="grade-horaria"><i class="fas fa-calendar-week"></i><span>Grade Horária</span></a>
                         <a href="#" class="nav-item" data-view="sessoes"><i class="fas fa-clock"></i><span>Sessões de Estudo</span></a>
                         <a href="#" class="nav-item" data-view="tarefas"><i class="fas fa-tasks"></i><span>Tarefas</span></a>
                         <a href="#" class="nav-item" data-view="provas"><i class="fas fa-graduation-cap"></i><span>Provas e Trabalhos</span></a>
@@ -177,11 +217,11 @@
                     </nav>
 
                     <div class="sidebar-footer">
-                        <div class="user-info">
-                            <i class="fas fa-user-circle"></i>
+                        <div class="user-info" id="user-info">
+                            <img src="" alt="" class="user-avatar" id="user-avatar">
                             <div class="user-details">
                                 <span class="user-name" id="sidebar-user-name">Carregando...</span>
-                                <span class="user-status" id="sidebar-user-status"></span>
+                                <span class="user-email" id="sidebar-user-email"></span>
                             </div>
                         </div>
                         <div class="streak-info">
@@ -193,17 +233,24 @@
                                 <input type="checkbox" id="modo-faculdade-pesada">
                                 <span class="toggle-slider"></span>
                             </label>
-                            <span class="toggle-label">Modo Faculdade Pesada</span>
+                            <span class="toggle-label">Modo Pesado</span>
                         </div>
+                        <button class="btn-logout" id="logout-btn">
+                            <i class="fas fa-sign-out-alt"></i> Sair
+                        </button>
                     </div>
                 </aside>
 
+                <!-- Main Content -->
                 <main class="main-content">
                     <div class="content-header">
                         <div class="page-title">
                             <h1 id="page-title">Dashboard</h1>
                         </div>
                         <div class="header-actions">
+                            <div class="sync-status" id="sync-status">
+                                <i class="fas fa-sync-alt"></i>
+                            </div>
                             <div class="notification-badge" id="notification-badge">
                                 <i class="fas fa-bell"></i>
                                 <span class="badge-count" id="notification-count">0</span>
@@ -217,6 +264,7 @@
         </div>
     </div>
 
+    <!-- Modals -->
     <div id="modal-sessao" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -358,6 +406,68 @@
         </div>
     </div>
 
+    <div id="modal-aula" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-calendar-week"></i> Nova Aula</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <form id="form-aula" class="modal-form">
+                <div class="form-group">
+                    <label>Disciplina</label>
+                    <select id="aula-materia" required>
+                        <option value="">Selecione</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Dia da semana</label>
+                        <select id="aula-dia" required>
+                            <option value="0">Domingo</option>
+                            <option value="1">Segunda-feira</option>
+                            <option value="2">Terça-feira</option>
+                            <option value="3">Quarta-feira</option>
+                            <option value="4">Quinta-feira</option>
+                            <option value="5">Sexta-feira</option>
+                            <option value="6">Sábado</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Horário início</label>
+                        <input type="time" id="aula-inicio" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Horário fim</label>
+                        <input type="time" id="aula-fim" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Sala</label>
+                        <input type="text" id="aula-sala" placeholder="Ex: 101">
+                    </div>
+                    <div class="form-group">
+                        <label>Professor</label>
+                        <input type="text" id="aula-professor" placeholder="Nome do professor">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Bloco/Campus</label>
+                    <input type="text" id="aula-bloco" placeholder="Ex: Bloco A">
+                </div>
+                <div class="form-group">
+                    <label>Cor da disciplina</label>
+                    <input type="color" id="aula-cor" value="#3b82f6">
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">Salvar Aula</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div id="modal-topico" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -476,6 +586,14 @@
 
     <div id="toast-container"></div>
 
+    <!-- Scripts modulares -->
+    <script src="firebase-config.js"></script>
+    <script src="utils.js"></script>
+    <script src="auth.js"></script>
+    <script src="database.js"></script>
+    <script src="ai-assistant.js"></script>
+    <script src="schedule.js"></script>
+    <script src="views.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
