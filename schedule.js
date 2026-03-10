@@ -54,9 +54,9 @@ class ScheduleManager {
 
     // Calcular altura em pixels baseada na duração
     calcularAltura(inicio, fim) {
-        const duracaoMinutos = calcularDuracaoMinutos(inicio, fim);
-        return Math.max(20, (duracaoMinutos / 60) * this.ALTURA_POR_HORA);
-    }
+    const duracaoMinutos = calcularDuracaoMinutos(inicio, fim); // <-- Corrigido
+    return Math.max(20, (duracaoMinutos / 60) * this.ALTURA_POR_HORA);
+}
 
     // Renderizar grade vertical para um dia específico
     renderGradeDia(diaSemana, containerId) {

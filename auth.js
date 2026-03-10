@@ -2,18 +2,17 @@
 
 let currentUser = null;
 
-// Função para aguardar app existir com timeout
+// Função para aguardar app existir com timeo
 function waitForApp(timeout = 5000) {
     return new Promise((resolve, reject) => {
         if (window.app) return resolve(window.app);
-
         const start = Date.now();
         const checkInterval = setInterval(() => {
             if (window.app) {
                 clearInterval(checkInterval);
                 resolve(window.app);
             } else if (Date.now() - start > timeout) {
-                clearInterval(checkInterval);
+                clearInterval(checkInterval); // <-- Adicione esta linha para parar o loop
                 reject(new Error('window.app não foi inicializado a tempo'));
             }
         }, 50);
