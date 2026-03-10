@@ -54,9 +54,9 @@ class ScheduleManager {
 
     // Calcular altura em pixels baseada na duração
     calcularAltura(inicio, fim) {
-    const duracaoMinutos = calcularDuracaoMinutos(inicio, fim); // <-- Corrigido
-    return Math.max(20, (duracaoMinutos / 60) * this.ALTURA_POR_HORA);
-}
+        const duracaoMinutos = calcularDuracaoMinutos(inicio, fim);
+        return Math.max(20, (duracaoMinutos / 60) * this.ALTURA_POR_HORA);
+    }
 
     // Renderizar grade vertical para um dia específico
     renderGradeDia(diaSemana, containerId) {
@@ -65,48 +65,93 @@ class ScheduleManager {
         const container = document.getElementById(containerId);
         if (!container) return;
 
-        let html = '<div class="schedule-vertical" style="position: relative;">';
+        // Limpar container
+        container.innerHTML = '';
         
-        // Linhas de hora
+        // Criar container principal da grade
+        const scheduleDiv = document.createElement('div');
+        scheduleDiv.className = 'schedule-vertical';
+        scheduleDiv.style.position = 'relative';
+        scheduleDiv.style.height = `${(this.HORARIO_FIM - this.HORARIO_INICIO + 1) * this.ALTURA_POR_HORA}px`;
+        scheduleDiv.style.background = 'var(--bg-tertiary)';
+        scheduleDiv.style.borderRadius = '12px';
+        scheduleDiv.style.overflow = 'visible';
+        
+        // Criar linhas de hora
         for (let hora = this.HORARIO_INICIO; hora <= this.HORARIO_FIM; hora++) {
             const horaFormatada = hora.toString().padStart(2, '0') + ':00';
-            html += `
-                <div class="schedule-hour-row" style="height: ${this.ALTURA_POR_HORA}px; position: relative; border-bottom: 1px solid var(--border);">
-                    <div class="hour-label" style="position: absolute; left: 0; width: 60px; padding: 4px; font-size: 12px; color: var(--text-secondary);">${horaFormatada}</div>
-                    <div class="hour-line" style="margin-left: 60px; height: 100%;"></div>
+            const hourRow = document.createElement('div');
+            hourRow.className = 'schedule-hour-row';
+            hourRow.style.height = `${this.ALTURA_POR_HORA}px`;
+            hourRow.style.position = 'relative';
+            hourRow.style.borderBottom = '1px solid var(--border)';
+            hourRow.style.display = 'flex';
+            
+            hourRow.innerHTML = `
+                <div class="hour-label" style="width: 60px; padding: 4px; font-size: 12px; color: var(--text-secondary); background: var(--bg-secondary); border-right: 1px solid var(--border);">
+                    ${horaFormatada}
                 </div>
+                <div class="hour-line" style="flex: 1; height: 100%;"></div>
             `;
+            scheduleDiv.appendChild(hourRow);
         }
-        html += '</div>';
-
-        // Container para eventos
-        html += '<div class="schedule-events" style="position: relative; top: -' + ((this.HORARIO_FIM - this.HORARIO_INICIO + 1) * this.ALTURA_POR_HORA) + 'px; left: 60px; right: 0; height: 0;">';
         
+        container.appendChild(scheduleDiv);
+        
+        // Container para eventos (posicionado absolutamente sobre a grade)
+        const eventsContainer = document.createElement('div');
+        eventsContainer.className = 'schedule-events';
+        eventsContainer.style.position = 'relative';
+        eventsContainer.style.top = `-${(this.HORARIO_FIM - this.HORARIO_INICIO + 1) * this.ALTURA_POR_HORA}px`;
+        eventsContainer.style.left = '60px';
+        eventsContainer.style.width = `calc(100% - 60px)`;
+        eventsContainer.style.height = '0';
+        eventsContainer.style.pointerEvents = 'none';
+        
+        // Adicionar eventos (aulas)
         aulas.forEach(aula => {
             const top = this.calcularPosicaoTop(aula.inicio);
             const altura = this.calcularAltura(aula.inicio, aula.fim);
+            
+            // Buscar cor da matéria ou usar padrão
             const materia = window.app?.data?.subjects?.find(s => s.nome === aula.materia);
             const cor = materia?.cor || aula.cor || '#3b82f6';
-
-            html += `
-                <div class="schedule-event-block" 
-                     style="position: absolute; top: ${top}px; height: ${altura}px; left: 4px; right: 4px; 
-                            background-color: ${cor}20; border-left: 4px solid ${cor}; 
-                            border-radius: 8px; padding: 8px; cursor: pointer; overflow: hidden;"
-                     data-aula-id="${aula.id}"
-                     onclick="if(window.app) window.app.openAulaModal('${aula.id}')">
-                    <div class="event-content" style="font-size: 12px;">
-                        <strong>${aula.materia}</strong>
-                        <div class="event-time" style="font-size: 10px; color: var(--text-secondary);">${aula.inicio} - ${aula.fim}</div>
-                        ${aula.sala ? `<div class="event-room" style="font-size: 10px; color: var(--text-tertiary);">Sala: ${aula.sala}</div>` : ''}
-                        ${aula.professor ? `<div class="event-prof" style="font-size: 10px; color: var(--text-tertiary);">Prof: ${aula.professor}</div>` : ''}
-                    </div>
+            
+            const eventBlock = document.createElement('div');
+            eventBlock.className = 'schedule-event-block';
+            eventBlock.style.position = 'absolute';
+            eventBlock.style.top = `${top}px`;
+            eventBlock.style.height = `${altura}px`;
+            eventBlock.style.left = '4px';
+            eventBlock.style.right = '4px';
+            eventBlock.style.backgroundColor = `${cor}20`; // 20 é a opacidade em hex (~12%)
+            eventBlock.style.borderLeft = `4px solid ${cor}`;
+            eventBlock.style.borderRadius = '8px';
+            eventBlock.style.padding = '8px';
+            eventBlock.style.cursor = 'pointer';
+            eventBlock.style.overflow = 'hidden';
+            eventBlock.style.pointerEvents = 'auto';
+            eventBlock.style.zIndex = '10';
+            eventBlock.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+            eventBlock.setAttribute('data-aula-id', aula.id);
+            
+            eventBlock.innerHTML = `
+                <div class="event-content" style="font-size: 12px; line-height: 1.4;">
+                    <strong>${aula.materia}</strong>
+                    <div class="event-time" style="font-size: 10px; color: var(--text-secondary);">${aula.inicio} - ${aula.fim}</div>
+                    ${aula.sala ? `<div class="event-room" style="font-size: 10px; color: var(--text-tertiary);">Sala: ${aula.sala}</div>` : ''}
+                    ${aula.professor ? `<div class="event-prof" style="font-size: 10px; color: var(--text-tertiary);">Prof: ${aula.professor}</div>` : ''}
                 </div>
             `;
+            
+            eventBlock.onclick = () => {
+                if (window.app) window.app.openAulaModal(aula.id);
+            };
+            
+            eventsContainer.appendChild(eventBlock);
         });
-        html += '</div>';
-
-        container.innerHTML = html;
+        
+        container.appendChild(eventsContainer);
     }
 
     // Renderizar grade semanal (versão simplificada)
