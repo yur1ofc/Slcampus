@@ -13,11 +13,14 @@ class ViewRenderer {
         const tarefasUrgentes = this.app.getUrgentTasks();
         const proximosExames = this.app.getUpcomingExams(7);
         
-        window.aiAssistant.updateContext(this.app.data);
-        const planoIA = window.aiAssistant.generateDailyPlan();
+        if (window.aiAssistant) {
+            window.aiAssistant.updateContext(this.app.data);
+        }
         
-        const proximaAula = scheduleManager.getProximaAula();
-        const aulaAtual = scheduleManager.getAulaAtual();
+        const planoIA = window.aiAssistant ? window.aiAssistant.generateDailyPlan() : [];
+        
+        const proximaAula = window.scheduleManager ? window.scheduleManager.getProximaAula() : null;
+        const aulaAtual = window.scheduleManager ? window.scheduleManager.getAulaAtual() : null;
 
         const diasSemana = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
@@ -210,6 +213,15 @@ class ViewRenderer {
     }
 
     renderGradeHoraria() {
+        if (!window.scheduleManager) {
+            return '<div class="card"><div class="card-body"><p class="text-secondary">Erro ao carregar grade horária</p></div></div>';
+        }
+
+        // Criar container para a grade vertical
+        setTimeout(() => {
+            window.scheduleManager.renderGradeDia(new Date().getDay(), 'schedule-vertical-container');
+        }, 100);
+
         return `
             <div class="view-header">
                 <h2><i class="fas fa-calendar-week"></i> Grade Horária</h2>
@@ -217,7 +229,7 @@ class ViewRenderer {
             </div>
             
             <div class="schedule-container">
-                ${scheduleManager.renderGrade()}
+                <div id="schedule-vertical-container" style="height: 600px; overflow-y: auto;"></div>
             </div>
             
             <div class="aulas-list card">
@@ -874,7 +886,7 @@ class ViewRenderer {
                     <p><strong>Study Life Control</strong></p>
                     <p>Versão: 3.0.0</p>
                     <p>Sistema inteligente para estudantes universitários</p>
-                    <p>Conectado como: ${auth.currentUser?.email}</p>
+                    <p>Conectado como: ${auth.currentUser?.email || 'Não conectado'}</p>
                 </div>
             </div>
         `;

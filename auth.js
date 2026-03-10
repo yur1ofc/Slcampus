@@ -45,27 +45,31 @@ auth.onAuthStateChanged(async (user) => {
             }
         } catch (error) {
             console.error('Erro na inicialização:', error);
-            showToast('Erro ao inicializar aplicação. Recarregue a página.', 'error');
+            if (window.showToast) {
+                window.showToast('Erro ao inicializar aplicação. Recarregue a página.', 'error');
+            }
         } finally {
-            hideLoading();
+            if (window.hideLoading) window.hideLoading();
         }
     } else {
         currentUser = null;
         document.getElementById('login-screen').style.display = 'flex';
         document.getElementById('setup-screen').style.display = 'none';
         document.getElementById('main-dashboard').style.display = 'none';
-        hideLoading();
+        if (window.hideLoading) window.hideLoading();
     }
 });
 
 // Login com Google
 async function loginWithGoogle() {
     try {
-        showLoading();
+        if (window.showLoading) window.showLoading();
         await auth.signInWithPopup(googleProvider);
     } catch (error) {
-        hideLoading();
-        showToast('Erro ao fazer login: ' + error.message, 'error');
+        if (window.hideLoading) window.hideLoading();
+        if (window.showToast) {
+            window.showToast('Erro ao fazer login: ' + error.message, 'error');
+        }
     }
 }
 
@@ -73,15 +77,19 @@ async function loginWithGoogle() {
 async function logout() {
     try {
         await auth.signOut();
-        showToast('Desconectado com sucesso');
+        if (window.showToast) window.showToast('Desconectado com sucesso');
     } catch (error) {
-        showToast('Erro ao sair: ' + error.message, 'error');
+        if (window.showToast) {
+            window.showToast('Erro ao sair: ' + error.message, 'error');
+        }
     }
 }
 
 // Event listeners
-document.getElementById('login-google')?.addEventListener('click', loginWithGoogle);
-document.getElementById('logout-btn')?.addEventListener('click', logout);
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('login-google')?.addEventListener('click', loginWithGoogle);
+    document.getElementById('logout-btn')?.addEventListener('click', logout);
+});
 
 window.authService = {
     getCurrentUser: () => currentUser

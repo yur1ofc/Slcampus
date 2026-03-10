@@ -1,59 +1,192 @@
-// Gerenciamento de Grade Horária
+// schedule.js - Gerenciamento de Grade Horária com Posicionamento Preciso
 
 class ScheduleManager {
     constructor() {
         this.aulas = [];
+        this.HORARIO_INICIO = 7;
+        this.HORARIO_FIM = 22;
+        this.ALTURA_POR_HORA = 80;
+    }
+
+    // Carregar aulas do app
+    loadAulas() {
+        this.aulas = window.app?.data?.classSchedule || [];
     }
 
     // Adicionar aula
     async addAula(aula) {
-        // Não gerar ID aqui - já vem do script.js
+        if (!aula.id) aula.id = generateId();
         const success = await dbService.addItem('classSchedule', aula);
         if (success) {
-            this.aulas = [...window.app.data.classSchedule];
+            this.loadAulas();
         }
         return success;
     }
 
     async removeAula(id) {
-        this.aulas = this.aulas.filter(a => a.id !== id);
-        const success = await dbService.saveData('classSchedule', this.aulas);
+        const success = await dbService.removeItem('classSchedule', id);
         if (success) {
-            window.app.data.classSchedule = this.aulas;
+            this.loadAulas();
         }
         return success;
     }
 
-    // Obter aulas de hoje
-    getAulasHoje() {
-        const hoje = new Date().getDay();
-        return this.aulas.filter(a => parseInt(a.dia) === hoje)
+    async updateAula(id, updates) {
+        const success = await dbService.updateItem('classSchedule', id, updates);
+        if (success) {
+            this.loadAulas();
+        }
+        return success;
+    }
+
+    // Obter aulas de um dia específico
+    getAulasPorDia(diaSemana) {
+        return this.aulas.filter(a => parseInt(a.dia) === diaSemana)
             .sort((a, b) => a.inicio.localeCompare(b.inicio));
+    }
+
+    // Calcular posição top em pixels baseada no horário
+    calcularPosicaoTop(horario) {
+        const [horas, minutos] = horario.split(':').map(Number);
+        const minutosDesdeInicio = (horas - this.HORARIO_INICIO) * 60 + minutos;
+        return Math.max(0, (minutosDesdeInicio / 60) * this.ALTURA_POR_HORA);
+    }
+
+    // Calcular altura em pixels baseada na duração
+    calcularAltura(inicio, fim) {
+        const duracaoMinutos = calcularDuracaoMinutos(inicio, fim);
+        return Math.max(20, (duracaoMinutos / 60) * this.ALTURA_POR_HORA);
+    }
+
+    // Renderizar grade vertical para um dia específico
+    renderGradeDia(diaSemana, containerId) {
+        this.loadAulas();
+        const aulas = this.getAulasPorDia(diaSemana);
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        let html = '<div class="schedule-vertical" style="position: relative;">';
+        
+        // Linhas de hora
+        for (let hora = this.HORARIO_INICIO; hora <= this.HORARIO_FIM; hora++) {
+            const horaFormatada = hora.toString().padStart(2, '0') + ':00';
+            html += `
+                <div class="schedule-hour-row" style="height: ${this.ALTURA_POR_HORA}px; position: relative; border-bottom: 1px solid var(--border);">
+                    <div class="hour-label" style="position: absolute; left: 0; width: 60px; padding: 4px; font-size: 12px; color: var(--text-secondary);">${horaFormatada}</div>
+                    <div class="hour-line" style="margin-left: 60px; height: 100%;"></div>
+                </div>
+            `;
+        }
+        html += '</div>';
+
+        // Container para eventos
+        html += '<div class="schedule-events" style="position: relative; top: -' + ((this.HORARIO_FIM - this.HORARIO_INICIO + 1) * this.ALTURA_POR_HORA) + 'px; left: 60px; right: 0; height: 0;">';
+        
+        aulas.forEach(aula => {
+            const top = this.calcularPosicaoTop(aula.inicio);
+            const altura = this.calcularAltura(aula.inicio, aula.fim);
+            const materia = window.app?.data?.subjects?.find(s => s.nome === aula.materia);
+            const cor = materia?.cor || aula.cor || '#3b82f6';
+
+            html += `
+                <div class="schedule-event-block" 
+                     style="position: absolute; top: ${top}px; height: ${altura}px; left: 4px; right: 4px; 
+                            background-color: ${cor}20; border-left: 4px solid ${cor}; 
+                            border-radius: 8px; padding: 8px; cursor: pointer; overflow: hidden;"
+                     data-aula-id="${aula.id}"
+                     onclick="if(window.app) window.app.openAulaModal('${aula.id}')">
+                    <div class="event-content" style="font-size: 12px;">
+                        <strong>${aula.materia}</strong>
+                        <div class="event-time" style="font-size: 10px; color: var(--text-secondary);">${aula.inicio} - ${aula.fim}</div>
+                        ${aula.sala ? `<div class="event-room" style="font-size: 10px; color: var(--text-tertiary);">Sala: ${aula.sala}</div>` : ''}
+                        ${aula.professor ? `<div class="event-prof" style="font-size: 10px; color: var(--text-tertiary);">Prof: ${aula.professor}</div>` : ''}
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+
+        container.innerHTML = html;
+    }
+
+    // Renderizar grade semanal (versão simplificada)
+    renderGrade() {
+        const dias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+        let html = '<div class="weekly-schedule" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 12px;">';
+        
+        dias.forEach((dia, index) => {
+            html += `<div class="weekly-day-column" data-dia="${index}" style="background: var(--bg-tertiary); border-radius: 12px; padding: 12px;">`;
+            html += `<h4 style="text-align: center; margin-bottom: 12px; color: var(--accent-primary);">${dia}</h4>`;
+            html += `<div class="weekly-events" id="weekly-events-${index}" style="display: flex; flex-direction: column; gap: 8px;"></div>`;
+            html += '</div>';
+        });
+        
+        html += '</div>';
+        return html;
+    }
+
+    // Popular grade semanal
+    populateWeeklySchedule() {
+        for (let dia = 0; dia < 7; dia++) {
+            const container = document.getElementById(`weekly-events-${dia}`);
+            if (!container) continue;
+
+            const aulas = this.getAulasPorDia(dia);
+            container.innerHTML = '';
+
+            aulas.forEach(aula => {
+                const materia = window.app?.data?.subjects?.find(s => s.nome === aula.materia);
+                const cor = materia?.cor || aula.cor || '#3b82f6';
+                
+                const evento = document.createElement('div');
+                evento.className = 'weekly-event';
+                evento.style.cssText = `background: var(--bg-secondary); border-left: 4px solid ${cor}; border-radius: 6px; padding: 8px; font-size: 12px; cursor: pointer;`;
+                evento.innerHTML = `
+                    <strong>${aula.materia}</strong>
+                    <div>${aula.inicio} - ${aula.fim}</div>
+                    ${aula.sala ? `<small>${aula.sala}</small>` : ''}
+                `;
+                evento.onclick = () => {
+                    if (window.app) window.app.openAulaModal(aula.id);
+                };
+                container.appendChild(evento);
+            });
+        }
+    }
+
+    // Verificar conflitos de horário
+    verificarConflito(novaAula) {
+        const aulasMesmoDia = this.getAulasPorDia(parseInt(novaAula.dia));
+        const novoInicio = calcularDuracaoMinutos('00:00', novaAula.inicio);
+        const novoFim = calcularDuracaoMinutos('00:00', novaAula.fim);
+
+        return aulasMesmoDia.some(aula => {
+            if (aula.id === novaAula.id) return false;
+            const aulaInicio = calcularDuracaoMinutos('00:00', aula.inicio);
+            const aulaFim = calcularDuracaoMinutos('00:00', aula.fim);
+            return (novoInicio < aulaFim && novoFim > aulaInicio);
+        });
     }
 
     // Obter próxima aula
     getProximaAula() {
         const hoje = new Date();
         const diaSemana = hoje.getDay();
-        const agora = hoje.getHours() * 60 + hoje.getMinutes();
+        const minutosAtuais = hoje.getHours() * 60 + hoje.getMinutes();
         
-        const aulasHoje = this.getAulasHoje();
+        const aulasHoje = this.getAulasPorDia(diaSemana);
         
-        // Próxima aula hoje
         const proximaHoje = aulasHoje.find(a => {
-            const [h, m] = a.inicio.split(':');
-            const inicio = parseInt(h) * 60 + parseInt(m);
-            return inicio > agora;
+            const minutosInicio = calcularDuracaoMinutos('00:00', a.inicio);
+            return minutosInicio > minutosAtuais;
         });
         
         if (proximaHoje) return proximaHoje;
         
-        // Próxima aula em outro dia
         for (let i = 1; i <= 7; i++) {
             const proximoDia = (diaSemana + i) % 7;
-            const aulasProximoDia = this.aulas.filter(a => parseInt(a.dia) === proximoDia);
+            const aulasProximoDia = this.getAulasPorDia(proximoDia);
             if (aulasProximoDia.length) {
-                aulasProximoDia.sort((a, b) => a.inicio.localeCompare(b.inicio));
                 return aulasProximoDia[0];
             }
         }
@@ -61,66 +194,44 @@ class ScheduleManager {
         return null;
     }
 
-    // Verificar se está em horário de aula
+    // Obter aula atual
     getAulaAtual() {
         const hoje = new Date();
         const diaSemana = hoje.getDay();
-        const agora = hoje.getHours() * 60 + hoje.getMinutes();
+        const minutosAtuais = hoje.getHours() * 60 + hoje.getMinutes();
         
-        return this.aulas.find(a => {
-            if (parseInt(a.dia) !== diaSemana) return false;
-            
-            const [hInicio, mInicio] = a.inicio.split(':');
-            const [hFim, mFim] = a.fim.split(':');
-            
-            const inicio = parseInt(hInicio) * 60 + parseInt(mInicio);
-            const fim = parseInt(hFim) * 60 + parseInt(mFim);
-            
-            return agora >= inicio && agora <= fim;
+        return this.getAulasPorDia(diaSemana).find(a => {
+            const minutosInicio = calcularDuracaoMinutos('00:00', a.inicio);
+            const minutosFim = calcularDuracaoMinutos('00:00', a.fim);
+            return minutosAtuais >= minutosInicio && minutosAtuais <= minutosFim;
         });
     }
 
-    // Renderizar grade semanal
-    renderGrade() {
-        const dias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-        const horas = Array.from({ length: 14 }, (_, i) => i + 7); // 7h às 20h
+    // Marcar presença em uma aula
+    async marcarPresenca(aulaId, data, status) {
+        const key = `${aulaId}_${data}`;
+        const attendance = { ...(window.app?.data?.attendance || {}), [key]: status };
+        const success = await dbService.saveData('attendance', attendance);
         
-        let html = '<div class="schedule-grid">';
+        if (success && status === 'absent') {
+            const aula = this.aulas.find(a => a.id === aulaId);
+            if (aula) {
+                const tarefa = {
+                    id: generateId(),
+                    titulo: `Recuperar conteúdo da aula perdida - ${aula.materia}`,
+                    materia: aula.materia,
+                    prioridade: 'alta',
+                    dataLimite: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    estimativa: 60,
+                    concluida: false,
+                    automatica: true
+                };
+                await dbService.addItem('tasks', tarefa);
+                showToast('Tarefa de recuperação criada automaticamente!');
+            }
+        }
         
-        // Cabeçalho
-        html += '<div class="schedule-header"><div class="time-column">Horário</div>';
-        dias.forEach(dia => {
-            html += `<div class="day-column">${dia}</div>`;
-        });
-        html += '</div>';
-        
-        // Linhas de horário
-        horas.forEach(hora => {
-            html += '<div class="schedule-row">';
-            html += `<div class="time-cell">${hora}:00</div>`;
-            
-            dias.forEach((_, index) => {
-                const aulasNesteHorario = this.aulas.filter(a => {
-                    if (parseInt(a.dia) !== index) return false;
-                    const [hInicio] = a.inicio.split(':');
-                    return parseInt(hInicio) === hora;
-                });
-                
-                html += '<div class="schedule-cell">';
-                aulasNesteHorario.forEach(a => {
-                    html += `<div class="schedule-event" style="background-color: ${a.cor || '#3b82f6'}20; border-left: 3px solid ${a.cor || '#3b82f6'}">
-                        <strong>${a.materia}</strong><br>
-                        <small>${a.sala || ''} ${a.professor ? `- ${a.professor}` : ''}</small>
-                    </div>`;
-                });
-                html += '</div>';
-            });
-            
-            html += '</div>';
-        });
-        
-        html += '</div>';
-        return html;
+        return success;
     }
 }
 

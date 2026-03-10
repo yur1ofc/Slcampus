@@ -208,7 +208,7 @@
                         <a href="#" class="nav-item" data-view="provas"><i class="fas fa-graduation-cap"></i><span>Provas e Trabalhos</span></a>
                         <a href="#" class="nav-item" data-view="mapa-aprendizado"><i class="fas fa-map"></i><span>Mapa de Aprendizado</span></a>
                         <a href="#" class="nav-item" data-view="materiais"><i class="fas fa-folder"></i><span>Materiais</span></a>
-                        <a href="#" class="nav-item" data-view="calendario"><i class="fas fa-calendar"></i><span>Calendário</span></a>
+                        <a href="#" class="nav-item" data-view="calendario"><i class="fas fa-calendar-alt"></i><span>Calendário</span></a>
                         <a href="#" class="nav-item" data-view="previsao-notas"><i class="fas fa-chart-line"></i><span>Previsão de Notas</span></a>
                         <a href="#" class="nav-item" data-view="habitos"><i class="fas fa-heart"></i><span>Hábitos</span></a>
                         <a href="#" class="nav-item" data-view="estatisticas"><i class="fas fa-chart-bar"></i><span>Estatísticas</span></a>
@@ -228,6 +228,9 @@
                             <i class="fas fa-fire"></i>
                             <span id="sidebar-streak">0 dias</span>
                         </div>
+                        <button class="btn-whats-now" id="whats-now-btn" onclick="app.whatsNow()">
+                            <i class="fas fa-lightbulb"></i> O que estudar agora?
+                        </button>
                         <div class="heavy-mode-toggle">
                             <label class="toggle-switch">
                                 <input type="checkbox" id="modo-faculdade-pesada">
@@ -251,6 +254,9 @@
                             <div class="sync-status" id="sync-status">
                                 <i class="fas fa-sync-alt"></i>
                             </div>
+                            <button class="btn-icon" id="daily-log-btn" onclick="app.openDailyLogModal()" title="Registrar Dia">
+                                <i class="fas fa-clipboard-list"></i>
+                            </button>
                             <div class="notification-badge" id="notification-badge">
                                 <i class="fas fa-bell"></i>
                                 <span class="badge-count" id="notification-count">0</span>
@@ -264,14 +270,14 @@
         </div>
     </div>
 
-    <!-- Modals -->
+    <!-- Modais Existentes -->
     <div id="modal-sessao" class="modal">
         <div class="modal-content">
             <div class="modal-header">
                 <h2><i class="fas fa-clock"></i> Nova Sessão de Estudo</h2>
-                <span class="close-modal">&times;</span>
+                <span class="close-modal" onclick="this.closest('.modal').style.display='none'">&times;</span>
             </div>
-            <form id="form-sessao" class="modal-form">
+            <form id="form-sessao" class="modal-form" onsubmit="app.handleSessaoSubmit(event)">
                 <div class="form-group">
                     <label>Matéria</label>
                     <select id="sessao-materia" required>
@@ -313,9 +319,9 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2><i class="fas fa-tasks"></i> Nova Tarefa</h2>
-                <span class="close-modal">&times;</span>
+                <span class="close-modal" onclick="this.closest('.modal').style.display='none'">&times;</span>
             </div>
-            <form id="form-tarefa" class="modal-form">
+            <form id="form-tarefa" class="modal-form" onsubmit="app.handleTarefaSubmit(event)">
                 <div class="form-group">
                     <label>Título da tarefa</label>
                     <input type="text" id="tarefa-titulo" required>
@@ -357,9 +363,9 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2><i class="fas fa-graduation-cap"></i> Nova Prova/Trabalho</h2>
-                <span class="close-modal">&times;</span>
+                <span class="close-modal" onclick="this.closest('.modal').style.display='none'">&times;</span>
             </div>
-            <form id="form-prova" class="modal-form">
+            <form id="form-prova" class="modal-form" onsubmit="app.handleProvaSubmit(event)">
                 <div class="form-group">
                     <label>Título</label>
                     <input type="text" id="prova-titulo" required>
@@ -410,9 +416,9 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2><i class="fas fa-calendar-week"></i> Nova Aula</h2>
-                <span class="close-modal">&times;</span>
+                <span class="close-modal" onclick="this.closest('.modal').style.display='none'">&times;</span>
             </div>
-            <form id="form-aula" class="modal-form">
+            <form id="form-aula" class="modal-form" onsubmit="app.handleAulaSubmit(event)">
                 <div class="form-group">
                     <label>Disciplina</label>
                     <select id="aula-materia" required>
@@ -472,9 +478,9 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2><i class="fas fa-map-marker-alt"></i> Novo Tópico</h2>
-                <span class="close-modal">&times;</span>
+                <span class="close-modal" onclick="this.closest('.modal').style.display='none'">&times;</span>
             </div>
-            <form id="form-topico" class="modal-form">
+            <form id="form-topico" class="modal-form" onsubmit="app.handleTopicoSubmit(event)">
                 <div class="form-group">
                     <label>Matéria</label>
                     <select id="topico-materia" required>
@@ -515,9 +521,9 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2><i class="fas fa-star"></i> Registrar Nota</h2>
-                <span class="close-modal">&times;</span>
+                <span class="close-modal" onclick="this.closest('.modal').style.display='none'">&times;</span>
             </div>
-            <form id="form-nota" class="modal-form">
+            <form id="form-nota" class="modal-form" onsubmit="app.handleNotaSubmit(event)">
                 <div class="form-group">
                     <label>Matéria</label>
                     <select id="nota-materia" required>
@@ -549,9 +555,9 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2><i class="fas fa-folder"></i> Novo Material</h2>
-                <span class="close-modal">&times;</span>
+                <span class="close-modal" onclick="this.closest('.modal').style.display='none'">&times;</span>
             </div>
-            <form id="form-material" class="modal-form">
+            <form id="form-material" class="modal-form" onsubmit="app.handleMaterialSubmit(event)">
                 <div class="form-group">
                     <label>Título</label>
                     <input type="text" id="material-titulo" required>
@@ -584,6 +590,214 @@
         </div>
     </div>
 
+    <!-- NOVOS MODAIS -->
+    <!-- Modal Registro do Dia -->
+    <div id="modal-daily-log" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-clipboard-list"></i> Registro do Dia</h2>
+                <span class="close-modal" onclick="document.getElementById('modal-daily-log').style.display='none'">&times;</span>
+            </div>
+            <form id="form-daily-log" class="modal-form" onsubmit="app.handleDailyLogSubmit(event)">
+                <div class="form-section">
+                    <h3>📚 Estudo</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Início</label>
+                            <input type="time" id="daily-log-estudo-inicio">
+                        </div>
+                        <div class="form-group">
+                            <label>Fim</label>
+                            <input type="time" id="daily-log-estudo-fim">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3>🏛️ Aula</h3>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="daily-log-foi-aula"> Fui para a aula
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3>💼 Trabalho</h3>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="daily-log-trabalhou"> Trabalhei hoje
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>Duração (minutos)</label>
+                        <input type="number" id="daily-log-trabalho-duracao" min="0" value="0">
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3>⚡ Energia e Foco</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Energia do dia</label>
+                            <select id="daily-log-energia">
+                                <option value="baixa">🔴 Baixa</option>
+                                <option value="media" selected>🟡 Média</option>
+                                <option value="alta">🟢 Alta</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Foco do dia</label>
+                            <select id="daily-log-foco">
+                                <option value="ruim">🔴 Ruim</option>
+                                <option value="normal" selected>🟡 Normal</option>
+                                <option value="bom">🟢 Bom</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3>📝 Observações</h3>
+                    <textarea id="daily-log-observacoes" rows="3" placeholder="Algo relevante sobre o dia..."></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">Salvar Registro</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Diário de Aula -->
+    <div id="modal-class-diary" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-chalkboard"></i> Diário de Aula</h2>
+                <span class="close-modal" onclick="document.getElementById('modal-class-diary').style.display='none'">&times;</span>
+            </div>
+            <form id="form-class-diary" class="modal-form" onsubmit="app.handleClassDiarySubmit(event)">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Matéria</label>
+                        <select id="class-diary-materia" required>
+                            <option value="">Selecione</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Data</label>
+                        <input type="date" id="class-diary-data" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Presença</label>
+                    <select id="class-diary-presenca" required>
+                        <option value="present">✅ Fui</option>
+                        <option value="absent">❌ Faltei</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Conteúdo explicado</label>
+                    <textarea id="class-diary-conteudo" rows="3" placeholder="O que foi explicado hoje?"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Exercícios passados</label>
+                    <textarea id="class-diary-exercicios" rows="2" placeholder="Lista de exercícios, páginas..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Trabalho anunciado</label>
+                    <input type="text" id="class-diary-trabalho" placeholder="Descrição do trabalho">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Dificuldade (1-5)</label>
+                        <input type="number" id="class-diary-dificuldade" min="1" max="5" value="3">
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="class-diary-revisar"> Preciso revisar
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Observações</label>
+                    <textarea id="class-diary-observacoes" rows="2"></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">Salvar Diário</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Detalhe da Aula -->
+    <div id="modal-aula-detail" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-calendar-week"></i> Detalhes da Aula</h2>
+                <span class="close-modal" onclick="document.getElementById('modal-aula-detail').style.display='none'">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="aula-detail-info">
+                    <p><strong>Matéria:</strong> <span id="aula-detail-materia"></span></p>
+                    <p><strong>Horário:</strong> <span id="aula-detail-horario"></span></p>
+                    <p><strong>Sala:</strong> <span id="aula-detail-sala"></span></p>
+                    <p><strong>Professor:</strong> <span id="aula-detail-professor"></span></p>
+                    
+                    <div class="aula-detail-presenca" id="aula-detail-presenca"></div>
+                    
+                    <h4>Último conteúdo registrado</h4>
+                    <div id="aula-detail-ultimo-conteudo" class="aula-detail-conteudo"></div>
+                    
+                    <button class="btn-primary" onclick="app.openClassDiaryModal()">
+                        <i class="fas fa-plus"></i> Registrar Diário
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal "O que estudar agora?" -->
+    <div id="modal-whats-now" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-lightbulb"></i> O que estudar agora?</h2>
+                <span class="close-modal" onclick="document.getElementById('modal-whats-now').style.display='none'">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="whats-now-content" class="whats-now-content"></div>
+                <button class="btn-primary" onclick="document.getElementById('modal-whats-now').style.display='none'">Entendi!</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Configuração de Estrutura de Notas -->
+    <div id="modal-grade-structure" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-chart-pie"></i> Configurar Estrutura de Notas</h2>
+                <span class="close-modal" onclick="document.getElementById('modal-grade-structure').style.display='none'">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="grade-structure-materia" class="grade-structure-materia"></div>
+                <div id="grade-structure-items"></div>
+                <button class="btn-secondary" onclick="app.addGradeStructureItem()">
+                    <i class="fas fa-plus"></i> Adicionar Avaliação
+                </button>
+                <div class="form-actions">
+                    <button class="btn-primary" onclick="app.saveGradeStructure()">Salvar Estrutura</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="toast-container"></div>
 
     <!-- Scripts modulares -->
@@ -591,9 +805,13 @@
     <script src="utils.js"></script>
     <script src="auth.js"></script>
     <script src="database.js"></script>
-    <script src="ai-assistant.js"></script>
+    <script src="daily-log.js"></script>
+    <script src="class-diary.js"></script>
+    <script src="review-system.js"></script>
+    <script src="grade-calculator.js"></script>
     <script src="schedule.js"></script>
+    <script src="ai-assistant.js"></script>
     <script src="views.js"></script>
-    <script src="script.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>

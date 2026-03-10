@@ -1,3 +1,4 @@
+// firebase-config.js
 const firebaseConfig = {
   apiKey: "AIzaSyDDnc3vmJTAJg8ZQwYw-W9DeT5HLmCUPDc",
   authDomain: "study-life-control.firebaseapp.com",
@@ -7,6 +8,7 @@ const firebaseConfig = {
   appId: "1:42112044749:web:52bde99cc356016832e384"
 };
 
+// Inicializar Firebase
 firebase.initializeApp(firebaseConfig);
 
 const auth = firebase.auth();
@@ -17,6 +19,7 @@ googleProvider.setCustomParameters({
   prompt: "select_account"
 });
 
+// Disponibilizar globalmente
 window.auth = auth;
 window.db = db;
 window.googleProvider = googleProvider;

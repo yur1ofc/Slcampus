@@ -1978,3 +1978,487 @@ input:checked + .toggle-slider:before {
         padding: 4px 2px;
     }
 }
+
+/* Novos estilos para o calendário vertical */
+.schedule-vertical {
+    position: relative;
+    height: calc((22 - 7) * 80px); /* 15h * 80px */
+    background: var(--bg-tertiary);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.schedule-hour-row {
+    display: flex;
+    align-items: flex-start;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+}
+
+.hour-label {
+    width: 60px;
+    padding: 8px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
+}
+
+.hour-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+}
+
+.schedule-events {
+    position: relative;
+    height: 0;
+    top: 0;
+    left: 60px;
+    right: 0;
+}
+
+.schedule-event-block {
+    position: absolute;
+    left: 4px;
+    right: 4px;
+    border-radius: 8px;
+    padding: 8px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    overflow: hidden;
+    z-index: 10;
+}
+
+.schedule-event-block:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    z-index: 20;
+}
+
+.event-content {
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.event-time {
+    font-size: 10px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+.event-room, .event-prof {
+    font-size: 10px;
+    color: var(--text-tertiary);
+}
+
+/* Grade semanal */
+.weekly-schedule {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.weekly-day-column {
+    background: var(--bg-tertiary);
+    border-radius: 12px;
+    padding: 12px;
+    min-height: 400px;
+}
+
+.weekly-day-column h4 {
+    text-align: center;
+    margin-bottom: 12px;
+    color: var(--accent-primary);
+}
+
+.weekly-events {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.weekly-event {
+    background: var(--bg-secondary);
+    border-left: 4px solid;
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.weekly-event:hover {
+    transform: translateX(4px);
+}
+
+/* Detalhe da aula */
+.aula-detail-info {
+    padding: 20px;
+}
+
+.aula-detail-info p {
+    margin-bottom: 12px;
+}
+
+.aula-detail-presenca {
+    margin: 20px 0;
+    display: flex;
+    gap: 10px;
+}
+
+.aula-detail-conteudo {
+    background: var(--bg-tertiary);
+    padding: 12px;
+    border-radius: 8px;
+    margin: 12px 0;
+}
+
+/* What's now modal */
+.whats-now-content {
+    padding: 20px;
+    font-size: 16px;
+    line-height: 1.6;
+    background: var(--bg-tertiary);
+    border-radius: 12px;
+    margin-bottom: 20px;
+}
+
+/* Botões pequenos */
+.btn-small {
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-small.btn-success {
+    background: var(--accent-success);
+    color: white;
+}
+
+.btn-small.btn-danger {
+    background: var(--accent-danger);
+    color: white;
+}
+
+.btn-small:hover {
+    transform: translateY(-2px);
+}
+
+/* Badges */
+.badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 500;
+}
+
+.badge.warning {
+    background: var(--accent-warning);
+    color: white;
+}
+
+/* Estilos para o calendário vertical */
+.schedule-vertical {
+    position: relative;
+    background: var(--bg-tertiary);
+    border-radius: 12px;
+    overflow-y: auto;
+    height: 100%;
+}
+
+.schedule-hour-row {
+    position: relative;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+}
+
+.hour-label {
+    position: sticky;
+    left: 0;
+    width: 60px;
+    padding: 4px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
+    z-index: 5;
+}
+
+.hour-line {
+    flex: 1;
+    height: 100%;
+}
+
+.schedule-events {
+    position: relative;
+    margin-top: calc(-1 * (22 - 7) * 80px);
+    pointer-events: none;
+}
+
+.schedule-event-block {
+    position: absolute;
+    pointer-events: auto;
+    border-radius: 8px;
+    padding: 8px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    overflow: hidden;
+    z-index: 10;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.schedule-event-block:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    z-index: 20;
+}
+
+.event-content {
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.event-time {
+    font-size: 10px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+.event-room, .event-prof {
+    font-size: 10px;
+    color: var(--text-tertiary);
+}
+
+/* Grade semanal */
+.weekly-schedule {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.weekly-day-column {
+    background: var(--bg-tertiary);
+    border-radius: 12px;
+    padding: 12px;
+    min-height: 400px;
+}
+
+.weekly-day-column h4 {
+    text-align: center;
+    margin-bottom: 12px;
+    color: var(--accent-primary);
+}
+
+.weekly-events {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.weekly-event {
+    background: var(--bg-secondary);
+    border-left: 4px solid;
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.weekly-event:hover {
+    transform: translateX(4px);
+}
+
+/* Detalhe da aula */
+.aula-detail-info {
+    padding: 20px;
+}
+
+.aula-detail-info p {
+    margin-bottom: 12px;
+}
+
+.aula-detail-presenca {
+    margin: 20px 0;
+    display: flex;
+    gap: 10px;
+}
+
+.aula-detail-conteudo {
+    background: var(--bg-tertiary);
+    padding: 12px;
+    border-radius: 8px;
+    margin: 12px 0;
+}
+
+/* Botão "O que estudar agora?" */
+.btn-whats-now {
+    background: linear-gradient(135deg, var(--accent-warning), #f97316);
+    color: white;
+    border: none;
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    margin-bottom: 12px;
+    transition: var(--transition);
+}
+
+.btn-whats-now:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(249, 115, 22, 0.3);
+}
+
+.btn-whats-now i {
+    font-size: 18px;
+}
+
+/* Modal What's Now */
+.whats-now-content {
+    padding: 24px;
+    font-size: 16px;
+    line-height: 1.8;
+    background: var(--bg-tertiary);
+    border-radius: 12px;
+    margin: 20px;
+    white-space: pre-line;
+}
+
+/* Botões pequenos */
+.btn-small {
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-small.btn-success {
+    background: var(--accent-success);
+    color: white;
+}
+
+.btn-small.btn-success:hover {
+    background: #0d9488;
+}
+
+.btn-small.btn-danger {
+    background: var(--accent-danger);
+    color: white;
+}
+
+.btn-small.btn-danger:hover {
+    background: #dc2626;
+}
+
+/* Badges */
+.badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 600;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+}
+
+.badge.warning {
+    background: var(--accent-warning);
+    color: white;
+}
+
+.badge.success {
+    background: var(--accent-success);
+    color: white;
+}
+
+.badge.danger {
+    background: var(--accent-danger);
+    color: white;
+}
+
+/* Grade de matérias no mapa de aprendizado */
+.mapa-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 24px;
+}
+
+.materia-map {
+    height: fit-content;
+}
+
+.topico-item {
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 8px;
+}
+
+.topico-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.topico-meta {
+    display: flex;
+    gap: 12px;
+    font-size: 11px;
+    color: var(--text-tertiary);
+}
+
+/* Animações */
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.loading {
+    animation: pulse 1.5s infinite;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .weekly-schedule {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .mapa-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .timer-display {
+        font-size: 48px;
+    }
+}
+
+@media (max-width: 480px) {
+    .weekly-schedule {
+        grid-template-columns: 1fr;
+    }
+    
+    .aula-detail-presenca {
+        flex-direction: column;
+    }
+    
+    .btn-small {
+        width: 100%;
+    }
+}
