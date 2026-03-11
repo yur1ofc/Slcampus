@@ -217,16 +217,18 @@ class ViewRenderer {
         return '<div class="card"><div class="card-body"><p class="text-secondary">Erro ao carregar grade horária</p></div></div>';
     }
 
-    // Aumentar setTimeout para garantir que o DOM esteja pronto
+    // Carregar aulas imediatamente
+    window.scheduleManager.loadAulas();
+    
+    // Renderizar após o DOM estar pronto
     setTimeout(() => {
         const container = document.getElementById('schedule-vertical-container');
         if (container && window.scheduleManager) {
-            // Recarregar aulas antes de renderizar
-            window.scheduleManager.loadAulas();
             const hoje = new Date().getDay();
+            console.log(`🎯 Renderizando grade para dia ${hoje} com ${window.scheduleManager.aulas.length} aulas`);
             window.scheduleManager.renderGradeDia(hoje, 'schedule-vertical-container');
         }
-    }, 200); // Aumentado de 0 para 200ms
+    }, 300);
 
     return `
         <div class="view-header">
@@ -240,7 +242,7 @@ class ViewRenderer {
         
         <div class="aulas-list card">
             <div class="card-header">
-                <h3>Minhas Aulas</h3>
+                <h3>Minhas Aulas (${this.app.data.classSchedule?.length || 0})</h3>
             </div>
             <div class="card-body">
                 <ul class="item-list">

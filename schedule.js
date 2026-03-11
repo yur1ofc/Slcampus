@@ -70,89 +70,89 @@ class ScheduleManager {
 
     // Renderizar grade vertical para um dia específico
     renderGradeDia(diaSemana, containerId) {
-    this.loadAulas();
-    const aulas = this.getAulasPorDia(diaSemana);
-    const container = document.getElementById(containerId);
-    if (!container) return;
+        this.loadAulas();
+        const aulas = this.getAulasPorDia(diaSemana);
+        const container = document.getElementById(containerId);
+        if (!container) return;
 
-    // Limpar container
-    container.innerHTML = '';
-    
-    // Calcular altura total da grade
-    const totalHoras = this.HORARIO_FIM - this.HORARIO_INICIO + 1;
-    const alturaTotal = totalHoras * this.ALTURA_POR_HORA;
-    
-    // Criar container principal da grade
-    const scheduleDiv = document.createElement('div');
-    scheduleDiv.className = 'schedule-vertical';
-    scheduleDiv.style.height = `${alturaTotal}px`;
-    scheduleDiv.style.position = 'relative';
-    
-    // Criar linhas de hora
-    for (let hora = this.HORARIO_INICIO; hora <= this.HORARIO_FIM; hora++) {
-        const horaFormatada = hora.toString().padStart(2, '0') + ':00';
-        const hourRow = document.createElement('div');
-        hourRow.className = 'schedule-hour-row';
-        hourRow.style.height = `${this.ALTURA_POR_HORA}px`;
+        // Limpar container
+        container.innerHTML = '';
         
-        hourRow.innerHTML = `
-            <div class="hour-label">${horaFormatada}</div>
-            <div class="hour-line"></div>
-        `;
-        scheduleDiv.appendChild(hourRow);
+        // Calcular altura total da grade
+        const totalHoras = this.HORARIO_FIM - this.HORARIO_INICIO + 1;
+        const alturaTotal = totalHoras * this.ALTURA_POR_HORA;
+        
+        // Criar container principal da grade
+        const scheduleDiv = document.createElement('div');
+        scheduleDiv.className = 'schedule-vertical';
+        scheduleDiv.style.height = `${alturaTotal}px`;
+        scheduleDiv.style.position = 'relative';
+        
+        // Criar linhas de hora
+        for (let hora = this.HORARIO_INICIO; hora <= this.HORARIO_FIM; hora++) {
+            const horaFormatada = hora.toString().padStart(2, '0') + ':00';
+            const hourRow = document.createElement('div');
+            hourRow.className = 'schedule-hour-row';
+            hourRow.style.height = `${this.ALTURA_POR_HORA}px`;
+            
+            hourRow.innerHTML = `
+                <div class="hour-label">${horaFormatada}</div>
+                <div class="hour-line"></div>
+            `;
+            scheduleDiv.appendChild(hourRow);
+        }
+        
+        container.appendChild(scheduleDiv);
+        
+        // Container para eventos (CORRIGIDO: position absolute dentro do scheduleDiv)
+        const eventsContainer = document.createElement('div');
+        eventsContainer.className = 'schedule-events';
+        eventsContainer.style.position = 'absolute';
+        eventsContainer.style.top = '0';
+        eventsContainer.style.left = '60px';
+        eventsContainer.style.right = '0';
+        eventsContainer.style.height = `${alturaTotal}px`;
+        eventsContainer.style.pointerEvents = 'none';
+        
+        // Adicionar eventos (aulas)
+        aulas.forEach(aula => {
+            const top = this.calcularPosicaoTop(aula.inicio);
+            const altura = this.calcularAltura(aula.inicio, aula.fim);
+            
+            // Buscar cor da matéria ou usar padrão
+            const materia = window.app?.data?.subjects?.find(s => s.nome === aula.materia);
+            const cor = materia?.cor || aula.cor || '#3b82f6';
+            
+            const eventBlock = document.createElement('div');
+            eventBlock.className = 'schedule-event-block';
+            eventBlock.style.position = 'absolute';
+            eventBlock.style.top = `${top}px`;
+            eventBlock.style.height = `${altura}px`;
+            eventBlock.style.left = '4px';
+            eventBlock.style.right = '4px';
+            eventBlock.style.backgroundColor = `${cor}20`;
+            eventBlock.style.borderLeft = `4px solid ${cor}`;
+            eventBlock.style.pointerEvents = 'auto';
+            eventBlock.setAttribute('data-aula-id', aula.id);
+            
+            eventBlock.innerHTML = `
+                <div class="event-content">
+                    <strong>${aula.materia}</strong>
+                    <div class="event-time">${aula.inicio} - ${aula.fim}</div>
+                    ${aula.sala ? `<div class="event-room">Sala: ${aula.sala}</div>` : ''}
+                    ${aula.professor ? `<div class="event-prof">Prof: ${aula.professor}</div>` : ''}
+                </div>
+            `;
+            
+            eventBlock.onclick = () => {
+                if (window.app) window.app.openAulaModal(aula.id);
+            };
+            
+            eventsContainer.appendChild(eventBlock);
+        });
+        
+        scheduleDiv.appendChild(eventsContainer);
     }
-    
-    container.appendChild(scheduleDiv);
-    
-    // Container para eventos (CORRIGIDO: position absolute dentro do scheduleDiv)
-    const eventsContainer = document.createElement('div');
-    eventsContainer.className = 'schedule-events';
-    eventsContainer.style.position = 'absolute';
-    eventsContainer.style.top = '0';
-    eventsContainer.style.left = '60px';
-    eventsContainer.style.right = '0';
-    eventsContainer.style.height = `${alturaTotal}px`;
-    eventsContainer.style.pointerEvents = 'none';
-    
-    // Adicionar eventos (aulas)
-    aulas.forEach(aula => {
-        const top = this.calcularPosicaoTop(aula.inicio);
-        const altura = this.calcularAltura(aula.inicio, aula.fim);
-        
-        // Buscar cor da matéria ou usar padrão
-        const materia = window.app?.data?.subjects?.find(s => s.nome === aula.materia);
-        const cor = materia?.cor || aula.cor || '#3b82f6';
-        
-        const eventBlock = document.createElement('div');
-        eventBlock.className = 'schedule-event-block';
-        eventBlock.style.position = 'absolute';
-        eventBlock.style.top = `${top}px`;
-        eventBlock.style.height = `${altura}px`;
-        eventBlock.style.left = '4px';
-        eventBlock.style.right = '4px';
-        eventBlock.style.backgroundColor = `${cor}20`;
-        eventBlock.style.borderLeft = `4px solid ${cor}`;
-        eventBlock.style.pointerEvents = 'auto';
-        eventBlock.setAttribute('data-aula-id', aula.id);
-        
-        eventBlock.innerHTML = `
-            <div class="event-content">
-                <strong>${aula.materia}</strong>
-                <div class="event-time">${aula.inicio} - ${aula.fim}</div>
-                ${aula.sala ? `<div class="event-room">Sala: ${aula.sala}</div>` : ''}
-                ${aula.professor ? `<div class="event-prof">Prof: ${aula.professor}</div>` : ''}
-            </div>
-        `;
-        
-        eventBlock.onclick = () => {
-            if (window.app) window.app.openAulaModal(aula.id);
-        };
-        
-        eventsContainer.appendChild(eventBlock);
-    });
-    
-    scheduleDiv.appendChild(eventsContainer);
-}
 
     // Obter próxima aula
     getProximaAula() {
@@ -194,6 +194,33 @@ class ScheduleManager {
             return minutosAtuais >= minutosInicio && minutosAtuais <= minutosFim;
         });
     }
+
+    // Marcar presença em uma aula
+    async marcarPresenca(aulaId, data, status) {
+        const key = `${aulaId}_${data}`;
+        const attendance = { ...(window.app?.data?.attendance || {}), [key]: status };
+        const success = await dbService.saveData('attendance', attendance);
+        
+        if (success && status === 'absent') {
+            const aula = this.aulas.find(a => a.id === aulaId);
+            if (aula) {
+                const tarefa = {
+                    id: generateId(),
+                    titulo: `Recuperar conteúdo da aula perdida - ${aula.materia}`,
+                    materia: aula.materia,
+                    prioridade: 'alta',
+                    dataLimite: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    estimativa: 60,
+                    concluida: false,
+                    automatica: true
+                };
+                await dbService.addItem('tasks', tarefa);
+                showToast('Tarefa de recuperação criada automaticamente!');
+            }
+        }
+        
+        return success;
+    }
 }
 
 // Criar instância global
@@ -207,3 +234,27 @@ if (window.app) {
         window.scheduleManager.init();
     });
 }
+
+// Forçar recarregamento quando as aulas mudarem
+document.addEventListener('aulas-atualizadas', () => {
+    console.log('📚 Evento aulas-atualizadas recebido');
+    if (window.scheduleManager) {
+        window.scheduleManager.loadAulas();
+        // Se estiver na view de grade horária, recarregar
+        const container = document.getElementById('schedule-vertical-container');
+        if (container) {
+            const hoje = new Date().getDay();
+            window.scheduleManager.renderGradeDia(hoje, 'schedule-vertical-container');
+        }
+    }
+});
+
+// Método para atualizar e renderizar
+ScheduleManager.prototype.atualizarERenderizar = function() {
+    this.loadAulas();
+    const container = document.getElementById('schedule-vertical-container');
+    if (container) {
+        const hoje = new Date().getDay();
+        this.renderGradeDia(hoje, 'schedule-vertical-container');
+    }
+};

@@ -42,6 +42,9 @@ class StudyLifeControl {
         this.updateSidebarInfo();
         this.applyHeavyMode();
         
+        // Disparar evento para outros módulos
+        document.dispatchEvent(new Event('app-ready'));
+        
         // Carregar dados nos serviços
         if (window.scheduleManager) window.scheduleManager.loadAulas();
         if (window.reviewSystem) window.reviewSystem.loadReviews();
@@ -56,32 +59,7 @@ class StudyLifeControl {
         
         this.checkDailyReviews();
     }
-async init() {
-    if (this.initialized) return;
-    
-    await this.loadData();
-    this.viewRenderer = new ViewRenderer(this);
-    this.setupEventListeners();
-    this.updateSidebarInfo();
-    this.applyHeavyMode();
-    
-    // ADICIONE ESTA LINHA: Disparar evento para outros módulos
-    document.dispatchEvent(new Event('app-ready'));
-    
-    // Carregar dados nos serviços
-    if (window.scheduleManager) window.scheduleManager.loadAulas();
-    if (window.reviewSystem) window.reviewSystem.loadReviews();
-    if (window.dailyLogService) window.dailyLogService.loadLogs();
-    if (window.classDiaryService) window.classDiaryService.loadDiaries();
-    if (window.gradeCalculator) window.gradeCalculator.loadData();
-    
-    if (window.aiAssistant) window.aiAssistant.updateContext(this.data);
-    
-    this.loadView('dashboard');
-    this.initialized = true;
-    
-    this.checkDailyReviews();
-}
+
     async loadData() {
         const user = auth.currentUser;
         if (user) {
@@ -388,6 +366,7 @@ async init() {
                     const id = e.currentTarget.dataset.id;
                     if (window.scheduleManager) {
                         await window.scheduleManager.removeAula(id);
+                        document.dispatchEvent(new Event('aulas-atualizadas'));
                     }
                     this.loadView('grade-horaria');
                     showToast('Aula removida');
@@ -768,6 +747,10 @@ async init() {
             const success = await window.scheduleManager.addAula(novaAula);
             if (success) {
                 document.getElementById('modal-aula').style.display = 'none';
+                
+                // Disparar evento de atualização
+                document.dispatchEvent(new Event('aulas-atualizadas'));
+                
                 this.loadView('grade-horaria');
                 showToast('Aula adicionada!');
             }
