@@ -217,15 +217,16 @@ class ViewRenderer {
         return '<div class="card"><div class="card-body"><p class="text-secondary">Erro ao carregar grade horária</p></div></div>';
     }
 
-    // Usar setTimeout com 0ms para garantir que o DOM esteja pronto
+    // Aumentar setTimeout para garantir que o DOM esteja pronto
     setTimeout(() => {
         const container = document.getElementById('schedule-vertical-container');
         if (container && window.scheduleManager) {
-            // Pegar o dia atual (0 = Domingo, 1 = Segunda, etc)
+            // Recarregar aulas antes de renderizar
+            window.scheduleManager.loadAulas();
             const hoje = new Date().getDay();
             window.scheduleManager.renderGradeDia(hoje, 'schedule-vertical-container');
         }
-    }, 0);
+    }, 200); // Aumentado de 0 para 200ms
 
     return `
         <div class="view-header">
@@ -264,7 +265,6 @@ class ViewRenderer {
         </div>
     `;
 }
-
     renderSessoes() {
         const hoje = new Date().toDateString();
         const sessoesHoje = this.app.data.sessions.filter(s => new Date(s.data).toDateString() === hoje && !s.concluida);

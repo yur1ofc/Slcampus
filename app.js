@@ -56,7 +56,32 @@ class StudyLifeControl {
         
         this.checkDailyReviews();
     }
-
+async init() {
+    if (this.initialized) return;
+    
+    await this.loadData();
+    this.viewRenderer = new ViewRenderer(this);
+    this.setupEventListeners();
+    this.updateSidebarInfo();
+    this.applyHeavyMode();
+    
+    // ADICIONE ESTA LINHA: Disparar evento para outros módulos
+    document.dispatchEvent(new Event('app-ready'));
+    
+    // Carregar dados nos serviços
+    if (window.scheduleManager) window.scheduleManager.loadAulas();
+    if (window.reviewSystem) window.reviewSystem.loadReviews();
+    if (window.dailyLogService) window.dailyLogService.loadLogs();
+    if (window.classDiaryService) window.classDiaryService.loadDiaries();
+    if (window.gradeCalculator) window.gradeCalculator.loadData();
+    
+    if (window.aiAssistant) window.aiAssistant.updateContext(this.data);
+    
+    this.loadView('dashboard');
+    this.initialized = true;
+    
+    this.checkDailyReviews();
+}
     async loadData() {
         const user = auth.currentUser;
         if (user) {

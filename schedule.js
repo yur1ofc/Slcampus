@@ -6,11 +6,28 @@ class ScheduleManager {
         this.HORARIO_INICIO = 7;
         this.HORARIO_FIM = 22;
         this.ALTURA_POR_HORA = 80;
+        this.initialized = false;
+    }
+
+    // Inicializar com dados do app
+    init() {
+        if (window.app?.data?.classSchedule) {
+            this.aulas = window.app.data.classSchedule;
+            this.initialized = true;
+            console.log('📚 ScheduleManager inicializado com', this.aulas.length, 'aulas');
+        } else {
+            console.warn('⏳ Aguardando dados do app...');
+            setTimeout(() => this.init(), 100);
+        }
     }
 
     // Carregar aulas do app
     loadAulas() {
-        this.aulas = window.app?.data?.classSchedule || [];
+        if (window.app?.data?.classSchedule) {
+            this.aulas = window.app.data.classSchedule;
+            console.log('📚 Aulas carregadas:', this.aulas.length);
+        }
+        return this.aulas;
     }
 
     // Adicionar aula
@@ -31,16 +48,9 @@ class ScheduleManager {
         return success;
     }
 
-    async updateAula(id, updates) {
-        const success = await dbService.updateItem('classSchedule', id, updates);
-        if (success) {
-            this.loadAulas();
-        }
-        return success;
-    }
-
     // Obter aulas de um dia específico
     getAulasPorDia(diaSemana) {
+        this.loadAulas();
         return this.aulas.filter(a => parseInt(a.dia) === diaSemana)
             .sort((a, b) => a.inicio.localeCompare(b.inicio));
     }
@@ -94,7 +104,7 @@ class ScheduleManager {
     
     container.appendChild(scheduleDiv);
     
-    // Container para eventos (dentro do scheduleDiv, posicionado absolutamente)
+    // Container para eventos (CORRIGIDO: position absolute dentro do scheduleDiv)
     const eventsContainer = document.createElement('div');
     eventsContainer.className = 'schedule-events';
     eventsContainer.style.position = 'absolute';
@@ -143,67 +153,10 @@ class ScheduleManager {
     
     scheduleDiv.appendChild(eventsContainer);
 }
-    // Renderizar grade semanal (versão simplificada)
-    renderGrade() {
-        const dias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-        let html = '<div class="weekly-schedule" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 12px;">';
-        
-        dias.forEach((dia, index) => {
-            html += `<div class="weekly-day-column" data-dia="${index}" style="background: var(--bg-tertiary); border-radius: 12px; padding: 12px;">`;
-            html += `<h4 style="text-align: center; margin-bottom: 12px; color: var(--accent-primary);">${dia}</h4>`;
-            html += `<div class="weekly-events" id="weekly-events-${index}" style="display: flex; flex-direction: column; gap: 8px;"></div>`;
-            html += '</div>';
-        });
-        
-        html += '</div>';
-        return html;
-    }
-
-    // Popular grade semanal
-    populateWeeklySchedule() {
-        for (let dia = 0; dia < 7; dia++) {
-            const container = document.getElementById(`weekly-events-${dia}`);
-            if (!container) continue;
-
-            const aulas = this.getAulasPorDia(dia);
-            container.innerHTML = '';
-
-            aulas.forEach(aula => {
-                const materia = window.app?.data?.subjects?.find(s => s.nome === aula.materia);
-                const cor = materia?.cor || aula.cor || '#3b82f6';
-                
-                const evento = document.createElement('div');
-                evento.className = 'weekly-event';
-                evento.style.cssText = `background: var(--bg-secondary); border-left: 4px solid ${cor}; border-radius: 6px; padding: 8px; font-size: 12px; cursor: pointer;`;
-                evento.innerHTML = `
-                    <strong>${aula.materia}</strong>
-                    <div>${aula.inicio} - ${aula.fim}</div>
-                    ${aula.sala ? `<small>${aula.sala}</small>` : ''}
-                `;
-                evento.onclick = () => {
-                    if (window.app) window.app.openAulaModal(aula.id);
-                };
-                container.appendChild(evento);
-            });
-        }
-    }
-
-    // Verificar conflitos de horário
-    verificarConflito(novaAula) {
-        const aulasMesmoDia = this.getAulasPorDia(parseInt(novaAula.dia));
-        const novoInicio = calcularDuracaoMinutos('00:00', novaAula.inicio);
-        const novoFim = calcularDuracaoMinutos('00:00', novaAula.fim);
-
-        return aulasMesmoDia.some(aula => {
-            if (aula.id === novaAula.id) return false;
-            const aulaInicio = calcularDuracaoMinutos('00:00', aula.inicio);
-            const aulaFim = calcularDuracaoMinutos('00:00', aula.fim);
-            return (novoInicio < aulaFim && novoFim > aulaInicio);
-        });
-    }
 
     // Obter próxima aula
     getProximaAula() {
+        this.loadAulas();
         const hoje = new Date();
         const diaSemana = hoje.getDay();
         const minutosAtuais = hoje.getHours() * 60 + hoje.getMinutes();
@@ -230,6 +183,7 @@ class ScheduleManager {
 
     // Obter aula atual
     getAulaAtual() {
+        this.loadAulas();
         const hoje = new Date();
         const diaSemana = hoje.getDay();
         const minutosAtuais = hoje.getHours() * 60 + hoje.getMinutes();
@@ -240,33 +194,16 @@ class ScheduleManager {
             return minutosAtuais >= minutosInicio && minutosAtuais <= minutosFim;
         });
     }
-
-    // Marcar presença em uma aula
-    async marcarPresenca(aulaId, data, status) {
-        const key = `${aulaId}_${data}`;
-        const attendance = { ...(window.app?.data?.attendance || {}), [key]: status };
-        const success = await dbService.saveData('attendance', attendance);
-        
-        if (success && status === 'absent') {
-            const aula = this.aulas.find(a => a.id === aulaId);
-            if (aula) {
-                const tarefa = {
-                    id: generateId(),
-                    titulo: `Recuperar conteúdo da aula perdida - ${aula.materia}`,
-                    materia: aula.materia,
-                    prioridade: 'alta',
-                    dataLimite: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                    estimativa: 60,
-                    concluida: false,
-                    automatica: true
-                };
-                await dbService.addItem('tasks', tarefa);
-                showToast('Tarefa de recuperação criada automaticamente!');
-            }
-        }
-        
-        return success;
-    }
 }
 
+// Criar instância global
 window.scheduleManager = new ScheduleManager();
+
+// Inicializar quando o app estiver pronto
+if (window.app) {
+    window.scheduleManager.init();
+} else {
+    document.addEventListener('app-ready', () => {
+        window.scheduleManager.init();
+    });
+}
