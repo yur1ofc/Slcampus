@@ -51,7 +51,8 @@ class ScheduleManager {
     // Obter aulas de um dia específico
     getAulasPorDia(diaSemana) {
         this.loadAulas();
-        return this.aulas.filter(a => parseInt(a.dia) === diaSemana)
+        return this.aulas
+            .filter(a => parseInt(a.dia) === diaSemana)
             .sort((a, b) => a.inicio.localeCompare(b.inicio));
     }
 
@@ -75,66 +76,47 @@ class ScheduleManager {
         const container = document.getElementById(containerId);
         if (!container) return;
 
-        // Limpar container
         container.innerHTML = '';
-        
-        // Calcular altura total da grade
+
         const totalHoras = this.HORARIO_FIM - this.HORARIO_INICIO + 1;
         const alturaTotal = totalHoras * this.ALTURA_POR_HORA;
-        
-        // Criar container principal da grade
+
         const scheduleDiv = document.createElement('div');
         scheduleDiv.className = 'schedule-vertical';
         scheduleDiv.style.height = `${alturaTotal}px`;
-        scheduleDiv.style.position = 'relative';
-        
-        // Criar linhas de hora
+
         for (let hora = this.HORARIO_INICIO; hora <= this.HORARIO_FIM; hora++) {
             const horaFormatada = hora.toString().padStart(2, '0') + ':00';
             const hourRow = document.createElement('div');
             hourRow.className = 'schedule-hour-row';
-            hourRow.style.height = `${this.ALTURA_POR_HORA}px`;
-            
+
             hourRow.innerHTML = `
                 <div class="hour-label">${horaFormatada}</div>
                 <div class="hour-line"></div>
             `;
+
             scheduleDiv.appendChild(hourRow);
         }
-        
-        container.appendChild(scheduleDiv);
-        
-        // Container para eventos (CORRIGIDO: position absolute dentro do scheduleDiv)
+
         const eventsContainer = document.createElement('div');
         eventsContainer.className = 'schedule-events';
-        eventsContainer.style.position = 'absolute';
-        eventsContainer.style.top = '0';
-        eventsContainer.style.left = '60px';
-        eventsContainer.style.right = '0';
         eventsContainer.style.height = `${alturaTotal}px`;
-        eventsContainer.style.pointerEvents = 'none';
-        
-        // Adicionar eventos (aulas)
+
         aulas.forEach(aula => {
             const top = this.calcularPosicaoTop(aula.inicio);
             const altura = this.calcularAltura(aula.inicio, aula.fim);
-            
-            // Buscar cor da matéria ou usar padrão
+
             const materia = window.app?.data?.subjects?.find(s => s.nome === aula.materia);
             const cor = materia?.cor || aula.cor || '#3b82f6';
-            
+
             const eventBlock = document.createElement('div');
             eventBlock.className = 'schedule-event-block';
-            eventBlock.style.position = 'absolute';
             eventBlock.style.top = `${top}px`;
             eventBlock.style.height = `${altura}px`;
-            eventBlock.style.left = '4px';
-            eventBlock.style.right = '4px';
             eventBlock.style.backgroundColor = `${cor}20`;
             eventBlock.style.borderLeft = `4px solid ${cor}`;
-            eventBlock.style.pointerEvents = 'auto';
             eventBlock.setAttribute('data-aula-id', aula.id);
-            
+
             eventBlock.innerHTML = `
                 <div class="event-content">
                     <strong>${aula.materia}</strong>
@@ -143,15 +125,16 @@ class ScheduleManager {
                     ${aula.professor ? `<div class="event-prof">Prof: ${aula.professor}</div>` : ''}
                 </div>
             `;
-            
+
             eventBlock.onclick = () => {
                 if (window.app) window.app.openAulaModal(aula.id);
             };
-            
+
             eventsContainer.appendChild(eventBlock);
         });
-        
+
         scheduleDiv.appendChild(eventsContainer);
+        container.appendChild(scheduleDiv);
     }
 
     // Obter próxima aula
@@ -160,16 +143,16 @@ class ScheduleManager {
         const hoje = new Date();
         const diaSemana = hoje.getDay();
         const minutosAtuais = hoje.getHours() * 60 + hoje.getMinutes();
-        
+
         const aulasHoje = this.getAulasPorDia(diaSemana);
-        
+
         const proximaHoje = aulasHoje.find(a => {
             const minutosInicio = calcularDuracaoMinutos('00:00', a.inicio);
             return minutosInicio > minutosAtuais;
         });
-        
+
         if (proximaHoje) return proximaHoje;
-        
+
         for (let i = 1; i <= 7; i++) {
             const proximoDia = (diaSemana + i) % 7;
             const aulasProximoDia = this.getAulasPorDia(proximoDia);
@@ -177,7 +160,7 @@ class ScheduleManager {
                 return aulasProximoDia[0];
             }
         }
-        
+
         return null;
     }
 
@@ -187,7 +170,7 @@ class ScheduleManager {
         const hoje = new Date();
         const diaSemana = hoje.getDay();
         const minutosAtuais = hoje.getHours() * 60 + hoje.getMinutes();
-        
+
         return this.getAulasPorDia(diaSemana).find(a => {
             const minutosInicio = calcularDuracaoMinutos('00:00', a.inicio);
             const minutosFim = calcularDuracaoMinutos('00:00', a.fim);
@@ -200,6 +183,12 @@ class ScheduleManager {
         const key = `${aulaId}_${data}`;
         const attendance = { ...(window.app?.data?.attendance || {}), [key]: status };
         const success = await dbService.saveData('attendance', attendance);
+
+        if (success) {
+            if (window.app) {
+                window.app.data.attendance = attendance;
+            }
+        }
         
         if (success && status === 'absent') {
             const aula = this.aulas.find(a => a.id === aulaId);
@@ -240,11 +229,21 @@ document.addEventListener('aulas-atualizadas', () => {
     console.log('📚 Evento aulas-atualizadas recebido');
     if (window.scheduleManager) {
         window.scheduleManager.loadAulas();
-        // Se estiver na view de grade horária, recarregar
         const container = document.getElementById('schedule-vertical-container');
         if (container) {
             const hoje = new Date().getDay();
-            window.scheduleManager.renderGradeDia(hoje, 'schedule-vertical-container');
+            const aulasHoje = window.scheduleManager.getAulasPorDia(hoje);
+
+            let diaParaRenderizar = hoje;
+            if (!aulasHoje.length) {
+                const aulas = window.scheduleManager.loadAulas();
+                const diasComAula = [...new Set(aulas.map(a => parseInt(a.dia)))].sort((a, b) => a - b);
+                if (diasComAula.length) {
+                    diaParaRenderizar = diasComAula[0];
+                }
+            }
+
+            window.scheduleManager.renderGradeDia(diaParaRenderizar, 'schedule-vertical-container');
         }
     }
 });
@@ -255,6 +254,16 @@ ScheduleManager.prototype.atualizarERenderizar = function() {
     const container = document.getElementById('schedule-vertical-container');
     if (container) {
         const hoje = new Date().getDay();
-        this.renderGradeDia(hoje, 'schedule-vertical-container');
+        const aulasHoje = this.getAulasPorDia(hoje);
+
+        let diaParaRenderizar = hoje;
+        if (!aulasHoje.length) {
+            const diasComAula = [...new Set(this.aulas.map(a => parseInt(a.dia)))].sort((a, b) => a - b);
+            if (diasComAula.length) {
+                diaParaRenderizar = diasComAula[0];
+            }
+        }
+
+        this.renderGradeDia(diaParaRenderizar, 'schedule-vertical-container');
     }
 };
