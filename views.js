@@ -328,12 +328,11 @@ class ViewRenderer {
     const totalAulas = aulas.length;
     const horasSemana = this.calcularHorasAulaSemana(aulas);
 
-    // Recuperar preferências salvas
-    const modoSalvo = localStorage.getItem('gradeModoVisualizacao') || 'dia';
-    const diaSalvo = localStorage.getItem('gradeDiaSelecionado') ? 
-                    parseInt(localStorage.getItem('gradeDiaSelecionado')) : diaAtual;
+    // Criar IDs únicos para evitar conflitos
+    const viewModeId = 'grade-view-mode-' + Date.now();
+    const daySelectId = 'grade-day-select-' + Date.now();
+    const containerId = 'schedule-vertical-container-' + Date.now();
 
-    // Renderizar o HTML primeiro
     const html = `
         <div class="view-header">
             <h2><i class="fas fa-calendar-week"></i> Grade Horária</h2>
@@ -345,16 +344,16 @@ class ViewRenderer {
                 <div class="form-row" style="margin-bottom:0;">
                     <div class="form-group" style="margin-bottom:0;">
                         <label>Visualização</label>
-                        <select id="grade-view-mode">
-                            <option value="dia" ${modoSalvo === 'dia' ? 'selected' : ''}>Dia atual / um dia</option>
-                            <option value="semana" ${modoSalvo === 'semana' ? 'selected' : ''}>Semana toda</option>
+                        <select id="${viewModeId}" class="grade-view-mode">
+                            <option value="dia">Dia atual / um dia</option>
+                            <option value="semana">Semana toda</option>
                         </select>
                     </div>
-                    <div class="form-group" style="margin-bottom:0;" id="grade-day-select-wrapper" ${modoSalvo === 'semana' ? 'style="display:none;"' : ''}>
+                    <div class="form-group" style="margin-bottom:0;" id="grade-day-select-wrapper-${Date.now()}">
                         <label>Dia</label>
-                        <select id="grade-day-select">
+                        <select id="${daySelectId}" class="grade-day-select">
                             ${dias.map((dia, index) => `
-                                <option value="${index}" ${index === diaSalvo ? 'selected' : ''}>${dia}</option>
+                                <option value="${index}">${dia}</option>
                             `).join('')}
                         </select>
                     </div>
@@ -363,7 +362,7 @@ class ViewRenderer {
         </div>
 
         <div class="schedule-container card" style="padding: 20px; margin-bottom: 24px;">
-            <div id="schedule-vertical-container"></div>
+            <div id="${containerId}" style="min-height: 600px;"></div>
         </div>
 
         <div class="dashboard-grid">
@@ -421,105 +420,91 @@ class ViewRenderer {
 
     // Agendar a renderização da grade para depois que o DOM estiver pronto
     setTimeout(() => {
-        this.renderGradeHorariaConteudo();
+        this.setupGradeHoraria(containerId, viewModeId, daySelectId);
     }, 100);
 
     return html;
 }
 
 // Adicione este novo método no ViewRenderer:
-renderGradeHorariaConteudo() {
-    const container = document.getElementById('schedule-vertical-container');
+setupGradeHoraria(containerId, viewModeId, daySelectId) {
+    const container = document.getElementById(containerId);
     if (!container || !window.scheduleManager) return;
 
-    const modoSelect = document.getElementById('grade-view-mode');
-    const diaSelect = document.getElementById('grade-day-select');
-    const dayWrapper = document.getElementById('grade-day-select-wrapper');
+    const modoSelect = document.getElementById(viewModeId);
+    const diaSelect = document.getElementById(daySelectId);
+    const dayWrapper = document.getElementById('grade-day-select-wrapper-' + Date.now());
     
     if (!modoSelect || !diaSelect) return;
 
-    const modo = modoSelect.value;
-    const diaSelecionado = parseInt(diaSelect.value, 10);
+    // Função para renderizar baseado no modo atual
+    const renderizar = () => {
+        const modo = modoSelect.value;
+        const diaSelecionado = parseInt(diaSelect.value, 10);
 
-    // Salvar preferências
-    localStorage.setItem('gradeModoVisualizacao', modo);
-    localStorage.setItem('gradeDiaSelecionado', diaSelecionado);
+        if (dayWrapper) {
+            dayWrapper.style.display = modo === 'semana' ? 'none' : 'block';
+        }
 
-    if (dayWrapper) {
-        dayWrapper.style.display = modo === 'semana' ? 'none' : 'block';
-    }
+        const aulas = window.scheduleManager.loadAulas() || [];
 
-    const aulas = window.scheduleManager.loadAulas() || [];
+        if (!aulas.length) {
+            container.innerHTML = '<p class="text-secondary" style="padding:20px;">Nenhuma aula cadastrada</p>';
+            return;
+        }
 
-    if (!aulas.length) {
-        container.innerHTML = '<p class="text-secondary" style="padding:20px;">Nenhuma aula cadastrada</p>';
-        return;
-    }
+        if (modo === 'semana') {
+            // Renderizar visão semanal
+            const dias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+            let weeklyHtml = '<div class="weekly-schedule">';
+            
+            for (let dia = 0; dia < 7; dia++) {
+                const aulasDia = aulas
+                    .filter(a => parseInt(a.dia, 10) === dia)
+                    .sort((a, b) => a.inicio.localeCompare(b.inicio));
 
-    if (modo === 'semana') {
-        // Renderizar visão semanal
-        const dias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-        let weeklyHtml = '<div class="weekly-schedule">';
-        
-        for (let dia = 0; dia < 7; dia++) {
-            const aulasDia = aulas
-                .filter(a => parseInt(a.dia, 10) === dia)
-                .sort((a, b) => a.inicio.localeCompare(b.inicio));
-
-            weeklyHtml += `
-                <div class="weekly-day-column">
-                    <h4>${dias[dia]}</h4>
-                    <div class="weekly-events">
-                        ${aulasDia.length ? aulasDia.map(aula => `
-                            <div class="weekly-event" data-aula-id="${aula.id}" style="border-left-color: ${aula.cor || '#3b82f6'}; cursor:pointer;">
-                                <strong>${aula.materia}</strong>
-                                <div>${aula.inicio} - ${aula.fim}</div>
-                                ${aula.sala ? `<small>📍 ${aula.sala}</small>` : ''}
-                                ${aula.professor ? `<small>👤 ${aula.professor}</small>` : ''}
-                            </div>
-                        `).join('') : '<p class="text-secondary">Sem aulas</p>'}
+                weeklyHtml += `
+                    <div class="weekly-day-column">
+                        <h4>${dias[dia]}</h4>
+                        <div class="weekly-events">
+                            ${aulasDia.length ? aulasDia.map(aula => `
+                                <div class="weekly-event" data-aula-id="${aula.id}" style="border-left: 4px solid ${aula.cor || '#3b82f6'}; cursor:pointer; padding:8px; margin-bottom:4px; background:var(--bg-secondary);">
+                                    <strong>${aula.materia}</strong>
+                                    <div>${aula.inicio} - ${aula.fim}</div>
+                                    ${aula.sala ? `<small>📍 ${aula.sala}</small>` : ''}
+                                    ${aula.professor ? `<small>👤 ${aula.professor}</small>` : ''}
+                                </div>
+                            `).join('') : '<p class="text-secondary" style="padding:8px;">Sem aulas</p>'}
+                        </div>
                     </div>
-                </div>
-            `;
-        }
-        
-        weeklyHtml += '</div>';
-        container.innerHTML = weeklyHtml;
-
-        // Adicionar eventos de clique nos eventos semanais
-        document.querySelectorAll('.weekly-event').forEach(item => {
-            item.addEventListener('click', e => {
-                const aulaId = e.currentTarget.dataset.aulaId;
-                if (aulaId && window.app) {
-                    window.app.openAulaModal(aulaId);
-                }
-            });
-        });
-    } else {
-        // Renderizar visão do dia
-        let diaParaRenderizar = diaSelecionado;
-        const aulasDia = window.scheduleManager.getAulasPorDia(diaParaRenderizar);
-
-        if (!aulasDia.length) {
-            const diasComAula = [...new Set(aulas.map(a => parseInt(a.dia, 10)))].sort((a, b) => a - b);
-            if (diasComAula.length) {
-                diaParaRenderizar = diasComAula[0];
-                diaSelect.value = diaParaRenderizar;
-                localStorage.setItem('gradeDiaSelecionado', diaParaRenderizar);
+                `;
             }
+            
+            weeklyHtml += '</div>';
+            container.innerHTML = weeklyHtml;
+
+            // Adicionar eventos de clique nos eventos semanais
+            container.querySelectorAll('.weekly-event').forEach(item => {
+                item.addEventListener('click', e => {
+                    const aulaId = e.currentTarget.dataset.aulaId;
+                    if (aulaId && window.app) {
+                        window.app.openAulaModal(aulaId);
+                    }
+                });
+            });
+        } else {
+            // Renderizar visão do dia usando o ScheduleManager
+            window.scheduleManager.renderGradeDia(diaSelecionado, containerId);
         }
-
-        window.scheduleManager.renderGradeDia(diaParaRenderizar, 'schedule-vertical-container');
-    }
-
-    // Adicionar event listeners para os selects
-    modoSelect.onchange = () => {
-        this.renderGradeHorariaConteudo();
     };
 
-    diaSelect.onchange = () => {
-        this.renderGradeHorariaConteudo();
-    };
+    // Renderizar inicialmente com o dia atual
+    diaSelect.value = new Date().getDay();
+    renderizar();
+
+    // Adicionar event listeners
+    modoSelect.addEventListener('change', renderizar);
+    diaSelect.addEventListener('change', renderizar);
 }
     renderSessoes() {
         const hoje = new Date().toDateString();
