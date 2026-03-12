@@ -316,141 +316,211 @@ class ViewRenderer {
     }
 
     renderGradeHoraria() {
-        if (!window.scheduleManager) {
-            return '<div class="card"><div class="card-body"><p class="text-secondary">Erro ao carregar grade horária</p></div></div>';
-        }
-
-        window.scheduleManager.loadAulas();
-
-        const dias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-        const diaAtual = new Date().getDay();
-        const aulas = window.scheduleManager.loadAulas() || [];
-        const totalAulas = aulas.length;
-        const horasSemana = this.calcularHorasAulaSemana(aulas);
-
-        setTimeout(() => {
-            const container = document.getElementById('schedule-vertical-container');
-            if (!container || !window.scheduleManager) return;
-
-            const modo = document.getElementById('grade-view-mode')?.value || 'dia';
-            const diaSelecionado = parseInt(document.getElementById('grade-day-select')?.value || diaAtual, 10);
-
-            const dayWrapper = document.getElementById('grade-day-select-wrapper');
-            if (dayWrapper) {
-                dayWrapper.style.display = modo === 'semana' ? 'none' : 'block';
-            }
-
-            if (!aulas.length) {
-                container.innerHTML = '<p class="text-secondary" style="padding:20px;">Nenhuma aula cadastrada</p>';
-                return;
-            }
-
-            if (modo === 'semana') {
-                container.innerHTML = this.renderGradeSemanalCards(aulas);
-                this.bindWeeklyScheduleClicks();
-            } else {
-                let diaParaRenderizar = diaSelecionado;
-                const aulasDia = window.scheduleManager.getAulasPorDia(diaParaRenderizar);
-
-                if (!aulasDia.length) {
-                    const diasComAula = [...new Set(aulas.map(a => parseInt(a.dia, 10)))].sort((a, b) => a - b);
-                    if (diasComAula.length) {
-                        diaParaRenderizar = diasComAula[0];
-                        const selectDia = document.getElementById('grade-day-select');
-                        if (selectDia) selectDia.value = diaParaRenderizar;
-                    }
-                }
-
-                window.scheduleManager.renderGradeDia(diaParaRenderizar, 'schedule-vertical-container');
-            }
-        }, 100);
-
-        return `
-            <div class="view-header">
-                <h2><i class="fas fa-calendar-week"></i> Grade Horária</h2>
-                <button class="btn-primary" id="btn-nova-aula"><i class="fas fa-plus"></i> Nova Aula</button>
-            </div>
-
-            <div class="card" style="margin-bottom: 24px;">
-                <div class="card-body">
-                    <div class="form-row" style="margin-bottom:0;">
-                        <div class="form-group" style="margin-bottom:0;">
-                            <label>Visualização</label>
-                            <select id="grade-view-mode">
-                                <option value="dia">Dia atual / um dia</option>
-                                <option value="semana">Semana toda</option>
-                            </select>
-                        </div>
-                        <div class="form-group" style="margin-bottom:0;" id="grade-day-select-wrapper">
-                            <label>Dia</label>
-                            <select id="grade-day-select">
-                                ${dias.map((dia, index) => `
-                                    <option value="${index}" ${index === diaAtual ? 'selected' : ''}>${dia}</option>
-                                `).join('')}
-                            </select>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="schedule-container card" style="padding: 20px; margin-bottom: 24px;">
-                <div id="schedule-vertical-container"></div>
-            </div>
-
-            <div class="dashboard-grid">
-                <div class="card">
-                    <div class="card-header">
-                        <h3>Resumo da Grade</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="stats-row">
-                            <div class="stat-item">
-                                <span class="stat-value">${totalAulas}</span>
-                                <span class="stat-label">aulas</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-value">${horasSemana.toFixed(1)}h</span>
-                                <span class="stat-label">semana</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-value">${(totalAulas ? horasSemana / totalAulas : 0).toFixed(1)}h</span>
-                                <span class="stat-label">média</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="aulas-list card">
-                <div class="card-header">
-                    <h3>Minhas Aulas (${this.app.data.classSchedule?.length || 0})</h3>
-                </div>
-                <div class="card-body">
-                    <ul class="item-list">
-                        ${(this.app.data.classSchedule || []).map(a => `
-                            <li>
-                                <div>
-                                    <strong>${a.materia}</strong><br>
-                                    <small>${dias[parseInt(a.dia, 10)]} • ${a.inicio} - ${a.fim}</small>
-                                    ${a.sala ? `<br><small>Sala: ${a.sala}</small>` : ''}
-                                    ${a.professor ? `<br><small>Prof: ${a.professor}</small>` : ''}
-                                </div>
-                                <div style="display:flex; gap:8px;">
-                                    <button class="btn-icon btn-editar-aula" data-id="${a.id}" title="Editar aula">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button class="btn-icon btn-remover-aula" data-id="${a.id}" title="Remover aula" style="color: var(--accent-danger);">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            </li>
-                        `).join('') || '<li>Nenhuma aula cadastrada</li>'}
-                    </ul>
-                </div>
-            </div>
-        `;
+    if (!window.scheduleManager) {
+        return '<div class="card"><div class="card-body"><p class="text-secondary">Erro ao carregar grade horária</p></div></div>';
     }
 
+    window.scheduleManager.loadAulas();
+
+    const dias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+    const diaAtual = new Date().getDay();
+    const aulas = window.scheduleManager.loadAulas() || [];
+    const totalAulas = aulas.length;
+    const horasSemana = this.calcularHorasAulaSemana(aulas);
+
+    // Recuperar preferências salvas
+    const modoSalvo = localStorage.getItem('gradeModoVisualizacao') || 'dia';
+    const diaSalvo = localStorage.getItem('gradeDiaSelecionado') ? 
+                    parseInt(localStorage.getItem('gradeDiaSelecionado')) : diaAtual;
+
+    // Renderizar o HTML primeiro
+    const html = `
+        <div class="view-header">
+            <h2><i class="fas fa-calendar-week"></i> Grade Horária</h2>
+            <button class="btn-primary" id="btn-nova-aula"><i class="fas fa-plus"></i> Nova Aula</button>
+        </div>
+
+        <div class="card" style="margin-bottom: 24px;">
+            <div class="card-body">
+                <div class="form-row" style="margin-bottom:0;">
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label>Visualização</label>
+                        <select id="grade-view-mode">
+                            <option value="dia" ${modoSalvo === 'dia' ? 'selected' : ''}>Dia atual / um dia</option>
+                            <option value="semana" ${modoSalvo === 'semana' ? 'selected' : ''}>Semana toda</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;" id="grade-day-select-wrapper" ${modoSalvo === 'semana' ? 'style="display:none;"' : ''}>
+                        <label>Dia</label>
+                        <select id="grade-day-select">
+                            ${dias.map((dia, index) => `
+                                <option value="${index}" ${index === diaSalvo ? 'selected' : ''}>${dia}</option>
+                            `).join('')}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="schedule-container card" style="padding: 20px; margin-bottom: 24px;">
+            <div id="schedule-vertical-container"></div>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Resumo da Grade</h3>
+                </div>
+                <div class="card-body">
+                    <div class="stats-row">
+                        <div class="stat-item">
+                            <span class="stat-value">${totalAulas}</span>
+                            <span class="stat-label">aulas</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value">${horasSemana.toFixed(1)}h</span>
+                            <span class="stat-label">semana</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value">${(totalAulas ? horasSemana / totalAulas : 0).toFixed(1)}h</span>
+                            <span class="stat-label">média</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="aulas-list card">
+            <div class="card-header">
+                <h3>Minhas Aulas (${this.app.data.classSchedule?.length || 0})</h3>
+            </div>
+            <div class="card-body">
+                <ul class="item-list">
+                    ${(this.app.data.classSchedule || []).map(a => `
+                        <li>
+                            <div>
+                                <strong>${a.materia}</strong><br>
+                                <small>${dias[parseInt(a.dia, 10)]} • ${a.inicio} - ${a.fim}</small>
+                                ${a.sala ? `<br><small>Sala: ${a.sala}</small>` : ''}
+                                ${a.professor ? `<br><small>Prof: ${a.professor}</small>` : ''}
+                            </div>
+                            <div style="display:flex; gap:8px;">
+                                <button class="btn-icon btn-editar-aula" data-id="${a.id}" title="Editar aula">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn-icon btn-remover-aula" data-id="${a.id}" title="Remover aula" style="color: var(--accent-danger);">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </li>
+                    `).join('') || '<li>Nenhuma aula cadastrada</li>'}
+                </ul>
+            </div>
+        </div>
+    `;
+
+    // Agendar a renderização da grade para depois que o DOM estiver pronto
+    setTimeout(() => {
+        this.renderGradeHorariaConteudo();
+    }, 100);
+
+    return html;
+}
+
+// Adicione este novo método no ViewRenderer:
+renderGradeHorariaConteudo() {
+    const container = document.getElementById('schedule-vertical-container');
+    if (!container || !window.scheduleManager) return;
+
+    const modoSelect = document.getElementById('grade-view-mode');
+    const diaSelect = document.getElementById('grade-day-select');
+    const dayWrapper = document.getElementById('grade-day-select-wrapper');
+    
+    if (!modoSelect || !diaSelect) return;
+
+    const modo = modoSelect.value;
+    const diaSelecionado = parseInt(diaSelect.value, 10);
+
+    // Salvar preferências
+    localStorage.setItem('gradeModoVisualizacao', modo);
+    localStorage.setItem('gradeDiaSelecionado', diaSelecionado);
+
+    if (dayWrapper) {
+        dayWrapper.style.display = modo === 'semana' ? 'none' : 'block';
+    }
+
+    const aulas = window.scheduleManager.loadAulas() || [];
+
+    if (!aulas.length) {
+        container.innerHTML = '<p class="text-secondary" style="padding:20px;">Nenhuma aula cadastrada</p>';
+        return;
+    }
+
+    if (modo === 'semana') {
+        // Renderizar visão semanal
+        const dias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+        let weeklyHtml = '<div class="weekly-schedule">';
+        
+        for (let dia = 0; dia < 7; dia++) {
+            const aulasDia = aulas
+                .filter(a => parseInt(a.dia, 10) === dia)
+                .sort((a, b) => a.inicio.localeCompare(b.inicio));
+
+            weeklyHtml += `
+                <div class="weekly-day-column">
+                    <h4>${dias[dia]}</h4>
+                    <div class="weekly-events">
+                        ${aulasDia.length ? aulasDia.map(aula => `
+                            <div class="weekly-event" data-aula-id="${aula.id}" style="border-left-color: ${aula.cor || '#3b82f6'}; cursor:pointer;">
+                                <strong>${aula.materia}</strong>
+                                <div>${aula.inicio} - ${aula.fim}</div>
+                                ${aula.sala ? `<small>📍 ${aula.sala}</small>` : ''}
+                                ${aula.professor ? `<small>👤 ${aula.professor}</small>` : ''}
+                            </div>
+                        `).join('') : '<p class="text-secondary">Sem aulas</p>'}
+                    </div>
+                </div>
+            `;
+        }
+        
+        weeklyHtml += '</div>';
+        container.innerHTML = weeklyHtml;
+
+        // Adicionar eventos de clique nos eventos semanais
+        document.querySelectorAll('.weekly-event').forEach(item => {
+            item.addEventListener('click', e => {
+                const aulaId = e.currentTarget.dataset.aulaId;
+                if (aulaId && window.app) {
+                    window.app.openAulaModal(aulaId);
+                }
+            });
+        });
+    } else {
+        // Renderizar visão do dia
+        let diaParaRenderizar = diaSelecionado;
+        const aulasDia = window.scheduleManager.getAulasPorDia(diaParaRenderizar);
+
+        if (!aulasDia.length) {
+            const diasComAula = [...new Set(aulas.map(a => parseInt(a.dia, 10)))].sort((a, b) => a - b);
+            if (diasComAula.length) {
+                diaParaRenderizar = diasComAula[0];
+                diaSelect.value = diaParaRenderizar;
+                localStorage.setItem('gradeDiaSelecionado', diaParaRenderizar);
+            }
+        }
+
+        window.scheduleManager.renderGradeDia(diaParaRenderizar, 'schedule-vertical-container');
+    }
+
+    // Adicionar event listeners para os selects
+    modoSelect.onchange = () => {
+        this.renderGradeHorariaConteudo();
+    };
+
+    diaSelect.onchange = () => {
+        this.renderGradeHorariaConteudo();
+    };
+}
     renderSessoes() {
         const hoje = new Date().toDateString();
         const sessoesHoje = this.app.data.sessions.filter(s => new Date(s.data).toDateString() === hoje && !s.concluida);
