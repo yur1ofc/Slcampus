@@ -1,5 +1,3 @@
-// views.js - Renderizador completo de todas as telas
-
 class ViewRenderer {
     constructor(app) {
         this.app = app;
@@ -21,7 +19,6 @@ class ViewRenderer {
         }
 
         const planoIA = window.aiAssistant ? window.aiAssistant.generateDailyPlan() : [];
-
         const proximaAula = window.scheduleManager ? window.scheduleManager.getProximaAula() : null;
         const aulaAtual = window.scheduleManager ? window.scheduleManager.getAulaAtual() : null;
 
@@ -32,7 +29,7 @@ class ViewRenderer {
                 <h2>Olá, ${this.app.data.user?.nome || 'Estudante'}! 👋</h2>
                 <p>${hoje.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
             </div>
-            
+
             ${aulaAtual ? `
                 <div class="current-class-card">
                     <i class="fas fa-chalkboard-teacher"></i>
@@ -47,7 +44,7 @@ class ViewRenderer {
                     <i class="fas fa-clock"></i>
                     <div class="next-class-info">
                         <h3>Próxima Aula: ${proximaAula.materia}</h3>
-                        <p>${diasSemana[parseInt(proximaAula.dia)]} • ${proximaAula.inicio} - ${proximaAula.fim} ${proximaAula.sala ? `• Sala ${proximaAula.sala}` : ''}</p>
+                        <p>${diasSemana[parseInt(proximaAula.dia, 10)]} • ${proximaAula.inicio} - ${proximaAula.fim} ${proximaAula.sala ? `• Sala ${proximaAula.sala}` : ''}</p>
                         <small>${tempoRestante(this.getProximaAulaDateTime(proximaAula))}</small>
                     </div>
                 </div>
@@ -92,7 +89,7 @@ class ViewRenderer {
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="card">
                     <div class="card-header">
                         <h3><i class="fas fa-book-open"></i> Horas Estudadas</h3>
@@ -133,7 +130,7 @@ class ViewRenderer {
                         `).join('') : '<p class="text-secondary">Nenhum risco identificado</p>'}
                     </div>
                 </div>
-                
+
                 <div class="card">
                     <div class="card-header">
                         <h3><i class="fas fa-tasks"></i> Tarefas Urgentes</h3>
@@ -189,9 +186,11 @@ class ViewRenderer {
                                 <li>
                                     <div>
                                         <strong>${m.materia}</strong>
-                                        <small>${m.dias} dias sem estudar</small>
+                                        <small>${m.nuncaEstudou ? 'Sem registro de estudo' : `${m.dias} dias sem estudar`}</small>
                                     </div>
-                                    <span class="tag ${m.dias >= 7 ? 'danger' : 'warning'}">${m.dias}d</span>
+                                    <span class="tag ${m.nuncaEstudou || m.dias >= 7 ? 'danger' : 'warning'}">
+                                        ${m.nuncaEstudou ? 'Novo' : `${m.dias}d`}
+                                    </span>
                                 </li>
                             `).join('')}
                             ${!materiasAtrasadas.length ? '<li>Nenhuma matéria atrasada</li>' : ''}
@@ -223,7 +222,7 @@ class ViewRenderer {
                     </div>
                 </div>
             </div>
-            
+
             <div class="card">
                 <div class="card-header">
                     <h3><i class="fas fa-robot"></i> Plano de Hoje (IA)</h3>
@@ -238,7 +237,7 @@ class ViewRenderer {
                                     <span class="tag ${item.prioridade}">${item.tipo} • ${item.duracao}min</span>
                                 </div>
                                 <div class="plano-motivo">💡 ${item.motivo}</div>
-                                <button class="btn-secondary btn-adicionar-sessao-rapida" 
+                                <button class="btn-secondary btn-adicionar-sessao-rapida"
                                         data-materia="${item.materia}"
                                         data-tipo="${item.tipo}"
                                         data-duracao="${item.duracao}">
@@ -250,7 +249,7 @@ class ViewRenderer {
                     </div>
                 </div>
             </div>
-            
+
             <div class="quick-actions">
                 <button class="btn-primary" id="quick-sessao"><i class="fas fa-clock"></i> Nova Sessão</button>
                 <button class="btn-primary" id="quick-tarefa"><i class="fas fa-tasks"></i> Nova Tarefa</button>
@@ -270,7 +269,7 @@ class ViewRenderer {
                     <button class="btn-secondary" id="ia-analisar-risco"><i class="fas fa-exclamation-triangle"></i> Analisar Risco</button>
                 </div>
             </div>
-            
+
             <div class="mentor-ia-container">
                 <div class="chat-container" id="chat-container">
                     <div class="chat-messages" id="chat-messages">
@@ -280,13 +279,13 @@ class ViewRenderer {
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="chat-input-container">
                         <input type="text" id="chat-input" placeholder="Digite sua pergunta..." class="chat-input">
                         <button class="btn-primary" id="chat-send"><i class="fas fa-paper-plane"></i></button>
                     </div>
                 </div>
-                
+
                 <div class="sugestoes-container">
                     <h3>Sugestões de Perguntas</h3>
                     <div class="sugestoes-grid">
@@ -334,6 +333,11 @@ class ViewRenderer {
             const modo = document.getElementById('grade-view-mode')?.value || 'dia';
             const diaSelecionado = parseInt(document.getElementById('grade-day-select')?.value || diaAtual, 10);
 
+            const dayWrapper = document.getElementById('grade-day-select-wrapper');
+            if (dayWrapper) {
+                dayWrapper.style.display = modo === 'semana' ? 'none' : 'block';
+            }
+
             if (!aulas.length) {
                 container.innerHTML = '<p class="text-secondary" style="padding:20px;">Nenhuma aula cadastrada</p>';
                 return;
@@ -347,7 +351,7 @@ class ViewRenderer {
                 const aulasDia = window.scheduleManager.getAulasPorDia(diaParaRenderizar);
 
                 if (!aulasDia.length) {
-                    const diasComAula = [...new Set(aulas.map(a => parseInt(a.dia)))].sort((a, b) => a - b);
+                    const diasComAula = [...new Set(aulas.map(a => parseInt(a.dia, 10)))].sort((a, b) => a - b);
                     if (diasComAula.length) {
                         diaParaRenderizar = diasComAula[0];
                         const selectDia = document.getElementById('grade-day-select');
@@ -386,7 +390,7 @@ class ViewRenderer {
                     </div>
                 </div>
             </div>
-            
+
             <div class="schedule-container card" style="padding: 20px; margin-bottom: 24px;">
                 <div id="schedule-vertical-container"></div>
             </div>
@@ -414,28 +418,31 @@ class ViewRenderer {
                     </div>
                 </div>
             </div>
-            
+
             <div class="aulas-list card">
                 <div class="card-header">
                     <h3>Minhas Aulas (${this.app.data.classSchedule?.length || 0})</h3>
                 </div>
                 <div class="card-body">
                     <ul class="item-list">
-                        ${this.app.data.classSchedule?.map(a => {
-                            return `
-                                <li>
-                                    <div>
-                                        <strong>${a.materia}</strong><br>
-                                        <small>${dias[parseInt(a.dia)]} • ${a.inicio} - ${a.fim}</small>
-                                        ${a.sala ? `<br><small>Sala: ${a.sala}</small>` : ''}
-                                        ${a.professor ? `<br><small>Prof: ${a.professor}</small>` : ''}
-                                    </div>
-                                    <button class="btn-icon btn-remover-aula" data-id="${a.id}">
+                        ${(this.app.data.classSchedule || []).map(a => `
+                            <li>
+                                <div>
+                                    <strong>${a.materia}</strong><br>
+                                    <small>${dias[parseInt(a.dia, 10)]} • ${a.inicio} - ${a.fim}</small>
+                                    ${a.sala ? `<br><small>Sala: ${a.sala}</small>` : ''}
+                                    ${a.professor ? `<br><small>Prof: ${a.professor}</small>` : ''}
+                                </div>
+                                <div style="display:flex; gap:8px;">
+                                    <button class="btn-icon btn-editar-aula" data-id="${a.id}" title="Editar aula">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn-icon btn-remover-aula" data-id="${a.id}" title="Remover aula">
                                         <i class="fas fa-trash"></i>
                                     </button>
-                                </li>
-                            `;
-                        }).join('') || '<li>Nenhuma aula cadastrada</li>'}
+                                </div>
+                            </li>
+                        `).join('') || '<li>Nenhuma aula cadastrada</li>'}
                     </ul>
                 </div>
             </div>
@@ -449,13 +456,13 @@ class ViewRenderer {
             .filter(s => new Date(s.data) > new Date() && !s.concluida)
             .sort((a, b) => new Date(a.data) - new Date(b.data));
         const concluidas = this.app.data.sessions.filter(s => s.concluida).slice(0, 10);
-        
+
         return `
             <div class="view-header">
                 <h2><i class="fas fa-clock"></i> Sessões de Estudo</h2>
                 <button class="btn-primary" id="btn-nova-sessao"><i class="fas fa-plus"></i> Nova Sessão</button>
             </div>
-            
+
             <div class="dashboard-grid">
                 <div class="card">
                     <div class="card-header"><h3>⏰ Hoje (${sessoesHoje.length})</h3></div>
@@ -467,16 +474,21 @@ class ViewRenderer {
                                         <strong>${s.materia}</strong>
                                         <small>${s.tipo} • ${s.duracao}min • ${formatarHora(s.data)}</small>
                                     </div>
-                                    <button class="btn-icon btn-concluir-sessao" data-id="${s.id}">
-                                        <i class="fas fa-check-circle"></i>
-                                    </button>
+                                    <div style="display:flex; gap:8px;">
+                                        <button class="btn-icon btn-editar-sessao" data-id="${s.id}" title="Editar sessão">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn-icon btn-concluir-sessao" data-id="${s.id}" title="Concluir sessão">
+                                            <i class="fas fa-check-circle"></i>
+                                        </button>
+                                    </div>
                                 </li>
                             `).join('')}
                             ${!sessoesHoje.length ? '<li>Nenhuma sessão programada para hoje</li>' : ''}
                         </ul>
                     </div>
                 </div>
-                
+
                 <div class="card">
                     <div class="card-header"><h3>📅 Próximas (${futuras.length})</h3></div>
                     <div class="card-body">
@@ -487,13 +499,16 @@ class ViewRenderer {
                                         <strong>${s.materia}</strong>
                                         <small>${new Date(s.data).toLocaleDateString()} • ${formatarHora(s.data)} • ${s.tipo}</small>
                                     </div>
+                                    <button class="btn-icon btn-editar-sessao" data-id="${s.id}" title="Editar sessão">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
                                 </li>
                             `).join('')}
                             ${!futuras.length ? '<li>Nenhuma sessão futura</li>' : ''}
                         </ul>
                     </div>
                 </div>
-                
+
                 <div class="card">
                     <div class="card-header"><h3>✅ Concluídas Recentemente</h3></div>
                     <div class="card-body">
@@ -518,13 +533,13 @@ class ViewRenderer {
     renderTarefas() {
         const pendentes = this.app.data.tasks.filter(t => !t.concluida);
         const concluidas = this.app.data.tasks.filter(t => t.concluida);
-        
+
         return `
             <div class="view-header">
                 <h2><i class="fas fa-tasks"></i> Tarefas</h2>
                 <button class="btn-primary" id="btn-nova-tarefa"><i class="fas fa-plus"></i> Nova Tarefa</button>
             </div>
-            
+
             <div class="dashboard-grid">
                 <div class="card">
                     <div class="card-header"><h3>📋 Pendentes (${pendentes.length})</h3></div>
@@ -548,7 +563,7 @@ class ViewRenderer {
                         </ul>
                     </div>
                 </div>
-                
+
                 <div class="card">
                     <div class="card-header"><h3>✅ Concluídas (${concluidas.length})</h3></div>
                     <div class="card-body">
@@ -574,13 +589,13 @@ class ViewRenderer {
         const proximas = this.app.data.exams
             .filter(e => new Date(e.data) >= new Date() && !e.concluida)
             .sort((a, b) => new Date(a.data) - new Date(b.data));
-        
+
         return `
             <div class="view-header">
                 <h2><i class="fas fa-graduation-cap"></i> Provas e Trabalhos</h2>
                 <button class="btn-primary" id="btn-nova-prova"><i class="fas fa-plus"></i> Novo Evento</button>
             </div>
-            
+
             <div class="dashboard-grid">
                 <div class="card">
                     <div class="card-header"><h3>📅 Próximos (${proximas.length})</h3></div>
@@ -603,7 +618,7 @@ class ViewRenderer {
                         </ul>
                     </div>
                 </div>
-                
+
                 <div class="card">
                     <div class="card-header"><h3>📊 Por Matéria</h3></div>
                     <div class="card-body">
@@ -628,7 +643,7 @@ class ViewRenderer {
                 <h2><i class="fas fa-map"></i> Mapa de Aprendizado</h2>
                 <button class="btn-primary" id="btn-novo-topico"><i class="fas fa-plus"></i> Novo Tópico</button>
             </div>
-            
+
             <div class="mapa-grid">
                 ${this.app.data.subjects.map(s => {
                     const topicos = this.app.data.learningMap.filter(t => t.materia === s.nome);
@@ -648,7 +663,12 @@ class ViewRenderer {
                                         <div class="topico-meta">
                                             <span data-tooltip="Dificuldade">📊 ${t.dificuldade}/5</span>
                                             <span data-tooltip="Confiança">🎯 ${t.confianca}/5</span>
-                                            <span data-tooltip="Última revisão">🔄 ${diasDesde(t.ultimaRevisao)}d</span>
+                                            <span data-tooltip="Última revisão">🔄 ${t.ultimaRevisao ? diasDesde(t.ultimaRevisao) : 0}d</span>
+                                        </div>
+                                        <div style="margin-top:10px; display:flex; justify-content:flex-end;">
+                                            <button class="btn-icon btn-editar-topico" data-id="${t.id}" title="Editar tópico">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
                                         </div>
                                     </div>
                                 `).join('')}
@@ -667,7 +687,7 @@ class ViewRenderer {
                 <h2><i class="fas fa-folder"></i> Materiais de Estudo</h2>
                 <button class="btn-primary" id="btn-novo-material"><i class="fas fa-plus"></i> Novo Material</button>
             </div>
-            
+
             <div class="materiais-grid">
                 ${this.app.data.subjects.map(s => {
                     const materiais = this.app.data.materials.filter(m => m.materia === s.nome);
@@ -719,7 +739,7 @@ class ViewRenderer {
 
         return `
             <h2><i class="fas fa-calendar"></i> Calendário</h2>
-            
+
             <div class="card">
                 <div class="card-header">
                     <h3>${hoje.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</h3>
@@ -732,7 +752,7 @@ class ViewRenderer {
                         <div class="calendar-days">
                             ${dias.map(d => {
                                 if (!d) return '<div class="calendar-day empty"></div>';
-                                
+
                                 const eventosDia = eventos.filter(e => {
                                     const data = new Date(e.data);
                                     return data.getDate() === d &&
@@ -769,13 +789,13 @@ class ViewRenderer {
                 <h2><i class="fas fa-chart-line"></i> Previsão de Notas</h2>
                 <button class="btn-primary" id="btn-registrar-nota"><i class="fas fa-plus"></i> Registrar Nota</button>
             </div>
-            
+
             <div class="dashboard-grid">
                 ${this.app.data.subjects.map(s => {
                     const notas = this.app.data.grades.filter(g => g.materia === s.nome);
                     const media = this.app.calcularMedia(notas);
                     const previsao = this.app.calcularPrevisaoNota(s, notas);
-                    
+
                     return `
                         <div class="card subject-grade-card">
                             <div class="card-header">
@@ -829,7 +849,7 @@ class ViewRenderer {
 
         return `
             <h2><i class="fas fa-heart"></i> Hábitos e Rotina</h2>
-            
+
             <div class="dashboard-grid">
                 <div class="card">
                     <div class="card-header">
@@ -856,7 +876,7 @@ class ViewRenderer {
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="card">
                     <div class="card-header">
                         <h3>📊 Consistência Semanal</h3>
@@ -886,15 +906,13 @@ class ViewRenderer {
         const horasPorTipo = this.app.calcularHorasPorTipo();
         const total = this.app.data.sessions.filter(s => s.concluida)
             .reduce((a, s) => a + s.duracao / 60, 0);
-        
-        const maxHorasMateria = horasPorMateria.length ?
-            Math.max(...horasPorMateria.map(h => h.horas)) : 1;
-        const maxHorasTipo = horasPorTipo.length ?
-            Math.max(...horasPorTipo.map(t => t.horas)) : 1;
+
+        const maxHorasMateria = horasPorMateria.length ? Math.max(...horasPorMateria.map(h => h.horas)) : 1;
+        const maxHorasTipo = horasPorTipo.length ? Math.max(...horasPorTipo.map(t => t.horas)) : 1;
 
         return `
             <h2><i class="fas fa-chart-bar"></i> Estatísticas</h2>
-            
+
             <div class="dashboard-grid">
                 <div class="card">
                     <div class="card-header"><h3>⏱️ Total Estudado</h3></div>
@@ -903,7 +921,7 @@ class ViewRenderer {
                         <p>horas no total</p>
                     </div>
                 </div>
-                
+
                 <div class="card">
                     <div class="card-header"><h3>📊 Média Diária</h3></div>
                     <div class="card-body text-center">
@@ -911,7 +929,7 @@ class ViewRenderer {
                         <p>horas por dia</p>
                     </div>
                 </div>
-                
+
                 <div class="card">
                     <div class="card-header"><h3>🔥 Melhor Dia</h3></div>
                     <div class="card-body text-center">
@@ -919,7 +937,7 @@ class ViewRenderer {
                         <p>${this.app.calcularMelhorDiaHoras()}h</p>
                     </div>
                 </div>
-                
+
                 <div class="card">
                     <div class="card-header"><h3>✅ Tarefas</h3></div>
                     <div class="card-body text-center">
@@ -928,7 +946,7 @@ class ViewRenderer {
                     </div>
                 </div>
             </div>
-            
+
             <div class="card">
                 <div class="card-header"><h3>📚 Horas por Matéria</h3></div>
                 <div class="card-body">
@@ -943,7 +961,7 @@ class ViewRenderer {
                     `).join('')}
                 </div>
             </div>
-            
+
             <div class="card">
                 <div class="card-header"><h3>📖 Tipos de Estudo</h3></div>
                 <div class="card-body">
@@ -968,11 +986,11 @@ class ViewRenderer {
     renderModoFoco() {
         return `
             <h2><i class="fas fa-clock"></i> Modo Foco</h2>
-            
+
             <div class="card timer-card">
                 <div class="card-body text-center">
                     <div class="timer-display" id="timer-display">25:00</div>
-                    
+
                     <div class="timer-settings">
                         <select id="timer-duracao" class="timer-select">
                             <option value="25">Pomodoro (25 min)</option>
@@ -981,7 +999,7 @@ class ViewRenderer {
                             <option value="15">Pausa curta (15 min)</option>
                         </select>
                     </div>
-                    
+
                     <div class="timer-controls">
                         <button class="timer-btn start" id="timer-start">
                             <i class="fas fa-play"></i> Iniciar
@@ -995,7 +1013,7 @@ class ViewRenderer {
                     </div>
                 </div>
             </div>
-            
+
             <div class="card">
                 <div class="card-header">
                     <h3>📊 Sessões de Foco Hoje</h3>
@@ -1012,7 +1030,7 @@ class ViewRenderer {
     renderConfiguracoes() {
         return `
             <h2><i class="fas fa-cog"></i> Configurações</h2>
-            
+
             <div class="card">
                 <div class="card-header"><h3>⚙️ Preferências</h3></div>
                 <div class="card-body">
@@ -1026,7 +1044,7 @@ class ViewRenderer {
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
-                    
+
                     <div class="config-item">
                         <div class="config-info">
                             <h4>Planejamento automático</h4>
@@ -1037,7 +1055,7 @@ class ViewRenderer {
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
-                    
+
                     <div class="config-item">
                         <div class="config-info">
                             <h4>Modo Faculdade Pesada</h4>
@@ -1050,7 +1068,7 @@ class ViewRenderer {
                     </div>
                 </div>
             </div>
-            
+
             <div class="card">
                 <div class="card-header"><h3>📊 Gerenciar Dados</h3></div>
                 <div class="card-body">
@@ -1062,7 +1080,7 @@ class ViewRenderer {
                     </button>
                 </div>
             </div>
-            
+
             <div class="card">
                 <div class="card-header"><h3>ℹ️ Sobre</h3></div>
                 <div class="card-body">
@@ -1081,7 +1099,7 @@ class ViewRenderer {
             : alert.type === 'danger'
                 ? 'fa-exclamation-circle'
                 : 'fa-info-circle';
-        
+
         return `
             <div class="alert-card ${alert.type}">
                 <i class="fas ${icon}"></i>
@@ -1097,19 +1115,19 @@ class ViewRenderer {
         const hoje = new Date();
         const inicio = new Date(hoje);
         inicio.setDate(hoje.getDate() - hoje.getDay());
-        
+
         let html = '<div class="chart-bars">';
-        
+
         for (let i = 0; i < 7; i++) {
             const data = new Date(inicio);
             data.setDate(inicio.getDate() + i);
-            
+
             const temEstudo = this.app.data.sessions.some(s =>
                 new Date(s.data).toDateString() === data.toDateString() && s.concluida
             );
-            
+
             const intensidade = temEstudo ? 100 : 20;
-            
+
             html += `
                 <div class="chart-bar-container" data-tooltip="${temEstudo ? 'Estudou' : 'Não estudou'}">
                     <div class="chart-bar" style="height: ${intensidade}px"></div>
@@ -1117,7 +1135,7 @@ class ViewRenderer {
                 </div>
             `;
         }
-        
+
         html += '</div>';
         return html;
     }
@@ -1127,11 +1145,11 @@ class ViewRenderer {
         const sessoes = this.app.data.sessions.filter(s =>
             new Date(s.data).toDateString() === hoje && s.concluida && s.tipo === 'foco'
         );
-        
+
         if (!sessoes.length) {
             return '<li>Nenhuma sessão de foco concluída hoje</li>';
         }
-        
+
         return sessoes.map(s => `
             <li>
                 <span>${s.materia}</span>
@@ -1144,16 +1162,16 @@ class ViewRenderer {
         const hoje = new Date();
         const diaSemana = hoje.getDay();
         const dataAula = new Date(hoje);
-        
-        if (parseInt(aula.dia) > diaSemana) {
-            dataAula.setDate(hoje.getDate() + (parseInt(aula.dia) - diaSemana));
-        } else if (parseInt(aula.dia) < diaSemana) {
-            dataAula.setDate(hoje.getDate() + (7 - diaSemana + parseInt(aula.dia)));
+
+        if (parseInt(aula.dia, 10) > diaSemana) {
+            dataAula.setDate(hoje.getDate() + (parseInt(aula.dia, 10) - diaSemana));
+        } else if (parseInt(aula.dia, 10) < diaSemana) {
+            dataAula.setDate(hoje.getDate() + (7 - diaSemana + parseInt(aula.dia, 10)));
         }
-        
+
         const [h, m] = aula.inicio.split(':');
-        dataAula.setHours(parseInt(h), parseInt(m), 0, 0);
-        
+        dataAula.setHours(parseInt(h, 10), parseInt(m, 10), 0, 0);
+
         return dataAula.toISOString();
     }
 
@@ -1208,16 +1226,25 @@ class ViewRenderer {
                 .sort((a, b) => new Date(b.data) - new Date(a.data))[0];
 
             if (!ultimaSessao) {
-                return { materia: subject.nome, dias: 999 };
+                return {
+                    materia: subject.nome,
+                    dias: null,
+                    nuncaEstudou: true
+                };
             }
 
             return {
                 materia: subject.nome,
-                dias: diasDesde(ultimaSessao.data)
+                dias: diasDesde(ultimaSessao.data),
+                nuncaEstudou: false
             };
         })
-        .filter(item => item.dias >= 5)
-        .sort((a, b) => b.dias - a.dias)
+        .filter(item => item.nuncaEstudou || item.dias >= 5)
+        .sort((a, b) => {
+            if (a.nuncaEstudou && !b.nuncaEstudou) return -1;
+            if (!a.nuncaEstudou && b.nuncaEstudou) return 1;
+            return (b.dias || 0) - (a.dias || 0);
+        })
         .slice(0, 5);
     }
 
@@ -1237,18 +1264,12 @@ class ViewRenderer {
 
             const aulas = (window.scheduleManager?.getAulasPorDia(index) || []).length;
 
-            return {
-                nome,
-                horas,
-                aulas
-            };
+            return { nome, horas, aulas };
         });
     }
 
     calcularHorasAulaSemana(aulas) {
-        return aulas.reduce((total, aula) => {
-            return total + (calcularDuracaoMinutos(aula.inicio, aula.fim) / 60);
-        }, 0);
+        return aulas.reduce((total, aula) => total + (calcularDuracaoMinutos(aula.inicio, aula.fim) / 60), 0);
     }
 
     renderGradeSemanalCards(aulas) {
@@ -1258,7 +1279,7 @@ class ViewRenderer {
             <div class="weekly-schedule">
                 ${dias.map((dia, index) => {
                     const aulasDia = aulas
-                        .filter(a => parseInt(a.dia) === index)
+                        .filter(a => parseInt(a.dia, 10) === index)
                         .sort((a, b) => a.inicio.localeCompare(b.inicio));
 
                     return `
@@ -1283,7 +1304,7 @@ class ViewRenderer {
 
     bindWeeklyScheduleClicks() {
         document.querySelectorAll('.weekly-event').forEach(item => {
-            item.addEventListener('click', (e) => {
+            item.addEventListener('click', e => {
                 const aulaId = e.currentTarget.dataset.aulaId;
                 if (aulaId && window.app) {
                     window.app.openAulaModal(aulaId);

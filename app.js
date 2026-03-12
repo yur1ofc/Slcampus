@@ -65,6 +65,9 @@ class StudyLifeControl {
         const user = auth.currentUser;
         if (user) {
             await dbService.loadUserData(user.uid);
+            if (window.app && window.app.data) {
+                this.data = window.app.data;
+            }
         }
         return this.data;
     }
@@ -226,6 +229,7 @@ class StudyLifeControl {
                 });
             }
         });
+
         this.data.classSchedule = aulas;
 
         const success = await dbService.saveAllData();
@@ -369,9 +373,11 @@ class StudyLifeControl {
     setupViewEvents(view) {
         if (view === 'sessoes') {
             document.getElementById('btn-nova-sessao')?.addEventListener('click', () => this.openModal('sessao'));
+
             document.querySelectorAll('.btn-concluir-sessao').forEach(btn => {
                 btn.addEventListener('click', e => this.concluirSessao(e.currentTarget.dataset.id));
             });
+
             document.querySelectorAll('.btn-editar-sessao').forEach(btn => {
                 btn.addEventListener('click', e => this.editarSessao(e.currentTarget.dataset.id));
             });
@@ -379,6 +385,7 @@ class StudyLifeControl {
 
         if (view === 'tarefas') {
             document.getElementById('btn-nova-tarefa')?.addEventListener('click', () => this.openModal('tarefa'));
+
             document.querySelectorAll('.btn-concluir-tarefa').forEach(btn => {
                 btn.addEventListener('click', e => this.concluirTarefa(e.currentTarget.dataset.id));
             });
@@ -407,25 +414,14 @@ class StudyLifeControl {
                 btn.addEventListener('click', e => this.editarAula(e.currentTarget.dataset.id));
             });
 
-            document.getElementById('view-day')?.addEventListener('click', () => {
-                if (!window.scheduleManager) return;
-                window.scheduleManager.viewMode = 'day';
-                window.scheduleManager.renderGrade();
+            document.getElementById('grade-view-mode')?.addEventListener('change', () => {
                 this.loadView('grade-horaria');
             });
 
-            document.getElementById('view-week')?.addEventListener('click', () => {
-                if (!window.scheduleManager) return;
-                window.scheduleManager.viewMode = 'week';
-                window.scheduleManager.renderGrade();
-                this.loadView('grade-horaria');
-            });
-
-            document.getElementById('day-select')?.addEventListener('change', e => {
-                if (!window.scheduleManager) return;
-                window.scheduleManager.selectedDay = parseInt(e.target.value, 10);
-                if (window.scheduleManager.viewMode === 'day') {
-                    window.scheduleManager.renderGrade();
+            document.getElementById('grade-day-select')?.addEventListener('change', () => {
+                const modo = document.getElementById('grade-view-mode')?.value || 'dia';
+                if (modo === 'dia') {
+                    this.loadView('grade-horaria');
                 }
             });
 
@@ -438,6 +434,7 @@ class StudyLifeControl {
 
         if (view === 'mapa-aprendizado') {
             document.getElementById('btn-novo-topico')?.addEventListener('click', () => this.openModal('topico'));
+
             document.querySelectorAll('.btn-editar-topico').forEach(btn => {
                 btn.addEventListener('click', e => this.editarTopico(e.currentTarget.dataset.id));
             });
@@ -813,9 +810,10 @@ class StudyLifeControl {
             concluida: false
         };
 
+        const isEditing = !!this.editingSessionId;
         let success = false;
 
-        if (this.editingSessionId) {
+        if (isEditing) {
             success = await dbService.updateItem('sessions', this.editingSessionId, sessaoData);
         } else {
             success = await dbService.addItem('sessions', {
@@ -830,7 +828,7 @@ class StudyLifeControl {
             const btn = document.querySelector('#form-sessao .btn-primary');
             if (btn) btn.textContent = 'Agendar Sessão';
             this.loadView(this.currentView);
-            showToast(this.editingSessionId ? 'Sessão atualizada!' : 'Sessão adicionada!');
+            showToast(isEditing ? 'Sessão atualizada!' : 'Sessão adicionada!');
         }
     }
 
@@ -892,9 +890,10 @@ class StudyLifeControl {
         };
 
         let success = false;
+        const isEditing = !!this.editingAulaId;
 
         if (window.scheduleManager) {
-            if (this.editingAulaId) {
+            if (isEditing) {
                 success = await window.scheduleManager.editAula(this.editingAulaId, aulaData);
             } else {
                 success = await window.scheduleManager.addAula({
@@ -911,7 +910,7 @@ class StudyLifeControl {
             if (btn) btn.textContent = 'Salvar Aula';
             document.dispatchEvent(new Event('aulas-atualizadas'));
             this.loadView('grade-horaria');
-            showToast('Aula salva com sucesso!');
+            showToast(isEditing ? 'Aula atualizada com sucesso!' : 'Aula salva com sucesso!');
         }
     }
 
@@ -928,8 +927,9 @@ class StudyLifeControl {
         };
 
         let success = false;
+        const isEditing = !!this.editingTopicId;
 
-        if (this.editingTopicId) {
+        if (isEditing) {
             success = await dbService.updateItem('learningMap', this.editingTopicId, topicoData);
         } else {
             success = await dbService.addItem('learningMap', {
@@ -944,7 +944,7 @@ class StudyLifeControl {
             const btn = document.querySelector('#form-topico .btn-primary');
             if (btn) btn.textContent = 'Adicionar Tópico';
             this.loadView(this.currentView);
-            showToast('Tópico salvo!');
+            showToast(isEditing ? 'Tópico atualizado!' : 'Tópico salvo!');
         }
     }
 
@@ -1185,7 +1185,7 @@ class StudyLifeControl {
                 if (!ultima) {
                     return {
                         nome: subject.nome,
-                        diasSemEstudar: 999,
+                        diasSemEstudar: null,
                         nunca: true
                     };
                 }
@@ -1196,8 +1196,12 @@ class StudyLifeControl {
                     nunca: false
                 };
             })
-            .filter(s => s.nunca || s.diasSemEstudar >= limit)
-            .sort((a, b) => b.diasSemEstudar - a.diasSemEstudar);
+            .filter(s => s.nunca || (s.diasSemEstudar !== null && s.diasSemEstudar >= limit))
+            .sort((a, b) => {
+                if (a.nunca && !b.nunca) return -1;
+                if (!a.nunca && b.nunca) return 1;
+                return (b.diasSemEstudar || 0) - (a.diasSemEstudar || 0);
+            });
     }
 
     getStudyHoursSummary() {
@@ -1435,3 +1439,5 @@ class StudyLifeControl {
         return d <= 3 ? 'danger' : d <= 7 ? 'warning' : 'success';
     }
 }
+
+window.StudyLifeControl = StudyLifeControl;

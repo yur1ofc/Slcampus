@@ -7,21 +7,18 @@
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Firebase SDKs -->
+
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
     <div id="app">
-        <!-- Loading Screen -->
         <div id="loading-screen" class="loading-container" style="display: none;">
             <div class="loading-spinner"></div>
             <p>Carregando...</p>
         </div>
 
-        <!-- Login Screen -->
         <div id="login-screen" class="login-container">
             <div class="login-card">
                 <div class="login-header">
@@ -38,7 +35,6 @@
             </div>
         </div>
 
-        <!-- Setup Screen -->
         <div id="setup-screen" class="setup-container" style="display: none;">
             <div class="setup-card">
                 <div class="setup-header">
@@ -46,7 +42,7 @@
                     <h1>Configuração Inicial</h1>
                     <p>Vamos personalizar sua experiência</p>
                 </div>
-                
+
                 <form id="setup-form" class="setup-form">
                     <div class="form-section">
                         <h2><i class="fas fa-user"></i> Informações Básicas</h2>
@@ -187,10 +183,8 @@
             </div>
         </div>
 
-        <!-- Main Dashboard -->
         <div id="main-dashboard" style="display: none;">
             <div class="dashboard-layout">
-                <!-- Sidebar -->
                 <aside class="sidebar">
                     <div class="sidebar-header">
                         <div class="logo">
@@ -198,7 +192,7 @@
                             <span>SLC</span>
                         </div>
                     </div>
-                    
+
                     <nav class="sidebar-nav" id="sidebar-nav">
                         <a href="#" class="nav-item active" data-view="dashboard"><i class="fas fa-chart-pie"></i><span>Dashboard</span></a>
                         <a href="#" class="nav-item" data-view="mentor-ia"><i class="fas fa-robot"></i><span>Mentor IA</span><span class="badge">IA</span></a>
@@ -244,7 +238,6 @@
                     </div>
                 </aside>
 
-                <!-- Main Content -->
                 <main class="main-content">
                     <div class="content-header">
                         <div class="page-title">
@@ -270,7 +263,6 @@
         </div>
     </div>
 
-    <!-- Modais Existentes -->
     <div id="modal-sessao" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -590,8 +582,6 @@
         </div>
     </div>
 
-    <!-- NOVOS MODAIS -->
-    <!-- Modal Registro do Dia -->
     <div id="modal-daily-log" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -669,7 +659,6 @@
         </div>
     </div>
 
-    <!-- Modal Diário de Aula -->
     <div id="modal-class-diary" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -737,7 +726,6 @@
         </div>
     </div>
 
-    <!-- Modal Detalhe da Aula -->
     <div id="modal-aula-detail" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -750,12 +738,12 @@
                     <p><strong>Horário:</strong> <span id="aula-detail-horario"></span></p>
                     <p><strong>Sala:</strong> <span id="aula-detail-sala"></span></p>
                     <p><strong>Professor:</strong> <span id="aula-detail-professor"></span></p>
-                    
+
                     <div class="aula-detail-presenca" id="aula-detail-presenca"></div>
-                    
+
                     <h4>Último conteúdo registrado</h4>
                     <div id="aula-detail-ultimo-conteudo" class="aula-detail-conteudo"></div>
-                    
+
                     <button class="btn-primary" onclick="app.openClassDiaryModal()">
                         <i class="fas fa-plus"></i> Registrar Diário
                     </button>
@@ -764,7 +752,6 @@
         </div>
     </div>
 
-    <!-- Modal "O que estudar agora?" -->
     <div id="modal-whats-now" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -778,7 +765,6 @@
         </div>
     </div>
 
-    <!-- Modal Configuração de Estrutura de Notas -->
     <div id="modal-grade-structure" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -800,21 +786,19 @@
 
     <div id="toast-container"></div>
 
-   <!-- Scripts modulares - ORDEM CORRETA -->
-<!-- Adicionar no final do body, antes do </body> -->
-<script src="firebase-config.js"></script>
-<script src="utils.js"></script>
-<script src="auth.js"></script>
-<script src="database.js"></script>
-<script src="daily-log.js"></script>
-<script src="class-diary.js"></script>
-<script src="review-system.js"></script>
-<script src="grade-calculator.js"></script>
-<script src="smart-dashboard.js"></script>
-<script src="ai-assistant-enhanced.js"></script>
-<script src="schedule-enhanced.js"></script>
-<script src="views.js"></script>
-<script src="app.js"></script>
-<script src="script.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="utils.js"></script>
+    <script src="auth.js"></script>
+    <script src="database.js"></script>
+    <script src="daily-log.js"></script>
+    <script src="class-diary.js"></script>
+    <script src="review-system.js"></script>
+    <script src="grade-calculator.js"></script>
+    <script src="smart-dashboard.js"></script>
+    <script src="ai-assistant-enhanced.js"></script>
+    <script src="schedule-enhanced.js"></script>
+    <script src="views.js"></script>
+    <script src="app.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
