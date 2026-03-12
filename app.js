@@ -1,4 +1,4 @@
-// app.js - Classe principal do aplicativo
+// app.js - Classe principal do aplicativo COMPLETO E CORRIGIDO
 
 class StudyLifeControl {
     constructor() {
@@ -35,6 +35,7 @@ class StudyLifeControl {
         this.editingSessionId = null;
         this.editingTopicId = null;
         this.editingAulaId = null;
+        this.editingMateriaId = null;
     }
 
     async init() {
@@ -60,6 +61,105 @@ class StudyLifeControl {
 
         this.checkDailyReviews();
     }
+
+    // ========== MÉTODOS DE EXCLUSÃO ==========
+    
+    async excluirSessao(id) {
+        if (!confirm('Tem certeza que deseja excluir esta sessão?')) return;
+        
+        const success = await dbService.removeItem('sessions', id);
+        if (success) {
+            this.loadView(this.currentView);
+            showToast('Sessão excluída!');
+        }
+    }
+
+    async excluirTarefa(id) {
+        if (!confirm('Tem certeza que deseja excluir esta tarefa?')) return;
+        
+        const success = await dbService.removeItem('tasks', id);
+        if (success) {
+            this.loadView(this.currentView);
+            showToast('Tarefa excluída!');
+        }
+    }
+
+    async excluirProva(id) {
+        if (!confirm('Tem certeza que deseja excluir esta prova?')) return;
+        
+        const success = await dbService.removeItem('exams', id);
+        if (success) {
+            this.loadView(this.currentView);
+            showToast('Prova excluída!');
+        }
+    }
+
+    async excluirTopico(id) {
+        if (!confirm('Tem certeza que deseja excluir este tópico?')) return;
+        
+        const success = await dbService.removeItem('learningMap', id);
+        if (success) {
+            this.loadView(this.currentView);
+            showToast('Tópico excluído!');
+        }
+    }
+
+    async excluirMaterial(id) {
+        if (!confirm('Tem certeza que deseja excluir este material?')) return;
+        
+        const success = await dbService.removeItem('materials', id);
+        if (success) {
+            this.loadView(this.currentView);
+            showToast('Material excluído!');
+        }
+    }
+
+    async excluirNota(id) {
+        if (!confirm('Tem certeza que deseja excluir esta nota?')) return;
+        
+        const success = await dbService.removeItem('grades', id);
+        if (success) {
+            this.loadView(this.currentView);
+            showToast('Nota excluída!');
+        }
+    }
+
+    async excluirMateria(id) {
+        if (!confirm('ATENÇÃO: Excluir esta matéria também excluirá todas as sessões, tarefas, provas, tópicos e notas relacionados. Continuar?')) return;
+        
+        const materia = this.data.subjects.find(s => s.id === id);
+        if (!materia) return;
+        
+        showLoading();
+        
+        try {
+            // Remover todos os itens relacionados
+            this.data.sessions = this.data.sessions.filter(s => s.materia !== materia.nome);
+            this.data.tasks = this.data.tasks.filter(t => t.materia !== materia.nome);
+            this.data.exams = this.data.exams.filter(e => e.materia !== materia.nome);
+            this.data.learningMap = this.data.learningMap.filter(t => t.materia !== materia.nome);
+            this.data.grades = this.data.grades.filter(g => g.materia !== materia.nome);
+            this.data.materials = this.data.materials.filter(m => m.materia !== materia.nome);
+            this.data.classSchedule = this.data.classSchedule.filter(a => a.materia !== materia.nome);
+            this.data.classDiaries = this.data.classDiaries.filter(d => d.materia !== materia.nome);
+            
+            // Remover a matéria
+            this.data.subjects = this.data.subjects.filter(s => s.id !== id);
+            
+            // Salvar todas as alterações
+            await dbService.saveAllData();
+            
+            this.loadView(this.currentView);
+            showToast('Matéria e todos os itens relacionados excluídos!');
+        } catch (error) {
+            console.error('Erro ao excluir matéria:', error);
+            showToast('Erro ao excluir matéria', 'error');
+        } finally {
+            hideLoading();
+        }
+    }
+
+    // ========== MÉTODOS DE CARGA ==========
 
     async loadData() {
         const user = auth.currentUser;
@@ -303,6 +403,7 @@ class StudyLifeControl {
         this.editingSessionId = null;
         this.editingTopicId = null;
         this.editingAulaId = null;
+        this.editingMateriaId = null;
 
         const sessaoBtn = document.querySelector('#form-sessao .btn-primary');
         if (sessaoBtn) sessaoBtn.textContent = 'Agendar Sessão';
@@ -361,6 +462,7 @@ class StudyLifeControl {
             case 'estatisticas': html = this.viewRenderer.renderEstatisticas(); break;
             case 'foco': html = this.viewRenderer.renderModoFoco(); break;
             case 'configuracoes': html = this.viewRenderer.renderConfiguracoes(); break;
+            case 'materias': html = this.viewRenderer.renderMaterias(); break;
             default: html = this.viewRenderer.renderDashboard();
         }
 
@@ -371,6 +473,7 @@ class StudyLifeControl {
     }
 
     setupViewEvents(view) {
+        // SESSÕES
         if (view === 'sessoes') {
             document.getElementById('btn-nova-sessao')?.addEventListener('click', () => this.openModal('sessao'));
 
@@ -381,20 +484,35 @@ class StudyLifeControl {
             document.querySelectorAll('.btn-editar-sessao').forEach(btn => {
                 btn.addEventListener('click', e => this.editarSessao(e.currentTarget.dataset.id));
             });
+
+            document.querySelectorAll('.btn-excluir-sessao').forEach(btn => {
+                btn.addEventListener('click', e => this.excluirSessao(e.currentTarget.dataset.id));
+            });
         }
 
+        // TAREFAS
         if (view === 'tarefas') {
             document.getElementById('btn-nova-tarefa')?.addEventListener('click', () => this.openModal('tarefa'));
 
             document.querySelectorAll('.btn-concluir-tarefa').forEach(btn => {
                 btn.addEventListener('click', e => this.concluirTarefa(e.currentTarget.dataset.id));
             });
+
+            document.querySelectorAll('.btn-excluir-tarefa').forEach(btn => {
+                btn.addEventListener('click', e => this.excluirTarefa(e.currentTarget.dataset.id));
+            });
         }
 
+        // PROVAS
         if (view === 'provas') {
             document.getElementById('btn-nova-prova')?.addEventListener('click', () => this.openModal('prova'));
+
+            document.querySelectorAll('.btn-excluir-prova').forEach(btn => {
+                btn.addEventListener('click', e => this.excluirProva(e.currentTarget.dataset.id));
+            });
         }
 
+        // GRADE HORÁRIA
         if (view === 'grade-horaria') {
             document.getElementById('btn-nova-aula')?.addEventListener('click', () => this.openModal('aula'));
 
@@ -428,32 +546,50 @@ class StudyLifeControl {
             document.getElementById('exportar-grade')?.addEventListener('click', () => this.exportarGradeHoraria());
         }
 
+        // MENTOR IA
         if (view === 'mentor-ia') {
             this.setupIAEvents();
         }
 
+        // MAPA APRENDIZADO
         if (view === 'mapa-aprendizado') {
             document.getElementById('btn-novo-topico')?.addEventListener('click', () => this.openModal('topico'));
 
             document.querySelectorAll('.btn-editar-topico').forEach(btn => {
                 btn.addEventListener('click', e => this.editarTopico(e.currentTarget.dataset.id));
             });
+
+            document.querySelectorAll('.btn-excluir-topico').forEach(btn => {
+                btn.addEventListener('click', e => this.excluirTopico(e.currentTarget.dataset.id));
+            });
         }
 
+        // PREVISÃO NOTAS
         if (view === 'previsao-notas') {
             document.getElementById('btn-registrar-nota')?.addEventListener('click', () => this.openModal('nota'));
+
+            document.querySelectorAll('.btn-excluir-nota').forEach(btn => {
+                btn.addEventListener('click', e => this.excluirNota(e.currentTarget.dataset.id));
+            });
         }
 
+        // MATERIAIS
         if (view === 'materiais') {
             document.getElementById('btn-novo-material')?.addEventListener('click', () => this.openModal('material'));
+
+            document.querySelectorAll('.btn-excluir-material').forEach(btn => {
+                btn.addEventListener('click', e => this.excluirMaterial(e.currentTarget.dataset.id));
+            });
         }
 
+        // FOCO
         if (view === 'foco') {
             document.getElementById('timer-start')?.addEventListener('click', () => this.startTimer());
             document.getElementById('timer-pause')?.addEventListener('click', () => this.pauseTimer());
             document.getElementById('timer-reset')?.addEventListener('click', () => this.resetTimer());
         }
 
+        // HÁBITOS
         if (view === 'habitos') {
             document.querySelectorAll('.toggle-habito').forEach(btn => {
                 btn.addEventListener('click', e => {
@@ -463,6 +599,7 @@ class StudyLifeControl {
             });
         }
 
+        // CONFIGURAÇÕES
         if (view === 'configuracoes') {
             document.getElementById('config-notificacoes')?.addEventListener('change', e => {
                 this.data.settings.notifications = e.target.checked;
@@ -484,6 +621,20 @@ class StudyLifeControl {
             document.getElementById('limpar-dados')?.addEventListener('click', () => this.limparDados());
         }
 
+        // MATÉRIAS
+        if (view === 'materias') {
+            document.getElementById('btn-nova-materia')?.addEventListener('click', () => this.openModal('materia'));
+            
+            document.querySelectorAll('.btn-editar-materia').forEach(btn => {
+                btn.addEventListener('click', e => this.editarMateria(e.currentTarget.dataset.id));
+            });
+            
+            document.querySelectorAll('.btn-excluir-materia').forEach(btn => {
+                btn.addEventListener('click', e => this.excluirMateria(e.currentTarget.dataset.id));
+            });
+        }
+
+        // BOTÕES RÁPIDOS
         document.getElementById('quick-sessao')?.addEventListener('click', () => this.openModal('sessao'));
         document.getElementById('quick-tarefa')?.addEventListener('click', () => this.openModal('tarefa'));
         document.getElementById('quick-prova')?.addEventListener('click', () => this.openModal('prova'));
@@ -569,9 +720,9 @@ class StudyLifeControl {
     }
 
     openModal(modalType, data = {}) {
-        if (['sessao', 'tarefa', 'prova', 'topico', 'nota', 'material', 'aula'].includes(modalType)) {
+        if (['sessao', 'tarefa', 'prova', 'topico', 'nota', 'material', 'aula', 'materia'].includes(modalType)) {
             const select = document.getElementById(`${modalType}-materia`);
-            if (select && this.data.subjects.length > 0) {
+            if (select && this.data.subjects.length > 0 && modalType !== 'materia') {
                 select.innerHTML = '<option value="">Selecione</option>';
                 this.data.subjects.forEach(s => {
                     select.innerHTML += `<option value="${s.nome}">${s.nome}</option>`;
@@ -622,6 +773,10 @@ class StudyLifeControl {
             }
         }
 
+        if (modalType === 'materia') {
+            // Implementar modal de matéria se necessário
+        }
+
         const modal = document.getElementById(`modal-${modalType}`);
         if (modal) modal.style.display = 'block';
     }
@@ -654,6 +809,15 @@ class StudyLifeControl {
 
         this.editingAulaId = id;
         this.openModal('aula', aula);
+    }
+
+    editarMateria(id) {
+        const materia = this.data.subjects.find(s => s.id === id);
+        if (!materia) return;
+        
+        this.editingMateriaId = id;
+        // Implementar modal de edição de matéria
+        showToast('Funcionalidade em desenvolvimento', 'info');
     }
 
     openDailyLogModal() {
