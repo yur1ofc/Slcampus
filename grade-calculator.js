@@ -11,46 +11,37 @@ class GradeCalculator {
         this.subjects = window.app?.data?.subjects || [];
     }
 
-    // Calcular média de uma matéria
     calcularMedia(materiaNome) {
+        this.loadData();
         const notasMateria = this.grades.filter(g => g.materia === materiaNome);
-        if (notasMateria.length === 0) return 0;
-
-        const somaPonderada = notasMateria.reduce((acc, n) => {
-            return acc + (n.valor * (n.peso / 100));
-        }, 0);
-
-        const somaPesos = notasMateria.reduce((acc, n) => acc + n.peso, 0);
-        return somaPesos > 0 ? (somaPonderada / somaPesos) * 10 : 0;
+        return calcularMediaPonderada(notasMateria);
     }
 
-    // Calcular nota necessária na próxima avaliação
     calcularNotaNecessaria(materiaNome, notaDesejada) {
         this.loadData();
+
         const materia = this.subjects.find(s => s.nome === materiaNome);
         if (!materia) return null;
 
         const notasMateria = this.grades.filter(g => g.materia === materiaNome);
         const somaPesosRealizados = notasMateria.reduce((acc, n) => acc + n.peso, 0);
-        
+        const mediaAtual = this.calcularMedia(materiaNome);
+
         if (somaPesosRealizados >= 100) {
-            const mediaAtual = this.calcularMedia(materiaNome);
             return {
                 possivel: mediaAtual >= notaDesejada,
                 notaNecessaria: 0,
                 mediaAtual: mediaAtual.toFixed(1),
-                mensagem: mediaAtual >= notaDesejada 
-                    ? `✅ Você já atingiu a média desejada (${mediaAtual.toFixed(1)})` 
+                mensagem: mediaAtual >= notaDesejada
+                    ? `✅ Você já atingiu a média desejada (${mediaAtual.toFixed(1)})`
                     : `❌ Infelizmente não é mais possível. Média atual: ${mediaAtual.toFixed(1)}`
             };
         }
 
         const pesoRestante = 100 - somaPesosRealizados;
-        const somaAtual = notasMateria.reduce((acc, n) => acc + (n.valor * (n.peso / 100)), 0);
-        
-        const notaNecessaria = ((notaDesejada / 10) - somaAtual) / (pesoRestante / 100);
+        const somaPonderadaAtual = notasMateria.reduce((acc, n) => acc + (n.valor * n.peso), 0);
 
-        const mediaAtual = this.calcularMedia(materiaNome);
+        const notaNecessaria = ((notaDesejada * 100) - somaPonderadaAtual) / pesoRestante;
         const possivel = notaNecessaria <= 10;
 
         return {
@@ -64,51 +55,57 @@ class GradeCalculator {
         };
     }
 
-    // Prever nota final baseada no desempenho atual
     preverNotaFinal(materiaNome) {
         this.loadData();
+
         const materia = this.subjects.find(s => s.nome === materiaNome);
         if (!materia) return null;
 
         const notasMateria = this.grades.filter(g => g.materia === materiaNome);
         const somaPesosRealizados = notasMateria.reduce((acc, n) => acc + n.peso, 0);
-        
-        if (somaPesosRealizados === 0) return { previsao: '?', confianca: 'baixa', mensagem: 'Nenhuma nota registrada' };
+
+        if (somaPesosRealizados === 0) {
+            return {
+                previsao: '?',
+                confianca: 'baixa',
+                mensagem: 'Nenhuma nota registrada'
+            };
+        }
 
         const mediaAtual = this.calcularMedia(materiaNome);
-        
+
         if (somaPesosRealizados >= 70) {
             return {
                 previsao: mediaAtual.toFixed(1),
                 confianca: 'alta',
                 mensagem: `Com base em ${somaPesosRealizados}% das notas`
             };
-        } else {
-            return {
-                previsao: mediaAtual.toFixed(1),
-                confianca: 'media',
-                mensagem: `Previsão preliminar (${somaPesosRealizados}% das notas)`
-            };
         }
+
+        return {
+            previsao: mediaAtual.toFixed(1),
+            confianca: 'media',
+            mensagem: `Previsão preliminar (${somaPesosRealizados}% das notas)`
+        };
     }
 
-    // Configurar estrutura de notas de uma matéria
     async configurarEstruturaNotas(materiaNome, estrutura) {
+        this.loadData();
+
         const materia = this.subjects.find(s => s.nome === materiaNome);
         if (!materia) return false;
 
         materia.estruturaNotas = estrutura;
-        return await dbService.updateItem('subjects', materia.id, { estruturaNotas: estrutura });
+        return dbService.updateItem('subjects', materia.id, { estruturaNotas: estrutura });
     }
 
-    // Registrar uma nota
     async registrarNota(notaData) {
         const novaNota = {
             id: generateId(),
             materia: notaData.materia,
             avaliacao: notaData.avaliacao,
             valor: parseFloat(notaData.valor),
-            peso: parseInt(notaData.peso) || 100,
+            peso: parseInt(notaData.peso, 10) || 100,
             data: new Date().toISOString()
         };
 

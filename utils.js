@@ -1,56 +1,73 @@
 // utils.js
 
-// Gerar ID único
 function generateId() {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+        return window.crypto.randomUUID();
+    }
+    return Date.now().toString(36) + Math.random().toString(36).slice(2);
 }
 
-// Calcular dias até uma data
+function toDateOnly(dateInput = new Date()) {
+    const d = new Date(dateInput);
+    d.setHours(0, 0, 0, 0);
+    return d;
+}
+
+function toDateString(dateInput = new Date()) {
+    return toDateOnly(dateInput).toISOString().split('T')[0];
+}
+
 function diasAte(data) {
-    const diff = new Date(data) - new Date();
+    if (!data) return 0;
+    const hoje = toDateOnly(new Date());
+    const alvo = toDateOnly(new Date(data));
+    const diff = alvo - hoje;
     return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
-// Calcular dias desde uma data
 function diasDesde(data) {
-    const diff = new Date() - new Date(data);
+    if (!data) return 0;
+    const hoje = toDateOnly(new Date());
+    const alvo = toDateOnly(new Date(data));
+    const diff = hoje - alvo;
     return Math.floor(diff / (1000 * 60 * 60 * 24));
 }
 
-// Formatar data
 function formatarData(data) {
+    if (!data) return '';
     return new Date(data).toLocaleDateString('pt-BR');
 }
 
-// Formatar hora
 function formatarHora(data) {
-    return new Date(data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    if (!data) return '';
+    return new Date(data).toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit'
+    });
 }
 
-// Formatar hora a partir de string "HH:MM"
 function formatarHoraString(horaString) {
-    return horaString;
+    return horaString || '';
 }
 
-// Calcular tempo restante para próximo evento
 function tempoRestante(data) {
+    if (!data) return 'Sem data';
     const agora = new Date();
     const evento = new Date(data);
     const diff = evento - agora;
-    
-    if (diff < 0) return "Passado";
-    
+
+    if (diff < 0) return 'Passado';
+
     const dias = Math.floor(diff / (1000 * 60 * 60 * 24));
     const horas = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutos = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    
+
     if (dias > 0) return `${dias} dia${dias > 1 ? 's' : ''}`;
     if (horas > 0) return `${horas}h ${minutos}min`;
     if (minutos > 0) return `${minutos}min`;
-    return "Agora";
+    return 'Agora';
 }
 
-// Calcular duração em minutos entre dois horários "HH:MM"
 function calcularDuracaoMinutos(inicio, fim) {
     if (!inicio || !fim) return 0;
     const [hInicio, mInicio] = inicio.split(':').map(Number);
@@ -58,24 +75,68 @@ function calcularDuracaoMinutos(inicio, fim) {
     return (hFim * 60 + mFim) - (hInicio * 60 + mInicio);
 }
 
-// Mostrar toast
+function calcularMediaPonderada(notas = []) {
+    if (!Array.isArray(notas) || !notas.length) return 0;
+
+    const notasValidas = notas.filter(n =>
+        typeof n.valor === 'number' &&
+        !Number.isNaN(n.valor) &&
+        typeof n.peso === 'number' &&
+        !Number.isNaN(n.peso) &&
+        n.peso > 0
+    );
+
+    if (!notasValidas.length) return 0;
+
+    const somaPesos = notasValidas.reduce((acc, n) => acc + n.peso, 0);
+    const somaPonderada = notasValidas.reduce((acc, n) => acc + (n.valor * n.peso), 0);
+
+    return somaPesos ? somaPonderada / somaPesos : 0;
+}
+
+function escapeHtml(text = '') {
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function nl2brSafe(text = '') {
+    return escapeHtml(text).replace(/\n/g, '<br>');
+}
+
+function getToastIcon(type = 'success') {
+    switch (type) {
+        case 'success': return 'check-circle';
+        case 'error': return 'times-circle';
+        case 'warning': return 'exclamation-triangle';
+        case 'info': return 'info-circle';
+        default: return 'check-circle';
+    }
+}
+
 function showToast(msg, type = 'success') {
     const container = document.getElementById('toast-container');
     if (!container) return;
 
-    const t = document.createElement('div');
-    t.className = `toast ${type}`;
-    t.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i><span>${msg}</span>`;
-    container.appendChild(t);
-    
-    setTimeout(() => t.classList.add('show'), 10);
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        <i class="fas fa-${getToastIcon(type)}"></i>
+        <span>${escapeHtml(msg)}</span>
+    `;
+
+    container.appendChild(toast);
+
+    setTimeout(() => toast.classList.add('show'), 10);
     setTimeout(() => {
-        t.classList.remove('show');
-        setTimeout(() => t.remove(), 300);
-    }, 3000);
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 3200);
 }
 
-// Mostrar loading
 function showLoading() {
     const loadingScreen = document.getElementById('loading-screen');
     if (loadingScreen) loadingScreen.style.display = 'flex';
@@ -86,10 +147,10 @@ function hideLoading() {
     if (loadingScreen) loadingScreen.style.display = 'none';
 }
 
-// Atualizar status de sincronização
 function updateSyncStatus(success) {
     const status = document.getElementById('sync-status');
     if (!status) return;
+
     if (success) {
         status.innerHTML = '<i class="fas fa-check-circle" style="color: var(--accent-success);"></i>';
         setTimeout(() => {
@@ -100,9 +161,10 @@ function updateSyncStatus(success) {
     }
 }
 
-// Exportar funções globais
 window.utils = {
     generateId,
+    toDateOnly,
+    toDateString,
     diasAte,
     diasDesde,
     formatarData,
@@ -110,19 +172,28 @@ window.utils = {
     formatarHoraString,
     tempoRestante,
     calcularDuracaoMinutos,
+    calcularMediaPonderada,
+    escapeHtml,
+    nl2brSafe,
     showToast,
     showLoading,
     hideLoading,
     updateSyncStatus
 };
 
-// Disponibilizar funções mais usadas no escopo global
 window.generateId = generateId;
+window.toDateOnly = toDateOnly;
+window.toDateString = toDateString;
 window.diasAte = diasAte;
 window.diasDesde = diasDesde;
 window.formatarData = formatarData;
 window.formatarHora = formatarHora;
+window.formatarHoraString = formatarHoraString;
+window.tempoRestante = tempoRestante;
 window.calcularDuracaoMinutos = calcularDuracaoMinutos;
+window.calcularMediaPonderada = calcularMediaPonderada;
+window.escapeHtml = escapeHtml;
+window.nl2brSafe = nl2brSafe;
 window.showToast = showToast;
 window.showLoading = showLoading;
 window.hideLoading = hideLoading;

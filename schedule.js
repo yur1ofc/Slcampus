@@ -1,4 +1,4 @@
-// schedule.js - Grade horária CORRIGIDA
+// schedule.js - Grade horária com modo dia/semana, edição e conflitos
 
 class ScheduleManager {
     constructor() {
@@ -12,18 +12,12 @@ class ScheduleManager {
     }
 
     init() {
-        if (window.app?.data?.classSchedule) {
-            this.aulas = window.app.data.classSchedule;
-            this.initialized = true;
-        } else {
-            setTimeout(() => this.init(), 100);
-        }
+        this.loadAulas();
+        this.initialized = true;
     }
 
     loadAulas() {
-        if (window.app?.data?.classSchedule) {
-            this.aulas = window.app.data.classSchedule;
-        }
+        this.aulas = window.app?.data?.classSchedule || [];
         return this.aulas;
     }
 
@@ -42,6 +36,8 @@ class ScheduleManager {
     }
 
     async editAula(id, updates) {
+        this.loadAulas();
+
         const aulaExistente = this.aulas.find(a => a.id === id);
         if (!aulaExistente) return false;
 
@@ -161,10 +157,10 @@ class ScheduleManager {
 
             eventBlock.innerHTML = `
                 <div class="event-content">
-                    <strong>${aula.materia}</strong>
-                    <div class="event-time">${aula.inicio} - ${aula.fim}</div>
-                    ${aula.sala ? `<div class="event-room">📍 ${aula.sala}</div>` : ''}
-                    ${aula.professor ? `<div class="event-prof">👤 ${aula.professor}</div>` : ''}
+                    <strong>${escapeHtml(aula.materia)}</strong>
+                    <div class="event-time">${escapeHtml(aula.inicio)} - ${escapeHtml(aula.fim)}</div>
+                    ${aula.sala ? `<div class="event-room">📍 ${escapeHtml(aula.sala)}</div>` : ''}
+                    ${aula.professor ? `<div class="event-prof">👤 ${escapeHtml(aula.professor)}</div>` : ''}
                 </div>
             `;
 
@@ -205,10 +201,10 @@ class ScheduleManager {
                         aulasDia.length
                             ? aulasDia.map(aula => `
                                 <div class="weekly-event" data-aula-id="${aula.id}" style="border-left-color:${aula.cor || '#3b82f6'}">
-                                    <div class="weekly-event-time">${aula.inicio} - ${aula.fim}</div>
-                                    <div class="weekly-event-title">${aula.materia}</div>
-                                    ${aula.sala ? `<div class="weekly-event-detail">📍 ${aula.sala}</div>` : ''}
-                                    ${aula.professor ? `<div class="weekly-event-detail">👤 ${aula.professor}</div>` : ''}
+                                    <div class="weekly-event-time">${escapeHtml(aula.inicio)} - ${escapeHtml(aula.fim)}</div>
+                                    <div class="weekly-event-title">${escapeHtml(aula.materia)}</div>
+                                    ${aula.sala ? `<div class="weekly-event-detail">📍 ${escapeHtml(aula.sala)}</div>` : ''}
+                                    ${aula.professor ? `<div class="weekly-event-detail">👤 ${escapeHtml(aula.professor)}</div>` : ''}
                                 </div>
                             `).join('')
                             : `<p class="no-classes">Sem aulas</p>`
@@ -230,6 +226,7 @@ class ScheduleManager {
 
     getProximaAula() {
         this.loadAulas();
+
         const hoje = new Date();
         const diaSemana = hoje.getDay();
         const minutosAtuais = hoje.getHours() * 60 + hoje.getMinutes();
@@ -249,6 +246,7 @@ class ScheduleManager {
 
     getAulaAtual() {
         this.loadAulas();
+
         const hoje = new Date();
         const diaSemana = hoje.getDay();
         const minutosAtuais = hoje.getHours() * 60 + hoje.getMinutes();
@@ -257,7 +255,7 @@ class ScheduleManager {
             const minutosInicio = calcularDuracaoMinutos('00:00', a.inicio);
             const minutosFim = calcularDuracaoMinutos('00:00', a.fim);
             return minutosAtuais >= minutosInicio && minutosAtuais <= minutosFim;
-        });
+        }) || null;
     }
 
     async marcarPresenca(aulaId, data, status) {
@@ -331,13 +329,9 @@ class ScheduleManager {
 
 window.scheduleManager = new ScheduleManager();
 
-if (window.app) {
+document.addEventListener('app-ready', () => {
     window.scheduleManager.init();
-} else {
-    document.addEventListener('app-ready', () => {
-        window.scheduleManager.init();
-    });
-}
+});
 
 document.addEventListener('aulas-atualizadas', () => {
     if (window.scheduleManager) {

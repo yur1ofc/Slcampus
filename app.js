@@ -1,8 +1,8 @@
-// app.js - Classe principal do aplicativo COMPLETO E CORRIGIDO
+// app.js - Classe principal do aplicativo COMPLETA, CORRIGIDA E MELHORADA
 
 class StudyLifeControl {
     constructor() {
-        this.data = {
+        this.data = typeof DEFAULT_APP_DATA === 'function' ? DEFAULT_APP_DATA() : {
             user: null,
             subjects: [],
             sessions: [],
@@ -29,6 +29,7 @@ class StudyLifeControl {
         this.timerSeconds = 0;
         this.timerRunning = false;
         this.timerDuration = 0;
+        this.timerStartedAt = null;
         this.viewRenderer = null;
         this.initialized = false;
 
@@ -36,12 +37,17 @@ class StudyLifeControl {
         this.editingTopicId = null;
         this.editingAulaId = null;
         this.editingMateriaId = null;
+        this.editingTaskId = null;
+        this.editingExamId = null;
+        this.editingGradeId = null;
+        this.editingMaterialId = null;
     }
 
     async init() {
         if (this.initialized) return;
 
         await this.loadData();
+
         this.viewRenderer = new ViewRenderer(this);
         this.setupEventListeners();
         this.updateSidebarInfo();
@@ -49,144 +55,42 @@ class StudyLifeControl {
 
         document.dispatchEvent(new Event('app-ready'));
 
-        if (window.scheduleManager) window.scheduleManager.loadAulas();
-        if (window.reviewSystem) window.reviewSystem.loadReviews();
-        if (window.dailyLogService) window.dailyLogService.loadLogs();
-        if (window.classDiaryService) window.classDiaryService.loadDiaries();
-        if (window.gradeCalculator) window.gradeCalculator.loadData();
-        if (window.aiAssistant) window.aiAssistant.updateContext(this.data);
+        window.scheduleManager?.loadAulas();
+        window.reviewSystem?.loadReviews();
+        window.dailyLogService?.loadLogs();
+        window.classDiaryService?.loadDiaries();
+        window.gradeCalculator?.loadData();
+        window.aiAssistant?.updateContext(this.data);
 
         this.loadView('dashboard');
         this.initialized = true;
-
         this.checkDailyReviews();
     }
 
-    // ========== MÉTODOS DE EXCLUSÃO ==========
-    
-    async excluirSessao(id) {
-        if (!confirm('Tem certeza que deseja excluir esta sessão?')) return;
-        
-        const success = await dbService.removeItem('sessions', id);
-        if (success) {
-            this.loadView(this.currentView);
-            showToast('Sessão excluída!');
-        }
-    }
-
-    async excluirTarefa(id) {
-        if (!confirm('Tem certeza que deseja excluir esta tarefa?')) return;
-        
-        const success = await dbService.removeItem('tasks', id);
-        if (success) {
-            this.loadView(this.currentView);
-            showToast('Tarefa excluída!');
-        }
-    }
-
-    async excluirProva(id) {
-        if (!confirm('Tem certeza que deseja excluir esta prova?')) return;
-        
-        const success = await dbService.removeItem('exams', id);
-        if (success) {
-            this.loadView(this.currentView);
-            showToast('Prova excluída!');
-        }
-    }
-
-    async excluirTopico(id) {
-        if (!confirm('Tem certeza que deseja excluir este tópico?')) return;
-        
-        const success = await dbService.removeItem('learningMap', id);
-        if (success) {
-            this.loadView(this.currentView);
-            showToast('Tópico excluído!');
-        }
-    }
-
-    async excluirMaterial(id) {
-        if (!confirm('Tem certeza que deseja excluir este material?')) return;
-        
-        const success = await dbService.removeItem('materials', id);
-        if (success) {
-            this.loadView(this.currentView);
-            showToast('Material excluído!');
-        }
-    }
-
-    async excluirNota(id) {
-        if (!confirm('Tem certeza que deseja excluir esta nota?')) return;
-        
-        const success = await dbService.removeItem('grades', id);
-        if (success) {
-            this.loadView(this.currentView);
-            showToast('Nota excluída!');
-        }
-    }
-
-    async excluirMateria(id) {
-        if (!confirm('ATENÇÃO: Excluir esta matéria também excluirá todas as sessões, tarefas, provas, tópicos e notas relacionados. Continuar?')) return;
-        
-        const materia = this.data.subjects.find(s => s.id === id);
-        if (!materia) return;
-        
-        showLoading();
-        
-        try {
-            // Remover todos os itens relacionados
-            this.data.sessions = this.data.sessions.filter(s => s.materia !== materia.nome);
-            this.data.tasks = this.data.tasks.filter(t => t.materia !== materia.nome);
-            this.data.exams = this.data.exams.filter(e => e.materia !== materia.nome);
-            this.data.learningMap = this.data.learningMap.filter(t => t.materia !== materia.nome);
-            this.data.grades = this.data.grades.filter(g => g.materia !== materia.nome);
-            this.data.materials = this.data.materials.filter(m => m.materia !== materia.nome);
-            this.data.classSchedule = this.data.classSchedule.filter(a => a.materia !== materia.nome);
-            this.data.classDiaries = this.data.classDiaries.filter(d => d.materia !== materia.nome);
-            
-            // Remover a matéria
-            this.data.subjects = this.data.subjects.filter(s => s.id !== id);
-            
-            // Salvar todas as alterações
-            await dbService.saveAllData();
-            
-            this.loadView(this.currentView);
-            showToast('Matéria e todos os itens relacionados excluídos!');
-        } catch (error) {
-            console.error('Erro ao excluir matéria:', error);
-            showToast('Erro ao excluir matéria', 'error');
-        } finally {
-            hideLoading();
-        }
-    }
-
-    // ========== MÉTODOS DE CARGA ==========
-
     async loadData() {
         const user = auth.currentUser;
-        if (user) {
-            await dbService.loadUserData(user.uid);
-            if (window.app && window.app.data) {
-                this.data = window.app.data;
-            }
-        }
+        if (!user) return this.data;
+
+        const data = await dbService.loadUserData(user.uid);
+        this.data = data || (typeof DEFAULT_APP_DATA === 'function' ? DEFAULT_APP_DATA() : this.data);
         return this.data;
     }
 
     checkDailyReviews() {
-        if (window.reviewSystem) {
-            const revisoesHoje = window.reviewSystem.getRevisoesHoje();
-            if (revisoesHoje.length > 0) {
-                showToast(`Você tem ${revisoesHoje.length} revisão(ões) para hoje!`, 'info');
-            }
+        if (!window.reviewSystem) return;
+
+        const revisoesHoje = window.reviewSystem.getRevisoesHoje();
+        if (revisoesHoje.length > 0) {
+            showToast(`Você tem ${revisoesHoje.length} revisão(ões) para hoje!`, 'info');
         }
     }
 
     renderSetupForm() {
         const container = document.getElementById('materias-container');
-        if (!container) return;
-
-        container.innerHTML = '';
-        this.addMateriaField();
+        if (container) {
+            container.innerHTML = '';
+            this.addMateriaField();
+        }
 
         const aulasContainer = document.getElementById('aulas-container');
         if (aulasContainer) aulasContainer.innerHTML = '';
@@ -219,7 +123,8 @@ class StudyLifeControl {
             </div>
             <button type="button" class="btn-remove"><i class="fas fa-times"></i></button>
         `;
-        item.querySelector('.btn-remove').addEventListener('click', () => item.remove());
+
+        item.querySelector('.btn-remove')?.addEventListener('click', () => item.remove());
         container.appendChild(item);
     }
 
@@ -228,11 +133,9 @@ class StudyLifeControl {
         if (!container) return;
 
         const materiaInputs = document.querySelectorAll('.materia-nome');
-        const materias = [];
-
-        materiaInputs.forEach(input => {
-            if (input.value.trim()) materias.push(input.value.trim());
-        });
+        const materias = Array.from(materiaInputs)
+            .map(input => input.value.trim())
+            .filter(Boolean);
 
         if (!materias.length) {
             showToast('Adicione pelo menos uma matéria primeiro', 'warning');
@@ -242,10 +145,10 @@ class StudyLifeControl {
         const item = document.createElement('div');
         item.className = 'aula-item';
 
-        let optionsHtml = '<option value="">Selecione</option>';
-        materias.forEach(m => {
-            optionsHtml += `<option value="${m}">${m}</option>`;
-        });
+        const optionsHtml = [
+            '<option value="">Selecione</option>',
+            ...materias.map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`)
+        ].join('');
 
         item.innerHTML = `
             <div class="aula-fields">
@@ -266,7 +169,8 @@ class StudyLifeControl {
             </div>
             <button type="button" class="btn-remove"><i class="fas fa-times"></i></button>
         `;
-        item.querySelector('.btn-remove').addEventListener('click', () => item.remove());
+
+        item.querySelector('.btn-remove')?.addEventListener('click', () => item.remove());
         container.appendChild(item);
     }
 
@@ -274,74 +178,79 @@ class StudyLifeControl {
         e.preventDefault();
         showLoading();
 
-        const subjects = [];
-        document.querySelectorAll('.materia-item').forEach(item => {
-            const nome = item.querySelector('.materia-nome').value.trim();
-            if (nome) {
+        try {
+            const subjects = [];
+            document.querySelectorAll('.materia-item').forEach(item => {
+                const nome = item.querySelector('.materia-nome')?.value.trim();
+                if (!nome) return;
+
                 subjects.push({
                     id: generateId(),
                     nome,
-                    dificuldade: parseInt(item.querySelector('.materia-dificuldade').value, 10),
-                    peso: parseInt(item.querySelector('.materia-peso').value, 10),
-                    notaDesejada: parseFloat(item.querySelector('.materia-nota-desejada').value) || 7
+                    dificuldade: parseInt(item.querySelector('.materia-dificuldade')?.value, 10) || 3,
+                    peso: parseInt(item.querySelector('.materia-peso')?.value, 10) || 3,
+                    notaDesejada: parseFloat(item.querySelector('.materia-nota-desejada')?.value) || 7
                 });
-            }
-        });
+            });
 
-        const diasPreferidos = Array.from(
-            document.querySelectorAll('#dias-preferidos-container input:checked')
-        ).map(cb => cb.value);
+            const diasPreferidos = Array.from(
+                document.querySelectorAll('#dias-preferidos-container input:checked')
+            ).map(cb => cb.value);
 
-        this.data.user = {
-            nome: document.getElementById('nome').value,
-            curso: document.getElementById('curso').value,
-            universidade: document.getElementById('universidade').value,
-            semestre: document.getElementById('semestre').value,
-            turnoPrincipal: document.getElementById('turno-principal').value,
-            diasPreferidos,
-            horasMaximas: parseInt(document.getElementById('horas-maximas').value, 10),
-            horarioSono: document.getElementById('horario-sono').value,
-            tempoDeslocamento: parseInt(document.getElementById('tempo-deslocamento').value, 10),
-            tipoRotina: document.getElementById('tipo-rotina').value,
-            nivelDisciplina: document.getElementById('nivel-disciplina').value,
-            dificuldadeAtual: document.getElementById('dificuldade-atual').value,
-            createdAt: new Date().toISOString(),
-            streak: 0,
-            lastStudyDate: null
-        };
+            this.data.user = {
+                nome: document.getElementById('nome')?.value?.trim() || '',
+                curso: document.getElementById('curso')?.value?.trim() || '',
+                universidade: document.getElementById('universidade')?.value?.trim() || '',
+                semestre: document.getElementById('semestre')?.value || '',
+                turnoPrincipal: document.getElementById('turno-principal')?.value || 'noite',
+                diasPreferidos,
+                horasMaximas: parseInt(document.getElementById('horas-maximas')?.value, 10) || 6,
+                horarioSono: document.getElementById('horario-sono')?.value || '',
+                tempoDeslocamento: parseInt(document.getElementById('tempo-deslocamento')?.value, 10) || 30,
+                tipoRotina: document.getElementById('tipo-rotina')?.value || 'so-estuda',
+                nivelDisciplina: document.getElementById('nivel-disciplina')?.value || 'medio',
+                dificuldadeAtual: document.getElementById('dificuldade-atual')?.value || 'organizacao',
+                createdAt: new Date().toISOString(),
+                streak: 0,
+                lastStudyDate: null
+            };
 
-        this.data.subjects = subjects;
+            this.data.subjects = subjects;
 
-        const aulas = [];
-        document.querySelectorAll('.aula-item').forEach(item => {
-            const materia = item.querySelector('.aula-materia')?.value;
-            if (materia) {
+            const aulas = [];
+            document.querySelectorAll('.aula-item').forEach(item => {
+                const materia = item.querySelector('.aula-materia')?.value;
+                if (!materia) return;
+
                 aulas.push({
                     id: generateId(),
                     materia,
-                    dia: item.querySelector('.aula-dia').value,
-                    inicio: item.querySelector('.aula-inicio').value,
-                    fim: item.querySelector('.aula-fim').value,
+                    dia: item.querySelector('.aula-dia')?.value || '1',
+                    inicio: item.querySelector('.aula-inicio')?.value || '',
+                    fim: item.querySelector('.aula-fim')?.value || '',
                     sala: item.querySelector('.aula-sala')?.value || '',
                     professor: item.querySelector('.aula-professor')?.value || '',
                     bloco: '',
                     cor: '#3b82f6'
                 });
+            });
+
+            this.data.classSchedule = aulas;
+
+            const success = await dbService.saveAllData(this.data);
+
+            if (success) {
+                document.getElementById('setup-screen')?.style.setProperty('display', 'none');
+                document.getElementById('main-dashboard')?.style.setProperty('display', 'block');
+                this.updateSidebarInfo();
+                this.loadView('dashboard');
+                showToast('Configuração concluída!');
             }
-        });
-
-        this.data.classSchedule = aulas;
-
-        const success = await dbService.saveAllData();
-
-        hideLoading();
-
-        if (success) {
-            document.getElementById('setup-screen').style.display = 'none';
-            document.getElementById('main-dashboard').style.display = 'block';
-            this.updateSidebarInfo();
-            this.loadView('dashboard');
-            showToast('Configuração concluída!');
+        } catch (error) {
+            console.error('Erro no setup:', error);
+            showToast('Erro ao concluir configuração', 'error');
+        } finally {
+            hideLoading();
         }
     }
 
@@ -349,6 +258,7 @@ class StudyLifeControl {
         document.querySelectorAll('.nav-item').forEach(item => {
             item.addEventListener('click', e => {
                 e.preventDefault();
+
                 const view = e.currentTarget.dataset.view;
                 this.loadView(view);
 
@@ -356,15 +266,16 @@ class StudyLifeControl {
                 e.currentTarget.classList.add('active');
 
                 const span = e.currentTarget.querySelector('span');
-                if (span) {
-                    document.getElementById('page-title').textContent = span.textContent;
-                }
+                const pageTitle = document.getElementById('page-title');
+                if (span && pageTitle) pageTitle.textContent = span.textContent;
             });
         });
 
         document.querySelectorAll('.close-modal').forEach(btn => {
             btn.addEventListener('click', () => {
-                document.querySelectorAll('.modal').forEach(modal => (modal.style.display = 'none'));
+                document.querySelectorAll('.modal').forEach(modal => {
+                    modal.style.display = 'none';
+                });
                 this.resetModalStates();
             });
         });
@@ -386,14 +297,15 @@ class StudyLifeControl {
         document.getElementById('form-daily-log')?.addEventListener('submit', e => this.handleDailyLogSubmit(e));
         document.getElementById('form-class-diary')?.addEventListener('submit', e => this.handleClassDiarySubmit(e));
 
-        document.getElementById('modo-faculdade-pesada')?.addEventListener('change', e => {
+        document.getElementById('modo-faculdade-pesada')?.addEventListener('change', async e => {
             this.data.settings.heavyMode = e.target.checked;
-            dbService.saveData('settings', this.data.settings);
+            await dbService.saveData('settings', this.data.settings);
             this.applyHeavyMode();
-            showToast(`Modo Faculdade Pesada ${e.target.checked ? 'ativado' : 'desativado'}`);
+            showToast(`Modo Faculdade Pesada ${e.target.checked ? 'ativado' : 'desativado'}`, 'info');
         });
 
-        document.getElementById('refresh-data')?.addEventListener('click', () => {
+        document.getElementById('refresh-data')?.addEventListener('click', async () => {
+            await this.loadData();
             this.loadView(this.currentView);
             showToast('Dados atualizados');
         });
@@ -404,47 +316,74 @@ class StudyLifeControl {
         this.editingTopicId = null;
         this.editingAulaId = null;
         this.editingMateriaId = null;
+        this.editingTaskId = null;
+        this.editingExamId = null;
+        this.editingGradeId = null;
+        this.editingMaterialId = null;
 
         const sessaoBtn = document.querySelector('#form-sessao .btn-primary');
-        if (sessaoBtn) sessaoBtn.textContent = 'Agendar Sessão';
-
         const topicoBtn = document.querySelector('#form-topico .btn-primary');
-        if (topicoBtn) topicoBtn.textContent = 'Adicionar Tópico';
-
         const aulaBtn = document.querySelector('#form-aula .btn-primary');
+        const tarefaBtn = document.querySelector('#form-tarefa .btn-primary');
+        const provaBtn = document.querySelector('#form-prova .btn-primary');
+        const notaBtn = document.querySelector('#form-nota .btn-primary');
+        const materialBtn = document.querySelector('#form-material .btn-primary');
+
+        if (sessaoBtn) sessaoBtn.textContent = 'Agendar Sessão';
+        if (topicoBtn) topicoBtn.textContent = 'Adicionar Tópico';
         if (aulaBtn) aulaBtn.textContent = 'Salvar Aula';
+        if (tarefaBtn) tarefaBtn.textContent = 'Adicionar Tarefa';
+        if (provaBtn) provaBtn.textContent = 'Salvar';
+        if (notaBtn) notaBtn.textContent = 'Registrar Nota';
+        if (materialBtn) materialBtn.textContent = 'Salvar Material';
     }
 
     applyHeavyMode() {
-        if (this.data.settings.heavyMode) {
+        if (this.data.settings?.heavyMode) {
             document.body.classList.add('heavy-mode');
         } else {
             document.body.classList.remove('heavy-mode');
         }
+
+        const checkbox = document.getElementById('modo-faculdade-pesada');
+        if (checkbox) checkbox.checked = !!this.data.settings?.heavyMode;
+
+        const configCheckbox = document.getElementById('config-heavy-mode');
+        if (configCheckbox) configCheckbox.checked = !!this.data.settings?.heavyMode;
     }
 
     updateSidebarInfo() {
         if (!this.data.user) return;
 
         const user = auth.currentUser;
-        if (user) {
-            const nameEl = document.getElementById('sidebar-user-name');
-            const emailEl = document.getElementById('sidebar-user-email');
-            const streakEl = document.getElementById('sidebar-streak');
-            const avatarEl = document.getElementById('user-avatar');
+        const nameEl = document.getElementById('sidebar-user-name');
+        const emailEl = document.getElementById('sidebar-user-email');
+        const streakEl = document.getElementById('sidebar-streak');
+        const avatarEl = document.getElementById('user-avatar');
 
-            if (nameEl) nameEl.textContent = this.data.user.nome;
-            if (emailEl) emailEl.textContent = user.email || '';
-            if (streakEl) streakEl.textContent = `${this.data.user.streak || 0} dias`;
-            if (avatarEl && user.photoURL) avatarEl.src = user.photoURL;
+        if (nameEl) nameEl.textContent = this.data.user.nome || 'Usuário';
+        if (emailEl) emailEl.textContent = user?.email || '';
+        if (streakEl) streakEl.textContent = `${this.data.user.streak || 0} dias`;
+
+        if (avatarEl) {
+            if (user?.photoURL) {
+                avatarEl.src = user.photoURL;
+                avatarEl.style.display = 'block';
+            } else {
+                avatarEl.style.display = 'none';
+            }
         }
     }
 
     loadView(view) {
-        if (!this.viewRenderer) this.viewRenderer = new ViewRenderer(this);
+        if (!this.viewRenderer) {
+            this.viewRenderer = new ViewRenderer(this);
+        }
 
         this.currentView = view;
         const container = document.getElementById('view-container');
+        if (!container) return;
+
         let html = '';
 
         switch (view) {
@@ -466,14 +405,12 @@ class StudyLifeControl {
             default: html = this.viewRenderer.renderDashboard();
         }
 
-        if (container) container.innerHTML = html;
+        container.innerHTML = html;
         this.setupViewEvents(view);
-
-        if (window.aiAssistant) window.aiAssistant.updateContext(this.data);
+        window.aiAssistant?.updateContext(this.data);
     }
 
     setupViewEvents(view) {
-        // SESSÕES
         if (view === 'sessoes') {
             document.getElementById('btn-nova-sessao')?.addEventListener('click', () => this.openModal('sessao'));
 
@@ -490,7 +427,6 @@ class StudyLifeControl {
             });
         }
 
-        // TAREFAS
         if (view === 'tarefas') {
             document.getElementById('btn-nova-tarefa')?.addEventListener('click', () => this.openModal('tarefa'));
 
@@ -498,21 +434,27 @@ class StudyLifeControl {
                 btn.addEventListener('click', e => this.concluirTarefa(e.currentTarget.dataset.id));
             });
 
+            document.querySelectorAll('.btn-editar-tarefa').forEach(btn => {
+                btn.addEventListener('click', e => this.editarTarefa(e.currentTarget.dataset.id));
+            });
+
             document.querySelectorAll('.btn-excluir-tarefa').forEach(btn => {
                 btn.addEventListener('click', e => this.excluirTarefa(e.currentTarget.dataset.id));
             });
         }
 
-        // PROVAS
         if (view === 'provas') {
             document.getElementById('btn-nova-prova')?.addEventListener('click', () => this.openModal('prova'));
+
+            document.querySelectorAll('.btn-editar-prova').forEach(btn => {
+                btn.addEventListener('click', e => this.editarProva(e.currentTarget.dataset.id));
+            });
 
             document.querySelectorAll('.btn-excluir-prova').forEach(btn => {
                 btn.addEventListener('click', e => this.excluirProva(e.currentTarget.dataset.id));
             });
         }
 
-        // GRADE HORÁRIA
         if (view === 'grade-horaria') {
             document.getElementById('btn-nova-aula')?.addEventListener('click', () => this.openModal('aula'));
 
@@ -532,26 +474,27 @@ class StudyLifeControl {
                 btn.addEventListener('click', e => this.editarAula(e.currentTarget.dataset.id));
             });
 
-            document.getElementById('grade-view-mode')?.addEventListener('change', () => {
+            document.getElementById('grade-view-mode')?.addEventListener('change', e => {
+                if (window.scheduleManager) {
+                    window.scheduleManager.viewMode = e.target.value === 'semana' ? 'week' : 'day';
+                }
                 this.loadView('grade-horaria');
             });
 
-            document.getElementById('grade-day-select')?.addEventListener('change', () => {
-                const modo = document.getElementById('grade-view-mode')?.value || 'dia';
-                if (modo === 'dia') {
-                    this.loadView('grade-horaria');
+            document.getElementById('grade-day-select')?.addEventListener('change', e => {
+                if (window.scheduleManager) {
+                    window.scheduleManager.selectedDay = parseInt(e.target.value, 10);
                 }
+                this.loadView('grade-horaria');
             });
 
             document.getElementById('exportar-grade')?.addEventListener('click', () => this.exportarGradeHoraria());
         }
 
-        // MENTOR IA
         if (view === 'mentor-ia') {
             this.setupIAEvents();
         }
 
-        // MAPA APRENDIZADO
         if (view === 'mapa-aprendizado') {
             document.getElementById('btn-novo-topico')?.addEventListener('click', () => this.openModal('topico'));
 
@@ -564,56 +507,56 @@ class StudyLifeControl {
             });
         }
 
-        // PREVISÃO NOTAS
         if (view === 'previsao-notas') {
             document.getElementById('btn-registrar-nota')?.addEventListener('click', () => this.openModal('nota'));
+
+            document.querySelectorAll('.btn-editar-nota').forEach(btn => {
+                btn.addEventListener('click', e => this.editarNota(e.currentTarget.dataset.id));
+            });
 
             document.querySelectorAll('.btn-excluir-nota').forEach(btn => {
                 btn.addEventListener('click', e => this.excluirNota(e.currentTarget.dataset.id));
             });
         }
 
-        // MATERIAIS
         if (view === 'materiais') {
             document.getElementById('btn-novo-material')?.addEventListener('click', () => this.openModal('material'));
+
+            document.querySelectorAll('.btn-editar-material').forEach(btn => {
+                btn.addEventListener('click', e => this.editarMaterial(e.currentTarget.dataset.id));
+            });
 
             document.querySelectorAll('.btn-excluir-material').forEach(btn => {
                 btn.addEventListener('click', e => this.excluirMaterial(e.currentTarget.dataset.id));
             });
         }
 
-        // FOCO
         if (view === 'foco') {
             document.getElementById('timer-start')?.addEventListener('click', () => this.startTimer());
             document.getElementById('timer-pause')?.addEventListener('click', () => this.pauseTimer());
             document.getElementById('timer-reset')?.addEventListener('click', () => this.resetTimer());
         }
 
-        // HÁBITOS
         if (view === 'habitos') {
             document.querySelectorAll('.toggle-habito').forEach(btn => {
-                btn.addEventListener('click', e => {
-                    const habitoId = e.currentTarget.dataset.habito;
-                    this.toggleHabito(habitoId);
-                });
+                btn.addEventListener('click', e => this.toggleHabito(e.currentTarget.dataset.habito));
             });
         }
 
-        // CONFIGURAÇÕES
         if (view === 'configuracoes') {
-            document.getElementById('config-notificacoes')?.addEventListener('change', e => {
+            document.getElementById('config-notificacoes')?.addEventListener('change', async e => {
                 this.data.settings.notifications = e.target.checked;
-                dbService.saveData('settings', this.data.settings);
+                await dbService.saveData('settings', this.data.settings);
             });
 
-            document.getElementById('config-auto-plan')?.addEventListener('change', e => {
+            document.getElementById('config-auto-plan')?.addEventListener('change', async e => {
                 this.data.settings.autoPlan = e.target.checked;
-                dbService.saveData('settings', this.data.settings);
+                await dbService.saveData('settings', this.data.settings);
             });
 
-            document.getElementById('config-heavy-mode')?.addEventListener('change', e => {
+            document.getElementById('config-heavy-mode')?.addEventListener('change', async e => {
                 this.data.settings.heavyMode = e.target.checked;
-                dbService.saveData('settings', this.data.settings);
+                await dbService.saveData('settings', this.data.settings);
                 this.applyHeavyMode();
             });
 
@@ -621,20 +564,18 @@ class StudyLifeControl {
             document.getElementById('limpar-dados')?.addEventListener('click', () => this.limparDados());
         }
 
-        // MATÉRIAS
         if (view === 'materias') {
             document.getElementById('btn-nova-materia')?.addEventListener('click', () => this.openModal('materia'));
-            
+
             document.querySelectorAll('.btn-editar-materia').forEach(btn => {
                 btn.addEventListener('click', e => this.editarMateria(e.currentTarget.dataset.id));
             });
-            
+
             document.querySelectorAll('.btn-excluir-materia').forEach(btn => {
                 btn.addEventListener('click', e => this.excluirMateria(e.currentTarget.dataset.id));
             });
         }
 
-        // BOTÕES RÁPIDOS
         document.getElementById('quick-sessao')?.addEventListener('click', () => this.openModal('sessao'));
         document.getElementById('quick-tarefa')?.addEventListener('click', () => this.openModal('tarefa'));
         document.getElementById('quick-prova')?.addEventListener('click', () => this.openModal('prova'));
@@ -659,35 +600,45 @@ class StudyLifeControl {
 
         if (!input || !sendBtn || !messages) return;
 
+        const appendMessage = (role, content, isLoading = false) => {
+            const wrapper = document.createElement('div');
+            wrapper.className = `message ${role}${isLoading ? ' loading' : ''}`;
+
+            const contentEl = document.createElement('div');
+            contentEl.className = 'message-content';
+
+            if (role === 'assistant') {
+                contentEl.innerHTML = nl2brSafe(content);
+            } else {
+                contentEl.textContent = content;
+            }
+
+            wrapper.appendChild(contentEl);
+            messages.appendChild(wrapper);
+            messages.scrollTop = messages.scrollHeight;
+
+            return wrapper;
+        };
+
         const sendMessage = async () => {
             const text = input.value.trim();
             if (!text) return;
 
-            messages.innerHTML += `
-                <div class="message user">
-                    <div class="message-content">${text}</div>
-                </div>
-            `;
+            appendMessage('user', text);
             input.value = '';
 
-            messages.innerHTML += `
-                <div class="message assistant loading">
-                    <div class="message-content">Pensando...</div>
-                </div>
-            `;
-            messages.scrollTop = messages.scrollHeight;
+            const loadingEl = appendMessage('assistant', 'Pensando...', true);
 
-            if (window.aiAssistant) {
-                window.aiAssistant.updateContext(this.data);
+            try {
+                window.aiAssistant?.updateContext(this.data);
                 const resposta = await window.aiAssistant.ask(text);
 
-                messages.querySelector('.loading')?.remove();
-                messages.innerHTML += `
-                    <div class="message assistant">
-                        <div class="message-content">${resposta.replace(/\n/g, '<br>')}</div>
-                    </div>
-                `;
-                messages.scrollTop = messages.scrollHeight;
+                loadingEl.remove();
+                appendMessage('assistant', resposta || 'Não consegui responder agora.');
+            } catch (error) {
+                console.error('Erro no chat IA:', error);
+                loadingEl.remove();
+                appendMessage('assistant', 'Deu erro ao responder. Tenta de novo.');
             }
         };
 
@@ -698,7 +649,7 @@ class StudyLifeControl {
 
         document.querySelectorAll('.sugestao-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                input.value = btn.dataset.pergunta;
+                input.value = btn.dataset.pergunta || '';
                 sendMessage();
             });
         });
@@ -719,22 +670,47 @@ class StudyLifeControl {
         });
     }
 
-    openModal(modalType, data = {}) {
-        if (['sessao', 'tarefa', 'prova', 'topico', 'nota', 'material', 'aula', 'materia'].includes(modalType)) {
-            const select = document.getElementById(`${modalType}-materia`);
-            if (select && this.data.subjects.length > 0 && modalType !== 'materia') {
-                select.innerHTML = '<option value="">Selecione</option>';
-                this.data.subjects.forEach(s => {
-                    select.innerHTML += `<option value="${s.nome}">${s.nome}</option>`;
-                });
-                if (data.materia) select.value = data.materia;
+    populateSubjectSelects() {
+        const selectIds = [
+            'sessao-materia',
+            'tarefa-materia',
+            'prova-materia',
+            'topico-materia',
+            'nota-materia',
+            'material-materia',
+            'aula-materia'
+        ];
+
+        selectIds.forEach(id => {
+            const select = document.getElementById(id);
+            if (!select) return;
+
+            const currentValue = select.value;
+            select.innerHTML = '<option value="">Selecione</option>';
+
+            this.data.subjects.forEach(s => {
+                const option = document.createElement('option');
+                option.value = s.nome;
+                option.textContent = s.nome;
+                select.appendChild(option);
+            });
+
+            if (currentValue && this.data.subjects.some(s => s.nome === currentValue)) {
+                select.value = currentValue;
             }
+        });
+    }
+
+    openModal(modalType, data = {}) {
+        if (['sessao', 'tarefa', 'prova', 'topico', 'nota', 'material', 'aula'].includes(modalType)) {
+            this.populateSubjectSelects();
         }
 
         if (modalType === 'sessao') {
             const btn = document.querySelector('#form-sessao .btn-primary');
             if (btn) btn.textContent = this.editingSessionId ? 'Atualizar Sessão' : 'Agendar Sessão';
 
+            if (data.materia) document.getElementById('sessao-materia').value = data.materia;
             if (data.tipo) document.getElementById('sessao-tipo').value = data.tipo;
             if (data.duracao) document.getElementById('sessao-duracao').value = data.duracao;
 
@@ -742,6 +718,29 @@ class StudyLifeControl {
             now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
             document.getElementById('sessao-data').value = data.data || now.toISOString().slice(0, 16);
             document.getElementById('sessao-topico').value = data.topico || '';
+        }
+
+        if (modalType === 'tarefa') {
+            const btn = document.querySelector('#form-tarefa .btn-primary');
+            if (btn) btn.textContent = this.editingTaskId ? 'Atualizar Tarefa' : 'Adicionar Tarefa';
+
+            document.getElementById('tarefa-titulo').value = data.titulo || '';
+            if (data.materia) document.getElementById('tarefa-materia').value = data.materia;
+            document.getElementById('tarefa-prioridade').value = data.prioridade || 'media';
+            document.getElementById('tarefa-data').value = data.dataLimite || '';
+            document.getElementById('tarefa-estimativa').value = data.estimativa || 60;
+        }
+
+        if (modalType === 'prova') {
+            const btn = document.querySelector('#form-prova .btn-primary');
+            if (btn) btn.textContent = this.editingExamId ? 'Atualizar' : 'Salvar';
+
+            document.getElementById('prova-titulo').value = data.titulo || '';
+            if (data.materia) document.getElementById('prova-materia').value = data.materia;
+            document.getElementById('prova-tipo').value = data.tipo || 'prova';
+            document.getElementById('prova-data').value = data.data || '';
+            document.getElementById('prova-peso').value = data.peso || 100;
+            document.getElementById('prova-importancia').value = data.importancia || 'alta';
         }
 
         if (modalType === 'topico') {
@@ -755,6 +754,26 @@ class StudyLifeControl {
             document.getElementById('topico-confianca').value = data.confianca || 3;
         }
 
+        if (modalType === 'nota') {
+            const btn = document.querySelector('#form-nota .btn-primary');
+            if (btn) btn.textContent = this.editingGradeId ? 'Atualizar Nota' : 'Registrar Nota';
+
+            if (data.materia) document.getElementById('nota-materia').value = data.materia;
+            document.getElementById('nota-avaliacao').value = data.avaliacao || '';
+            document.getElementById('nota-valor').value = data.valor ?? '';
+            document.getElementById('nota-peso').value = data.peso || 100;
+        }
+
+        if (modalType === 'material') {
+            const btn = document.querySelector('#form-material .btn-primary');
+            if (btn) btn.textContent = this.editingMaterialId ? 'Atualizar Material' : 'Salvar Material';
+
+            document.getElementById('material-titulo').value = data.titulo || '';
+            if (data.materia) document.getElementById('material-materia').value = data.materia;
+            document.getElementById('material-tipo').value = data.tipo || 'link';
+            document.getElementById('material-conteudo').value = data.conteudo || '';
+        }
+
         if (modalType === 'aula') {
             const btn = document.querySelector('#form-aula .btn-primary');
             if (btn) btn.textContent = this.editingAulaId ? 'Atualizar Aula' : 'Salvar Aula';
@@ -765,20 +784,76 @@ class StudyLifeControl {
             if (data.fim) document.getElementById('aula-fim').value = data.fim;
             document.getElementById('aula-sala').value = data.sala || '';
             document.getElementById('aula-professor').value = data.professor || '';
-            if (document.getElementById('aula-bloco')) {
-                document.getElementById('aula-bloco').value = data.bloco || '';
-            }
-            if (document.getElementById('aula-cor')) {
-                document.getElementById('aula-cor').value = data.cor || '#3b82f6';
-            }
+            if (document.getElementById('aula-bloco')) document.getElementById('aula-bloco').value = data.bloco || '';
+            if (document.getElementById('aula-cor')) document.getElementById('aula-cor').value = data.cor || '#3b82f6';
         }
 
         if (modalType === 'materia') {
-            // Implementar modal de matéria se necessário
+            const nome = data.nome || prompt('Nome da matéria:');
+            if (!nome) return;
+
+            const dificuldade = parseInt(prompt('Dificuldade (1 a 5):', data.dificuldade || 3), 10) || 3;
+            const peso = parseInt(prompt('Peso da matéria (1 a 5):', data.peso || 3), 10) || 3;
+            const notaDesejada = parseFloat(prompt('Nota desejada (0 a 10):', data.notaDesejada || 7)) || 7;
+
+            if (this.editingMateriaId) {
+                this.salvarMateriaEditada(this.editingMateriaId, { nome, dificuldade, peso, notaDesejada });
+            } else {
+                this.salvarNovaMateria({ nome, dificuldade, peso, notaDesejada });
+            }
+            return;
         }
 
         const modal = document.getElementById(`modal-${modalType}`);
         if (modal) modal.style.display = 'block';
+    }
+
+    async salvarNovaMateria(materiaData) {
+        const existe = this.data.subjects.some(s => s.nome.toLowerCase() === materiaData.nome.toLowerCase());
+        if (existe) {
+            showToast('Já existe uma matéria com esse nome', 'warning');
+            return;
+        }
+
+        const success = await dbService.addItem('subjects', {
+            id: generateId(),
+            ...materiaData
+        });
+
+        if (success) {
+            this.loadView(this.currentView);
+            showToast('Matéria adicionada!');
+        }
+    }
+
+    async salvarMateriaEditada(id, materiaData) {
+        const materiaAntiga = this.data.subjects.find(s => s.id === id);
+        if (!materiaAntiga) return;
+
+        const nomeAntigo = materiaAntiga.nome;
+        const nomeNovo = materiaData.nome;
+
+        if (nomeNovo !== nomeAntigo) {
+            this.data.sessions.forEach(item => { if (item.materia === nomeAntigo) item.materia = nomeNovo; });
+            this.data.tasks.forEach(item => { if (item.materia === nomeAntigo) item.materia = nomeNovo; });
+            this.data.exams.forEach(item => { if (item.materia === nomeAntigo) item.materia = nomeNovo; });
+            this.data.learningMap.forEach(item => { if (item.materia === nomeAntigo) item.materia = nomeNovo; });
+            this.data.grades.forEach(item => { if (item.materia === nomeAntigo) item.materia = nomeNovo; });
+            this.data.materials.forEach(item => { if (item.materia === nomeAntigo) item.materia = nomeNovo; });
+            this.data.classSchedule.forEach(item => { if (item.materia === nomeAntigo) item.materia = nomeNovo; });
+            this.data.classDiaries.forEach(item => { if (item.materia === nomeAntigo) item.materia = nomeNovo; });
+            this.data.reviews.forEach(item => { if (item.materia === nomeAntigo) item.materia = nomeNovo; });
+        }
+
+        const index = this.data.subjects.findIndex(s => s.id === id);
+        this.data.subjects[index] = { ...this.data.subjects[index], ...materiaData };
+
+        const success = await dbService.saveAllData(this.data);
+        if (success) {
+            this.editingMateriaId = null;
+            this.loadView(this.currentView);
+            showToast('Matéria atualizada!');
+        }
     }
 
     editarSessao(id) {
@@ -793,6 +868,22 @@ class StudyLifeControl {
             data: sessao.data?.slice(0, 16),
             topico: sessao.topico || ''
         });
+    }
+
+    editarTarefa(id) {
+        const tarefa = this.data.tasks.find(t => t.id === id);
+        if (!tarefa) return;
+
+        this.editingTaskId = id;
+        this.openModal('tarefa', tarefa);
+    }
+
+    editarProva(id) {
+        const prova = this.data.exams.find(p => p.id === id);
+        if (!prova) return;
+
+        this.editingExamId = id;
+        this.openModal('prova', prova);
     }
 
     editarTopico(id) {
@@ -811,20 +902,35 @@ class StudyLifeControl {
         this.openModal('aula', aula);
     }
 
+    editarNota(id) {
+        const nota = this.data.grades.find(n => n.id === id);
+        if (!nota) return;
+
+        this.editingGradeId = id;
+        this.openModal('nota', nota);
+    }
+
+    editarMaterial(id) {
+        const material = this.data.materials.find(m => m.id === id);
+        if (!material) return;
+
+        this.editingMaterialId = id;
+        this.openModal('material', material);
+    }
+
     editarMateria(id) {
         const materia = this.data.subjects.find(s => s.id === id);
         if (!materia) return;
-        
+
         this.editingMateriaId = id;
-        // Implementar modal de edição de matéria
-        showToast('Funcionalidade em desenvolvimento', 'info');
+        this.openModal('materia', materia);
     }
 
     openDailyLogModal() {
         const modal = document.getElementById('modal-daily-log');
         if (!modal) return;
 
-        const hoje = new Date().toISOString().split('T')[0];
+        const hoje = toDateString();
         const logHoje = window.dailyLogService?.getLogPorData(hoje);
 
         document.getElementById('daily-log-estudo-inicio').value = logHoje?.estudo?.inicio || '';
@@ -848,15 +954,20 @@ class StudyLifeControl {
 
         select.innerHTML = '<option value="">Selecione</option>';
         this.data.subjects.forEach(s => {
-            select.innerHTML += `<option value="${s.nome}">${s.nome}</option>`;
+            const option = document.createElement('option');
+            option.value = s.nome;
+            option.textContent = s.nome;
+            select.appendChild(option);
         });
 
         if (aulaId && window.scheduleManager) {
             const aula = window.scheduleManager.aulas.find(a => a.id === aulaId);
             if (aula) {
                 select.value = aula.materia;
-                document.getElementById('class-diary-data').value = new Date().toISOString().split('T')[0];
+                document.getElementById('class-diary-data').value = toDateString();
             }
+        } else {
+            document.getElementById('class-diary-data').value = toDateString();
         }
 
         modal.style.display = 'block';
@@ -874,41 +985,50 @@ class StudyLifeControl {
         document.getElementById('aula-detail-sala').textContent = aula.sala || 'Não informada';
         document.getElementById('aula-detail-professor').textContent = aula.professor || 'Não informado';
 
-        const hoje = new Date().toISOString().split('T')[0];
+        const hoje = toDateString();
         const key = `${aulaId}_${hoje}`;
         const presencaHoje = this.data.attendance[key];
-
         const presencaContainer = document.getElementById('aula-detail-presenca');
-        if (presencaHoje) {
-            presencaContainer.innerHTML = `<span class="tag ${presencaHoje === 'present' ? 'success' : 'danger'}">${presencaHoje === 'present' ? 'Presente' : 'Faltou'}</span>`;
-        } else {
-            presencaContainer.innerHTML = `
-                <button class="btn-small btn-success" onclick="window.app.marcarPresenca('${aulaId}', 'present')">✅ Presente</button>
-                <button class="btn-small btn-danger" onclick="window.app.marcarPresenca('${aulaId}', 'absent')">❌ Faltei</button>
-            `;
+
+        if (presencaContainer) {
+            if (presencaHoje) {
+                presencaContainer.innerHTML = `<span class="tag ${presencaHoje === 'present' ? 'success' : 'danger'}">${presencaHoje === 'present' ? 'Presente' : 'Faltou'}</span>`;
+            } else {
+                presencaContainer.innerHTML = `
+                    <button class="btn-small btn-success" data-status="present">✅ Presente</button>
+                    <button class="btn-small btn-danger" data-status="absent">❌ Faltei</button>
+                `;
+
+                presencaContainer.querySelectorAll('button').forEach(btn => {
+                    btn.addEventListener('click', () => this.marcarPresenca(aulaId, btn.dataset.status));
+                });
+            }
         }
 
         const ultimoDiario = window.classDiaryService?.getUltimoDiarioPorMateria(aula.materia);
-        if (ultimoDiario) {
-            document.getElementById('aula-detail-ultimo-conteudo').innerHTML = `
-                <strong>${ultimoDiario.data}</strong>: ${ultimoDiario.conteudoExplicado || 'Nenhum conteúdo registrado'}
-                ${ultimoDiario.precisoRevisar ? '<span class="badge warning">Revisar</span>' : ''}
-            `;
-        } else {
-            document.getElementById('aula-detail-ultimo-conteudo').textContent = 'Nenhum registro de aula';
+        const ultimoConteudoEl = document.getElementById('aula-detail-ultimo-conteudo');
+        if (ultimoConteudoEl) {
+            if (ultimoDiario) {
+                ultimoConteudoEl.innerHTML = `
+                    <strong>${escapeHtml(ultimoDiario.data)}</strong>: ${escapeHtml(ultimoDiario.conteudoExplicado || 'Nenhum conteúdo registrado')}
+                    ${ultimoDiario.precisoRevisar ? '<span class="badge warning">Revisar</span>' : ''}
+                `;
+            } else {
+                ultimoConteudoEl.textContent = 'Nenhum registro de aula';
+            }
         }
 
         modal.style.display = 'block';
     }
 
     async marcarPresenca(aulaId, status) {
-        const hoje = new Date().toISOString().split('T')[0];
-        if (window.scheduleManager) {
-            const success = await window.scheduleManager.marcarPresenca(aulaId, hoje, status);
-            if (success) {
-                showToast(`Presença marcada como ${status === 'present' ? 'presente' : 'falta'}`);
-                this.openAulaModal(aulaId);
-            }
+        const hoje = toDateString();
+        if (!window.scheduleManager) return;
+
+        const success = await window.scheduleManager.marcarPresenca(aulaId, hoje, status);
+        if (success) {
+            showToast(`Presença marcada como ${status === 'present' ? 'presente' : 'falta'}`);
+            this.openAulaModal(aulaId);
         }
     }
 
@@ -931,10 +1051,7 @@ class StudyLifeControl {
             observacoes: document.getElementById('daily-log-observacoes').value
         };
 
-        if (window.dailyLogService) {
-            await window.dailyLogService.registrarLog(logData);
-        }
-
+        await window.dailyLogService?.registrarLog(logData);
         document.getElementById('modal-daily-log').style.display = 'none';
         this.loadView(this.currentView);
     }
@@ -954,10 +1071,7 @@ class StudyLifeControl {
             observacoes: document.getElementById('class-diary-observacoes').value
         };
 
-        if (window.classDiaryService) {
-            await window.classDiaryService.registrarDiario(diaryData);
-        }
-
+        await window.classDiaryService?.registrarDiario(diaryData);
         document.getElementById('modal-class-diary').style.display = 'none';
         this.loadView(this.currentView);
     }
@@ -989,8 +1103,7 @@ class StudyLifeControl {
         if (success) {
             document.getElementById('modal-sessao').style.display = 'none';
             this.editingSessionId = null;
-            const btn = document.querySelector('#form-sessao .btn-primary');
-            if (btn) btn.textContent = 'Agendar Sessão';
+            this.resetModalStates();
             this.loadView(this.currentView);
             showToast(isEditing ? 'Sessão atualizada!' : 'Sessão adicionada!');
         }
@@ -999,8 +1112,7 @@ class StudyLifeControl {
     async handleTarefaSubmit(e) {
         e.preventDefault();
 
-        const novaTarefa = {
-            id: generateId(),
+        const tarefaData = {
             titulo: document.getElementById('tarefa-titulo').value,
             materia: document.getElementById('tarefa-materia').value,
             prioridade: document.getElementById('tarefa-prioridade').value,
@@ -1009,19 +1121,35 @@ class StudyLifeControl {
             concluida: false
         };
 
-        const success = await dbService.addItem('tasks', novaTarefa);
+        const isEditing = !!this.editingTaskId;
+        let success = false;
+
+        if (isEditing) {
+            const tarefaOriginal = this.data.tasks.find(t => t.id === this.editingTaskId);
+            success = await dbService.updateItem('tasks', this.editingTaskId, {
+                ...tarefaData,
+                concluida: tarefaOriginal?.concluida || false
+            });
+        } else {
+            success = await dbService.addItem('tasks', {
+                id: generateId(),
+                ...tarefaData
+            });
+        }
+
         if (success) {
             document.getElementById('modal-tarefa').style.display = 'none';
+            this.editingTaskId = null;
+            this.resetModalStates();
             this.loadView(this.currentView);
-            showToast('Tarefa adicionada!');
+            showToast(isEditing ? 'Tarefa atualizada!' : 'Tarefa adicionada!');
         }
     }
 
     async handleProvaSubmit(e) {
         e.preventDefault();
 
-        const novaProva = {
-            id: generateId(),
+        const provaData = {
             titulo: document.getElementById('prova-titulo').value,
             materia: document.getElementById('prova-materia').value,
             tipo: document.getElementById('prova-tipo').value,
@@ -1031,11 +1159,28 @@ class StudyLifeControl {
             concluida: false
         };
 
-        const success = await dbService.addItem('exams', novaProva);
+        const isEditing = !!this.editingExamId;
+        let success = false;
+
+        if (isEditing) {
+            const original = this.data.exams.find(p => p.id === this.editingExamId);
+            success = await dbService.updateItem('exams', this.editingExamId, {
+                ...provaData,
+                concluida: original?.concluida || false
+            });
+        } else {
+            success = await dbService.addItem('exams', {
+                id: generateId(),
+                ...provaData
+            });
+        }
+
         if (success) {
             document.getElementById('modal-prova').style.display = 'none';
+            this.editingExamId = null;
+            this.resetModalStates();
             this.loadView(this.currentView);
-            showToast('Evento adicionado!');
+            showToast(isEditing ? 'Evento atualizado!' : 'Evento adicionado!');
         }
     }
 
@@ -1070,8 +1215,7 @@ class StudyLifeControl {
         if (success) {
             document.getElementById('modal-aula').style.display = 'none';
             this.editingAulaId = null;
-            const btn = document.querySelector('#form-aula .btn-primary');
-            if (btn) btn.textContent = 'Salvar Aula';
+            this.resetModalStates();
             document.dispatchEvent(new Event('aulas-atualizadas'));
             this.loadView('grade-horaria');
             showToast(isEditing ? 'Aula atualizada com sucesso!' : 'Aula salva com sucesso!');
@@ -1090,8 +1234,8 @@ class StudyLifeControl {
             ultimaRevisao: new Date().toISOString()
         };
 
-        let success = false;
         const isEditing = !!this.editingTopicId;
+        let success = false;
 
         if (isEditing) {
             success = await dbService.updateItem('learningMap', this.editingTopicId, topicoData);
@@ -1105,8 +1249,7 @@ class StudyLifeControl {
         if (success) {
             document.getElementById('modal-topico').style.display = 'none';
             this.editingTopicId = null;
-            const btn = document.querySelector('#form-topico .btn-primary');
-            if (btn) btn.textContent = 'Adicionar Tópico';
+            this.resetModalStates();
             this.loadView(this.currentView);
             showToast(isEditing ? 'Tópico atualizado!' : 'Tópico salvo!');
         }
@@ -1115,8 +1258,7 @@ class StudyLifeControl {
     async handleNotaSubmit(e) {
         e.preventDefault();
 
-        const novaNota = {
-            id: generateId(),
+        const notaData = {
             materia: document.getElementById('nota-materia').value,
             avaliacao: document.getElementById('nota-avaliacao').value,
             valor: parseFloat(document.getElementById('nota-valor').value),
@@ -1124,30 +1266,55 @@ class StudyLifeControl {
             data: new Date().toISOString()
         };
 
-        const success = await dbService.addItem('grades', novaNota);
+        const isEditing = !!this.editingGradeId;
+        let success = false;
+
+        if (isEditing) {
+            success = await dbService.updateItem('grades', this.editingGradeId, notaData);
+        } else {
+            success = await dbService.addItem('grades', {
+                id: generateId(),
+                ...notaData
+            });
+        }
+
         if (success) {
             document.getElementById('modal-nota').style.display = 'none';
+            this.editingGradeId = null;
+            this.resetModalStates();
             this.loadView(this.currentView);
-            showToast('Nota registrada!');
+            showToast(isEditing ? 'Nota atualizada!' : 'Nota registrada!');
         }
     }
 
     async handleMaterialSubmit(e) {
         e.preventDefault();
 
-        const novoMaterial = {
-            id: generateId(),
+        const materialData = {
             titulo: document.getElementById('material-titulo').value,
             materia: document.getElementById('material-materia').value,
             tipo: document.getElementById('material-tipo').value,
             conteudo: document.getElementById('material-conteudo').value
         };
 
-        const success = await dbService.addItem('materials', novoMaterial);
+        const isEditing = !!this.editingMaterialId;
+        let success = false;
+
+        if (isEditing) {
+            success = await dbService.updateItem('materials', this.editingMaterialId, materialData);
+        } else {
+            success = await dbService.addItem('materials', {
+                id: generateId(),
+                ...materialData
+            });
+        }
+
         if (success) {
             document.getElementById('modal-material').style.display = 'none';
+            this.editingMaterialId = null;
+            this.resetModalStates();
             this.loadView(this.currentView);
-            showToast('Material adicionado!');
+            showToast(isEditing ? 'Material atualizado!' : 'Material adicionado!');
         }
     }
 
@@ -1155,11 +1322,10 @@ class StudyLifeControl {
         const sessao = this.data.sessions.find(s => s.id === id);
         if (!sessao) return;
 
-        sessao.concluida = true;
-        this.updateStreak();
-
         const success = await dbService.updateItem('sessions', id, { concluida: true });
         if (success) {
+            sessao.concluida = true;
+            this.updateStreak();
             this.loadView(this.currentView);
             showToast('Sessão concluída!');
         }
@@ -1169,61 +1335,79 @@ class StudyLifeControl {
         const tarefa = this.data.tasks.find(t => t.id === id);
         if (!tarefa) return;
 
-        tarefa.concluida = true;
         const success = await dbService.updateItem('tasks', id, { concluida: true });
         if (success) {
+            tarefa.concluida = true;
             this.loadView(this.currentView);
             showToast('Tarefa concluída!');
         }
     }
 
     async toggleHabito(id) {
-        const hoje = new Date().toDateString();
-        const idx = this.data.habits.findIndex(h => h.id === id && new Date(h.data).toDateString() === hoje);
+        const hoje = toDateString();
+        const idx = this.data.habits.findIndex(h => h.id === id && toDateString(h.data) === hoje);
 
-        let success;
+        let success = false;
+
         if (idx >= 0) {
             this.data.habits.splice(idx, 1);
             success = await dbService.saveData('habits', this.data.habits);
         } else {
-            const novoHabito = { id, data: new Date().toISOString() };
-            this.data.habits.push(novoHabito);
+            this.data.habits.push({ id, data: new Date().toISOString() });
             success = await dbService.saveData('habits', this.data.habits);
         }
 
-        if (success) {
-            this.loadView(this.currentView);
-        }
+        if (success) this.loadView(this.currentView);
     }
 
     startTimer() {
-        if (this.timerRunning) return;
+        const durationInput = document.getElementById('timer-duracao');
 
-        const d = parseInt(document.getElementById('timer-duracao').value, 10);
-        this.timerSeconds = d * 60;
-        this.timerDuration = d;
+        if (!this.timerRunning && this.timerSeconds <= 0) {
+            const d = parseInt(durationInput?.value, 10) || 25;
+            this.timerSeconds = d * 60;
+            this.timerDuration = d;
+        }
+
+        if (this.timerRunning || this.timerSeconds <= 0) return;
+
         this.timerRunning = true;
+        this.timerStartedAt = Date.now();
 
-        document.getElementById('timer-start').style.display = 'none';
-        document.getElementById('timer-pause').style.display = 'inline-block';
+        const startBtn = document.getElementById('timer-start');
+        const pauseBtn = document.getElementById('timer-pause');
+
+        if (startBtn) startBtn.style.display = 'none';
+        if (pauseBtn) pauseBtn.style.display = 'inline-block';
 
         this.timerInterval = setInterval(() => {
             this.timerSeconds--;
             this.updateTimerDisplay();
-            if (this.timerSeconds <= 0) this.timerComplete();
+
+            if (this.timerSeconds <= 0) {
+                this.timerComplete();
+            }
         }, 1000);
+
+        this.updateTimerDisplay();
     }
 
     pauseTimer() {
         this.timerRunning = false;
         clearInterval(this.timerInterval);
-        document.getElementById('timer-start').style.display = 'inline-block';
-        document.getElementById('timer-pause').style.display = 'none';
+
+        const startBtn = document.getElementById('timer-start');
+        const pauseBtn = document.getElementById('timer-pause');
+
+        if (startBtn) startBtn.style.display = 'inline-block';
+        if (pauseBtn) pauseBtn.style.display = 'none';
     }
 
     resetTimer() {
         this.pauseTimer();
         this.timerSeconds = 0;
+        this.timerDuration = 0;
+        this.timerStartedAt = null;
         this.updateTimerDisplay();
     }
 
@@ -1245,27 +1429,32 @@ class StudyLifeControl {
             this.updateStreak();
             this.loadView(this.currentView);
         }
+
+        this.timerSeconds = 0;
+        this.timerDuration = 0;
+        this.updateTimerDisplay();
     }
 
     updateTimerDisplay() {
+        const display = document.getElementById('timer-display');
+        if (!display) return;
+
         const m = Math.floor(this.timerSeconds / 60);
         const s = this.timerSeconds % 60;
-        const display = document.getElementById('timer-display');
-        if (display) {
-            display.textContent = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-        }
+        display.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     }
 
     updateStreak() {
         if (!this.data.user) return;
 
-        const hoje = new Date().toDateString();
+        const hoje = toDateString();
         if (this.data.user.lastStudyDate === hoje) return;
 
         const ontem = new Date();
         ontem.setDate(ontem.getDate() - 1);
+        const ontemStr = toDateString(ontem);
 
-        if (this.data.user.lastStudyDate === ontem.toDateString()) {
+        if (this.data.user.lastStudyDate === ontemStr) {
             this.data.user.streak = (this.data.user.streak || 0) + 1;
         } else {
             this.data.user.streak = 1;
@@ -1279,11 +1468,11 @@ class StudyLifeControl {
     async whatsNow() {
         if (!window.aiAssistant) return;
 
-        const sugestao = await window.aiAssistant.sugerirEstudoAgora();
+        const sugestao = window.aiAssistant.sugerirEstudoAgora();
         const modal = document.getElementById('modal-whats-now');
 
         if (modal) {
-            document.getElementById('whats-now-content').innerHTML = sugestao.replace(/\n/g, '<br>');
+            document.getElementById('whats-now-content').innerHTML = nl2brSafe(sugestao);
             modal.style.display = 'block';
         } else {
             showToast(sugestao, 'info');
@@ -1291,19 +1480,19 @@ class StudyLifeControl {
     }
 
     exportarGradeHoraria() {
-        const aulas = this.data.classSchedule || [];
+        const aulas = [...(this.data.classSchedule || [])];
         const diasSemana = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
         let csv = 'Dia,Matéria,Início,Fim,Sala,Professor,Bloco\n';
-        aulas
-            .slice()
-            .sort((a, b) => {
-                if (parseInt(a.dia, 10) !== parseInt(b.dia, 10)) return parseInt(a.dia, 10) - parseInt(b.dia, 10);
-                return a.inicio.localeCompare(b.inicio);
-            })
-            .forEach(a => {
-                csv += `${diasSemana[parseInt(a.dia, 10)]},${a.materia},${a.inicio},${a.fim},${a.sala || ''},${a.professor || ''},${a.bloco || ''}\n`;
-            });
+
+        aulas.sort((a, b) => {
+            if (parseInt(a.dia, 10) !== parseInt(b.dia, 10)) {
+                return parseInt(a.dia, 10) - parseInt(b.dia, 10);
+            }
+            return a.inicio.localeCompare(b.inicio);
+        }).forEach(a => {
+            csv += `"${diasSemana[parseInt(a.dia, 10)]}","${(a.materia || '').replace(/"/g, '""')}","${a.inicio || ''}","${a.fim || ''}","${(a.sala || '').replace(/"/g, '""')}","${(a.professor || '').replace(/"/g, '""')}","${(a.bloco || '').replace(/"/g, '""')}"\n`;
+        });
 
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
@@ -1320,10 +1509,12 @@ class StudyLifeControl {
         const dataStr = JSON.stringify(this.data, null, 2);
         const blob = new Blob([dataStr], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
+
         const a = document.createElement('a');
         a.href = url;
         a.download = 'study-life-control-backup.json';
         a.click();
+
         URL.revokeObjectURL(url);
         showToast('Dados exportados!');
     }
@@ -1339,6 +1530,100 @@ class StudyLifeControl {
         }
     }
 
+    async excluirSessao(id) {
+        if (!confirm('Tem certeza que deseja excluir esta sessão?')) return;
+
+        const success = await dbService.removeItem('sessions', id);
+        if (success) {
+            this.loadView(this.currentView);
+            showToast('Sessão excluída!');
+        }
+    }
+
+    async excluirTarefa(id) {
+        if (!confirm('Tem certeza que deseja excluir esta tarefa?')) return;
+
+        const success = await dbService.removeItem('tasks', id);
+        if (success) {
+            this.loadView(this.currentView);
+            showToast('Tarefa excluída!');
+        }
+    }
+
+    async excluirProva(id) {
+        if (!confirm('Tem certeza que deseja excluir esta prova?')) return;
+
+        const success = await dbService.removeItem('exams', id);
+        if (success) {
+            this.loadView(this.currentView);
+            showToast('Prova excluída!');
+        }
+    }
+
+    async excluirTopico(id) {
+        if (!confirm('Tem certeza que deseja excluir este tópico?')) return;
+
+        const success = await dbService.removeItem('learningMap', id);
+        if (success) {
+            this.loadView(this.currentView);
+            showToast('Tópico excluído!');
+        }
+    }
+
+    async excluirMaterial(id) {
+        if (!confirm('Tem certeza que deseja excluir este material?')) return;
+
+        const success = await dbService.removeItem('materials', id);
+        if (success) {
+            this.loadView(this.currentView);
+            showToast('Material excluído!');
+        }
+    }
+
+    async excluirNota(id) {
+        if (!confirm('Tem certeza que deseja excluir esta nota?')) return;
+
+        const success = await dbService.removeItem('grades', id);
+        if (success) {
+            this.loadView(this.currentView);
+            showToast('Nota excluída!');
+        }
+    }
+
+    async excluirMateria(id) {
+        if (!confirm('ATENÇÃO: Excluir esta matéria também excluirá todas as sessões, tarefas, provas, tópicos, notas, materiais e aulas relacionados. Continuar?')) return;
+
+        const materia = this.data.subjects.find(s => s.id === id);
+        if (!materia) return;
+
+        showLoading();
+
+        try {
+            this.data.sessions = this.data.sessions.filter(s => s.materia !== materia.nome);
+            this.data.tasks = this.data.tasks.filter(t => t.materia !== materia.nome);
+            this.data.exams = this.data.exams.filter(e => e.materia !== materia.nome);
+            this.data.learningMap = this.data.learningMap.filter(t => t.materia !== materia.nome);
+            this.data.grades = this.data.grades.filter(g => g.materia !== materia.nome);
+            this.data.materials = this.data.materials.filter(m => m.materia !== materia.nome);
+            this.data.classSchedule = this.data.classSchedule.filter(a => a.materia !== materia.nome);
+            this.data.classDiaries = this.data.classDiaries.filter(d => d.materia !== materia.nome);
+            this.data.reviews = this.data.reviews.filter(r => r.materia !== materia.nome);
+            this.data.subjects = this.data.subjects.filter(s => s.id !== id);
+
+            const success = await dbService.saveAllData(this.data);
+
+            if (success) {
+                this.loadView(this.currentView);
+                showToast('Matéria e todos os itens relacionados excluídos!');
+            }
+        } catch (error) {
+            console.error('Erro ao excluir matéria:', error);
+            showToast('Erro ao excluir matéria', 'error');
+        } finally {
+            hideLoading();
+        }
+    }
+
     getDelayedSubjects(limit = this.data.settings?.heavyMode ? 3 : 5) {
         return this.data.subjects
             .map(subject => {
@@ -1347,11 +1632,7 @@ class StudyLifeControl {
                     .sort((a, b) => new Date(b.data) - new Date(a.data))[0];
 
                 if (!ultima) {
-                    return {
-                        nome: subject.nome,
-                        diasSemEstudar: null,
-                        nunca: true
-                    };
+                    return { nome: subject.nome, diasSemEstudar: null, nunca: true };
                 }
 
                 return {
@@ -1370,14 +1651,14 @@ class StudyLifeControl {
 
     getStudyHoursSummary() {
         const sessoesConcluidas = this.data.sessions.filter(s => s.concluida);
-        const hoje = new Date();
+        const hoje = toDateOnly(new Date());
         const inicioSemana = new Date(hoje);
         inicioSemana.setDate(hoje.getDate() - hoje.getDay());
         const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
 
         return {
             hoje: sessoesConcluidas
-                .filter(s => new Date(s.data).toDateString() === hoje.toDateString())
+                .filter(s => toDateOnly(s.data).getTime() === hoje.getTime())
                 .reduce((acc, s) => acc + s.duracao, 0) / 60,
             semana: sessoesConcluidas
                 .filter(s => new Date(s.data) >= inicioSemana)
@@ -1392,15 +1673,15 @@ class StudyLifeControl {
     generateAlerts() {
         const alerts = [];
 
-        this.data.subjects.forEach(s => {
+        this.data.subjects.forEach(materia => {
             const ultimo = this.data.sessions
-                .filter(ses => ses.materia === s.nome && ses.concluida)
+                .filter(ses => ses.materia === materia.nome && ses.concluida)
                 .sort((a, b) => new Date(b.data) - new Date(a.data))[0];
 
             if (ultimo && diasDesde(ultimo.data) >= 5) {
                 alerts.push({
                     type: 'warning',
-                    title: `${s.nome} esquecida`,
+                    title: `${materia.nome} esquecida`,
                     message: `${diasDesde(ultimo.data)} dias sem estudar`
                 });
             }
@@ -1430,20 +1711,20 @@ class StudyLifeControl {
         const risks = [];
         const hoje = new Date();
 
-        this.data.subjects.forEach(s => {
-            const notas = this.data.grades.filter(g => g.materia === s.nome);
-            const media = this.calcularMedia(notas);
-            const exames = this.data.exams.filter(e => e.materia === s.nome && new Date(e.data) >= hoje && diasAte(e.data) <= 14);
+        this.data.subjects.forEach(subject => {
+            const notas = this.data.grades.filter(g => g.materia === subject.nome);
+            const media = calcularMediaPonderada(notas);
+            const exames = this.data.exams.filter(e => e.materia === subject.nome && new Date(e.data) >= hoje && diasAte(e.data) <= 14);
             const horas = this.data.sessions
-                .filter(ses => ses.materia === s.nome && ses.concluida)
+                .filter(ses => ses.materia === subject.nome && ses.concluida)
                 .reduce((a, ses) => a + ses.duracao, 0) / 60;
 
             if (media > 0 && media < 6) {
-                risks.push({ materia: s.nome, nivel: 'alto', motivo: `Média ${media.toFixed(1)}` });
+                risks.push({ materia: subject.nome, nivel: 'alto', motivo: `Média ${media.toFixed(1)}` });
             } else if (exames.length && horas < 3) {
-                risks.push({ materia: s.nome, nivel: 'alto', motivo: `Prova próxima, ${horas.toFixed(1)}h estudadas` });
-            } else if (s.dificuldade >= 4 && horas < 2) {
-                risks.push({ materia: s.nome, nivel: 'medio', motivo: 'Matéria difícil, pouco estudo' });
+                risks.push({ materia: subject.nome, nivel: 'alto', motivo: `Prova próxima, ${horas.toFixed(1)}h estudadas` });
+            } else if (subject.dificuldade >= 4 && horas < 2) {
+                risks.push({ materia: subject.nome, nivel: 'medio', motivo: 'Matéria difícil, pouco estudo' });
             }
         });
 
@@ -1451,14 +1732,11 @@ class StudyLifeControl {
     }
 
     calcularMedia(notas) {
-        if (!notas.length) return 0;
-        const soma = notas.reduce((a, n) => a + n.valor * (n.peso / 100), 0);
-        const totalPeso = notas.reduce((a, n) => a + n.peso, 0);
-        return totalPeso ? (soma / totalPeso) * 10 : 0;
+        return calcularMediaPonderada(notas);
     }
 
     calcularPrevisaoNota(subject, notas) {
-        const media = this.calcularMedia(notas);
+        const media = calcularMediaPonderada(notas);
         const horas = this.data.sessions
             .filter(s => s.materia === subject.nome && s.concluida)
             .reduce((a, s) => a + s.duracao, 0) / 60;
@@ -1467,11 +1745,11 @@ class StudyLifeControl {
             e => e.materia === subject.nome && new Date(e.data) >= new Date()
         );
 
-        const pesoRestante = restantes.reduce((a, e) => a + e.peso, 0);
+        const pesoRestante = restantes.reduce((a, e) => a + (e.peso || 0), 0);
 
-        let notaNecessaria = subject.notaDesejada;
+        let notaNecessaria = subject.notaDesejada || 7;
         if (pesoRestante > 0) {
-            notaNecessaria = ((subject.notaDesejada * 100) - (media * (100 - pesoRestante))) / pesoRestante;
+            notaNecessaria = (((subject.notaDesejada || 7) * 100) - (media * (100 - pesoRestante))) / pesoRestante;
         }
 
         let chance = 50;
@@ -1498,10 +1776,10 @@ class StudyLifeControl {
     }
 
     calcularProgressoHoje() {
-        const hoje = new Date().toDateString();
-        const sessoes = this.data.sessions.filter(s => new Date(s.data).toDateString() === hoje);
-        const planejado = sessoes.reduce((a, s) => a + s.duracao, 0) / 60;
-        const concluido = sessoes.filter(s => s.concluida).reduce((a, s) => a + s.duracao, 0) / 60;
+        const hoje = toDateString();
+        const sessoes = this.data.sessions.filter(s => toDateString(s.data) === hoje);
+        const planejado = sessoes.reduce((a, s) => a + (s.duracao || 0), 0) / 60;
+        const concluido = sessoes.filter(s => s.concluida).reduce((a, s) => a + (s.duracao || 0), 0) / 60;
         const percentual = planejado ? Math.min((concluido / planejado) * 100, 100) : 0;
 
         return {
@@ -1512,9 +1790,9 @@ class StudyLifeControl {
     }
 
     calcularProdutividade() {
-        const hoje = new Date().toDateString();
-        const total = this.data.sessions.filter(s => new Date(s.data).toDateString() === hoje).length;
-        const concluidas = this.data.sessions.filter(s => new Date(s.data).toDateString() === hoje && s.concluida).length;
+        const hoje = toDateString();
+        const total = this.data.sessions.filter(s => toDateString(s.data) === hoje).length;
+        const concluidas = this.data.sessions.filter(s => toDateString(s.data) === hoje && s.concluida).length;
         return total ? `${Math.round((concluidas / total) * 100)}%` : '0%';
     }
 
@@ -1531,29 +1809,35 @@ class StudyLifeControl {
     }
 
     calcularHorasPorMateria() {
-        const h = {};
+        const horas = {};
         this.data.sessions.filter(s => s.concluida).forEach(s => {
-            h[s.materia] = (h[s.materia] || 0) + s.duracao / 60;
+            horas[s.materia] = (horas[s.materia] || 0) + s.duracao / 60;
         });
-        return Object.entries(h)
-            .map(([materia, horas]) => ({ materia, horas }))
+
+        return Object.entries(horas)
+            .map(([materia, h]) => ({ materia, horas: h }))
             .sort((a, b) => b.horas - a.horas);
     }
 
     calcularHorasPorTipo() {
-        const t = {};
+        const tipos = {};
         this.data.sessions.filter(s => s.concluida).forEach(s => {
-            t[s.tipo] = (t[s.tipo] || 0) + s.duracao / 60;
+            tipos[s.tipo] = (tipos[s.tipo] || 0) + s.duracao / 60;
         });
-        return Object.entries(t)
+
+        return Object.entries(tipos)
             .map(([tipo, horas]) => ({ tipo, horas }))
             .sort((a, b) => b.horas - a.horas);
     }
 
     calcularMediaDiaria() {
         if (!this.data.user?.createdAt) return '0.0';
+
         const dias = Math.max(1, Math.ceil((new Date() - new Date(this.data.user.createdAt)) / 86400000));
-        const total = this.data.sessions.filter(s => s.concluida).reduce((a, s) => a + s.duracao / 60, 0);
+        const total = this.data.sessions
+            .filter(s => s.concluida)
+            .reduce((a, s) => a + s.duracao / 60, 0);
+
         return (total / dias).toFixed(1);
     }
 
@@ -1592,7 +1876,7 @@ class StudyLifeControl {
         const dias = new Set();
         this.data.sessions.filter(s => s.concluida).forEach(s => {
             const d = new Date(s.data);
-            if (d >= inicio) dias.add(d.toDateString());
+            if (d >= inicio) dias.add(toDateString(d));
         });
 
         return Math.round((dias.size / 7) * 100);

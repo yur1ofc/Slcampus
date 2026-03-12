@@ -1,62 +1,53 @@
 // database.js - Gerenciamento do Firestore
 
+const DEFAULT_APP_DATA = () => ({
+    user: null,
+    subjects: [],
+    sessions: [],
+    tasks: [],
+    exams: [],
+    materials: [],
+    grades: [],
+    habits: [],
+    learningMap: [],
+    classSchedule: [],
+    dailyLogs: [],
+    classDiaries: [],
+    reviews: [],
+    attendance: {},
+    settings: {
+        heavyMode: false,
+        notifications: true,
+        autoPlan: true
+    }
+});
+
 const dbService = {
-    // Carregar todos os dados do usuário
     async loadUserData(userId) {
         try {
             const userDoc = await db.collection('users').doc(userId).get();
-            
+
+            let data;
             if (!userDoc.exists) {
-                // Inicializar com dados padrão para novas funcionalidades
-                window.app.data = {
-                    user: null,
-                    subjects: [],
-                    sessions: [],
-                    tasks: [],
-                    exams: [],
-                    materials: [],
-                    grades: [],
-                    habits: [],
-                    learningMap: [],
-                    classSchedule: [],
-                    dailyLogs: [],
-                    classDiaries: [],
-                    reviews: [],
-                    attendance: {},
+                data = DEFAULT_APP_DATA();
+            } else {
+                const raw = userDoc.data() || {};
+                data = {
+                    ...DEFAULT_APP_DATA(),
+                    ...raw,
                     settings: {
-                        heavyMode: false,
-                        notifications: true,
-                        autoPlan: true
+                        ...DEFAULT_APP_DATA().settings,
+                        ...(raw.settings || {})
                     }
                 };
-                return window.app.data;
             }
-            
-            const data = userDoc.data();
-            window.app.data = {
-                user: data.user || null,
-                subjects: data.subjects || [],
-                sessions: data.sessions || [],
-                tasks: data.tasks || [],
-                exams: data.exams || [],
-                materials: data.materials || [],
-                grades: data.grades || [],
-                habits: data.habits || [],
-                learningMap: data.learningMap || [],
-                classSchedule: data.classSchedule || [],
-                dailyLogs: data.dailyLogs || [],
-                classDiaries: data.classDiaries || [],
-                reviews: data.reviews || [],
-                attendance: data.attendance || {},
-                settings: data.settings || {
-                    heavyMode: false,
-                    notifications: true,
-                    autoPlan: true
-                }
-            };
-            
+
+            if (window.app) {
+                window.app.data = data;
+            }
+
             if (window.updateSyncStatus) window.updateSyncStatus(true);
-            return window.app.data;
+            return data;
         } catch (error) {
             console.error('Erro ao carregar dados:', error);
             if (window.updateSyncStatus) window.updateSyncStatus(false);
@@ -65,109 +56,105 @@ const dbService = {
         }
     },
 
-    // Salvar todos os dados
-    async saveAllData() {
+    async saveAllData(dataOverride = null) {
         const user = auth.currentUser;
         if (!user) return false;
-        
+
         try {
             if (window.showLoading) window.showLoading();
-            await db.collection('users').doc(user.uid).set(window.app.data, { merge: true });
+
+            const dataToSave = dataOverride || window.app?.data || DEFAULT_APP_DATA();
+            await db.collection('users').doc(user.uid).set(dataToSave, { merge: true });
+
+            if (window.app) {
+                window.app.data = dataToSave;
+            }
+
             if (window.updateSyncStatus) window.updateSyncStatus(true);
-            if (window.hideLoading) window.hideLoading();
             return true;
         } catch (error) {
             console.error('Erro ao salvar dados:', error);
             if (window.updateSyncStatus) window.updateSyncStatus(false);
             if (window.showToast) window.showToast('Erro ao salvar dados', 'error');
-            if (window.hideLoading) window.hideLoading();
             return false;
+        } finally {
+            if (window.hideLoading) window.hideLoading();
         }
     },
 
-    // Salvar dados específicos
     async saveData(field, data) {
         const user = auth.currentUser;
         if (!user) return false;
-        
+
         try {
             await db.collection('users').doc(user.uid).update({
                 [field]: data
             });
+
+            if (window.app?.data) {
+                window.app.data[field] = data;
+            }
+
             if (window.updateSyncStatus) window.updateSyncStatus(true);
             return true;
         } catch (error) {
-            console.error('Erro ao salvar:', error);
+            console.error(`Erro ao salvar campo "${field}":`, error);
             if (window.updateSyncStatus) window.updateSyncStatus(false);
             if (window.showToast) window.showToast('Erro ao salvar', 'error');
             return false;
         }
     },
 
-    // Adicionar item a uma coleção
     async addItem(collection, item) {
+        if (!window.app?.data?.[collection]) return false;
         window.app.data[collection].push(item);
-        return await this.saveData(collection, window.app.data[collection]);
+        return this.saveData(collection, window.app.data[collection]);
     },
 
-    // Atualizar item
     async updateItem(collection, id, updates) {
+        if (!window.app?.data?.[collection]) return false;
+
         const index = window.app.data[collection].findIndex(i => i.id === id);
-        if (index !== -1) {
-            window.app.data[collection][index] = { ...window.app.data[collection][index], ...updates };
-            return await this.saveData(collection, window.app.data[collection]);
-        }
-        return false;
+        if (index === -1) return false;
+
+        window.app.data[collection][index] = {
+            ...window.app.data[collection][index],
+            ...updates
+        };
+
+        return this.saveData(collection, window.app.data[collection]);
     },
 
-    // Remover item
     async removeItem(collection, id) {
+        if (!window.app?.data?.[collection]) return false;
+
         window.app.data[collection] = window.app.data[collection].filter(i => i.id !== id);
-        return await this.saveData(collection, window.app.data[collection]);
+        return this.saveData(collection, window.app.data[collection]);
     },
-    
-    // Limpar todos os dados do usuário
+
     async clearAllData() {
         const user = auth.currentUser;
         if (!user) return false;
-        
+
         try {
             if (window.showLoading) window.showLoading();
-            const emptyData = {
-                user: null,
-                subjects: [],
-                sessions: [],
-                tasks: [],
-                exams: [],
-                materials: [],
-                grades: [],
-                habits: [],
-                learningMap: [],
-                classSchedule: [],
-                dailyLogs: [],
-                classDiaries: [],
-                reviews: [],
-                attendance: {},
-                settings: {
-                    heavyMode: false,
-                    notifications: true,
-                    autoPlan: true
-                }
-            };
-            
+
+            const emptyData = DEFAULT_APP_DATA();
             await db.collection('users').doc(user.uid).set(emptyData);
-            window.app.data = emptyData;
+            if (window.app) window.app.data = emptyData;
+
             if (window.updateSyncStatus) window.updateSyncStatus(true);
-            if (window.hideLoading) window.hideLoading();
             return true;
         } catch (error) {
             console.error('Erro ao limpar dados:', error);
             if (window.updateSyncStatus) window.updateSyncStatus(false);
             if (window.showToast) window.showToast('Erro ao limpar dados', 'error');
-            if (window.hideLoading) window.hideLoading();
             return false;
+        } finally {
+            if (window.hideLoading) window.hideLoading();
         }
     }
 };
 
+window.DEFAULT_APP_DATA = DEFAULT_APP_DATA;
 window.dbService = dbService;

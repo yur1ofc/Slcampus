@@ -7,44 +7,43 @@ class AIAssistant {
 
     updateContext(data) {
         this.context = {
-            user: data.user,
-            subjects: data.subjects,
-            sessions: data.sessions,
-            tasks: data.tasks,
-            exams: data.exams,
-            grades: data.grades,
-            learningMap: data.learningMap,
-            classSchedule: data.classSchedule,
-            dailyLogs: data.dailyLogs,
-            classDiaries: data.classDiaries,
-            reviews: data.reviews,
-            attendance: data.attendance
+            user: data?.user || null,
+            subjects: data?.subjects || [],
+            sessions: data?.sessions || [],
+            tasks: data?.tasks || [],
+            exams: data?.exams || [],
+            grades: data?.grades || [],
+            learningMap: data?.learningMap || [],
+            classSchedule: data?.classSchedule || [],
+            dailyLogs: data?.dailyLogs || [],
+            classDiaries: data?.classDiaries || [],
+            reviews: data?.reviews || [],
+            attendance: data?.attendance || {}
         };
     }
 
     getProximasProvas(dias = 30) {
-        const hoje = new Date();
         return (this.context.exams || [])
-            .filter(e => new Date(e.data) >= hoje && diasAte(e.data) <= dias)
+            .filter(e => new Date(e.data) >= toDateOnly(new Date()) && diasAte(e.data) <= dias)
             .sort((a, b) => new Date(a.data) - new Date(b.data));
     }
 
     getRevisoesPendentes() {
-        const hoje = new Date().toISOString().split('T')[0];
+        const hoje = toDateString();
         return (this.context.reviews || []).filter(r => r.data === hoje && !r.concluida);
     }
 
     getHorasEstudadasMateria(materiaNome) {
         return (this.context.sessions || [])
             .filter(s => s.materia === materiaNome && s.concluida)
-            .reduce((acc, s) => acc + s.duracao, 0) / 60;
+            .reduce((acc, s) => acc + (Number(s.duracao) || 0), 0) / 60;
     }
 
     getUltimaAulaRegistrada(materiaNome) {
         const aulas = (this.context.classDiaries || [])
             .filter(cd => cd.materia === materiaNome)
             .sort((a, b) => new Date(b.data) - new Date(a.data));
-        return aulas[0];
+        return aulas[0] || null;
     }
 
     getFaltasMateria(materiaNome) {
@@ -64,7 +63,13 @@ class AIAssistant {
         if (!proximaAula) return 'Não há próximas aulas cadastradas.';
 
         const dias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-        return `📌 Próxima aula:\n\nMatéria: ${proximaAula.materia}\nDia: ${dias[parseInt(proximaAula.dia, 10)]}\nHorário: ${proximaAula.inicio} - ${proximaAula.fim}\nSala: ${proximaAula.sala || 'Não informada'}`;
+
+        return `📌 Próxima aula:
+
+Matéria: ${proximaAula.materia}
+Dia: ${dias[parseInt(proximaAula.dia, 10)]}
+Horário: ${proximaAula.inicio} - ${proximaAula.fim}
+Sala: ${proximaAula.sala || 'Não informada'}`;
     }
 
     getDicaEstudo() {
@@ -79,7 +84,9 @@ class AIAssistant {
             'Deixe o celular longe na hora do foco pesado.'
         ];
 
-        return `💡 Dica de estudo:\n\n${dicas[Math.floor(Math.random() * dicas.length)]}`;
+        return `💡 Dica de estudo:
+
+${dicas[Math.floor(Math.random() * dicas.length)]}`;
     }
 
     sugerirEstudoAgora() {
@@ -142,7 +149,7 @@ class AIAssistant {
         (this.context.subjects || []).forEach(subject => {
             const notasMateria = (this.context.grades || []).filter(g => g.materia === subject.nome);
             if (notasMateria.length > 0) {
-                const media = this.calcularMedia(notasMateria);
+                const media = calcularMediaPonderada(notasMateria);
                 if (media < 6) {
                     riscos.push(`🔴 Média em ${subject.nome} está ${media.toFixed(1)}.`);
                 } else if (media < 7) {
@@ -159,7 +166,9 @@ class AIAssistant {
 
         if (!riscos.length) return '✅ Nenhum risco acadêmico forte agora.';
 
-        return `📊 Análise de risco acadêmico:\n\n${riscos.join('\n')}`;
+        return `📊 Análise de risco acadêmico:
+
+${riscos.join('\n')}`;
     }
 
     gerarPlanoHoje() {
@@ -191,13 +200,14 @@ class AIAssistant {
         });
 
         if (!plano.length) return 'Seu dia está tranquilo. Use para revisar ou descansar.';
+        return `📅 Plano para hoje:
 
-        return `📅 Plano para hoje:\n\n${plano.join('\n')}`;
+${plano.join('\n')}`;
     }
 
     gerarPlanoSemanal() {
         const dias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-        const base = this.generateDailyPlan().slice(0, 6);
+        const base = this.generateDailyPlan();
 
         let texto = '📆 Plano da semana:\n\n';
 
@@ -265,9 +275,9 @@ class AIAssistant {
         const provas = this.getProximasProvas(30);
         if (!provas.length) return 'Nenhuma prova nos próximos 30 dias.';
 
-        return `📌 Próximas provas:\n\n${provas
-            .map(p => `- ${p.materia}: ${p.titulo} (${diasAte(p.data)} dias)`)
-            .join('\n')}`;
+        return `📌 Próximas provas:
+
+${provas.map(p => `- ${p.materia}: ${p.titulo} (${diasAte(p.data)} dias)`).join('\n')}`;
     }
 
     sugerirMateriasDificeis() {
@@ -277,16 +287,20 @@ class AIAssistant {
 
         if (!dificeis.length) return 'Nenhuma matéria com dificuldade 4 ou 5.';
 
-        return `⚠️ Matérias mais difíceis:\n\n${dificeis.map(s => {
-            const horas = this.getHorasEstudadasMateria(s.nome);
-            return `- ${s.nome} (${s.dificuldade}/5) • ${horas.toFixed(1)}h estudadas`;
-        }).join('\n')}`;
+        return `⚠️ Matérias mais difíceis:
+
+${dificeis.map(s => {
+    const horas = this.getHorasEstudadasMateria(s.nome);
+    return `- ${s.nome} (${s.dificuldade}/5) • ${horas.toFixed(1)}h estudadas`;
+}).join('\n')}`;
     }
 
     listarRevisoes() {
         const pendentes = this.getRevisoesPendentes();
         if (!pendentes.length) return 'Nenhuma revisão pendente hoje.';
-        return `🔄 Revisões de hoje:\n\n${pendentes.map(r => `- ${r.materia}: ${r.topico}`).join('\n')}`;
+        return `🔄 Revisões de hoje:
+
+${pendentes.map(r => `- ${r.materia}: ${r.topico}`).join('\n')}`;
     }
 
     preverDificuldadeMateria(materiaNome) {
@@ -295,7 +309,7 @@ class AIAssistant {
 
         const horas = this.getHorasEstudadasMateria(materiaNome);
         const notas = (this.context.grades || []).filter(g => g.materia === materiaNome);
-        const media = this.calcularMedia(notas);
+        const media = calcularMediaPonderada(notas);
 
         let nivel = 'média';
         if (subject.dificuldade >= 4 || media < 6 || horas < 3) nivel = 'alta';
@@ -305,7 +319,7 @@ class AIAssistant {
     }
 
     async ask(pergunta) {
-        const p = pergunta.toLowerCase();
+        const p = String(pergunta || '').toLowerCase();
 
         if (p.includes('o que devo estudar agora') || p.includes('oque estudar agora')) {
             return this.sugerirEstudoAgora();
@@ -341,13 +355,6 @@ class AIAssistant {
         }
 
         return 'Posso ajudar com plano de hoje, plano da semana, riscos acadêmicos, próximas provas, próxima aula, revisões e dicas de estudo.';
-    }
-
-    calcularMedia(notas) {
-        if (!notas || !notas.length) return 0;
-        const soma = notas.reduce((acc, n) => acc + n.valor * (n.peso / 100), 0);
-        const somaPesos = notas.reduce((acc, n) => acc + n.peso, 0);
-        return somaPesos ? (soma / somaPesos) * 10 : 0;
     }
 }
 

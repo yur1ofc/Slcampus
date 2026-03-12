@@ -1,8 +1,12 @@
-// views.js - Renderizador de visualizações COMPLETO E CORRIGIDO
+// views.js - Renderizador de visualizações COMPLETO, CORRIGIDO E COMPATÍVEL
 
 class ViewRenderer {
     constructor(app) {
         this.app = app;
+    }
+
+    esc(value) {
+        return escapeHtml(value ?? '');
     }
 
     renderDashboard() {
@@ -16,9 +20,7 @@ class ViewRenderer {
         const materiasAtrasadas = this.getMateriasAtrasadas();
         const resumoSemana = this.getResumoSemana();
 
-        if (window.aiAssistant) {
-            window.aiAssistant.updateContext(this.app.data);
-        }
+        window.aiAssistant?.updateContext(this.app.data);
 
         const planoIA = window.aiAssistant ? window.aiAssistant.generateDailyPlan() : [];
         const proximaAula = window.scheduleManager ? window.scheduleManager.getProximaAula() : null;
@@ -28,7 +30,7 @@ class ViewRenderer {
 
         return `
             <div class="dashboard-header">
-                <h2>Olá, ${this.app.data.user?.nome || 'Estudante'}! 👋</h2>
+                <h2>Olá, ${this.esc(this.app.data.user?.nome || 'Estudante')}! 👋</h2>
                 <p>${hoje.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
             </div>
 
@@ -36,17 +38,23 @@ class ViewRenderer {
                 <div class="current-class-card">
                     <i class="fas fa-chalkboard-teacher"></i>
                     <div class="current-class-info">
-                        <h3>Aula Agora: ${aulaAtual.materia}</h3>
-                        <p>${aulaAtual.sala ? `Sala ${aulaAtual.sala}` : ''} ${aulaAtual.professor ? `- Prof. ${aulaAtual.professor}` : ''}</p>
-                        <small>Até às ${aulaAtual.fim}</small>
+                        <h3>Aula Agora: ${this.esc(aulaAtual.materia)}</h3>
+                        <p>
+                            ${aulaAtual.sala ? `Sala ${this.esc(aulaAtual.sala)}` : ''}
+                            ${aulaAtual.professor ? `${aulaAtual.sala ? ' • ' : ''}Prof. ${this.esc(aulaAtual.professor)}` : ''}
+                        </p>
+                        <small>Até às ${this.esc(aulaAtual.fim)}</small>
                     </div>
                 </div>
             ` : proximaAula ? `
                 <div class="next-class-card">
                     <i class="fas fa-clock"></i>
                     <div class="next-class-info">
-                        <h3>Próxima Aula: ${proximaAula.materia}</h3>
-                        <p>${diasSemana[parseInt(proximaAula.dia, 10)]} • ${proximaAula.inicio} - ${proximaAula.fim} ${proximaAula.sala ? `• Sala ${proximaAula.sala}` : ''}</p>
+                        <h3>Próxima Aula: ${this.esc(proximaAula.materia)}</h3>
+                        <p>
+                            ${diasSemana[parseInt(proximaAula.dia, 10)]} • ${this.esc(proximaAula.inicio)} - ${this.esc(proximaAula.fim)}
+                            ${proximaAula.sala ? ` • Sala ${this.esc(proximaAula.sala)}` : ''}
+                        </p>
                         <small>${tempoRestante(this.getProximaAulaDateTime(proximaAula))}</small>
                     </div>
                 </div>
@@ -68,8 +76,8 @@ class ViewRenderer {
                     <div class="card-body">
                         <div class="progress-container">
                             <div class="progress-label">
-                                <span>Planejado: ${this.app.data.user?.horasMaximas || 6}h</span>
-                                <span>${progresso.concluido}h</span>
+                                <span>Planejado: ${this.esc(this.app.data.user?.horasMaximas || 6)}h</span>
+                                <span>${this.esc(progresso.concluido)}h</span>
                             </div>
                             <div class="progress-bar">
                                 <div class="progress-fill" style="width: ${progresso.percentual}%"></div>
@@ -77,11 +85,11 @@ class ViewRenderer {
                         </div>
                         <div class="stats-row">
                             <div class="stat-item">
-                                <span class="stat-value">${this.app.data.user?.streak || 0}</span>
+                                <span class="stat-value">${this.esc(this.app.data.user?.streak || 0)}</span>
                                 <span class="stat-label">streak</span>
                             </div>
                             <div class="stat-item">
-                                <span class="stat-value">${this.app.calcularProdutividade()}</span>
+                                <span class="stat-value">${this.esc(this.app.calcularProdutividade())}</span>
                                 <span class="stat-label">produtividade</span>
                             </div>
                             <div class="stat-item">
@@ -124,10 +132,10 @@ class ViewRenderer {
                         ${risk.length ? risk.map(r => `
                             <div class="risk-item">
                                 <div class="risk-info">
-                                    <strong>${r.materia}</strong>
-                                    <span class="risk-indicator risk-${r.nivel}">${r.nivel}</span>
+                                    <strong>${this.esc(r.materia)}</strong>
+                                    <span class="risk-indicator risk-${this.esc(r.nivel)}">${this.esc(r.nivel)}</span>
                                 </div>
-                                <p class="risk-desc">${r.motivo}</p>
+                                <p class="risk-desc">${this.esc(r.motivo)}</p>
                             </div>
                         `).join('') : '<p class="text-secondary">Nenhum risco identificado</p>'}
                     </div>
@@ -143,8 +151,8 @@ class ViewRenderer {
                             ${tarefasUrgentes.map(t => `
                                 <li>
                                     <div>
-                                        <strong>${t.titulo}</strong>
-                                        <small>${t.materia}</small>
+                                        <strong>${this.esc(t.titulo)}</strong>
+                                        <small>${this.esc(t.materia)}</small>
                                     </div>
                                     <span class="tag high">${diasAte(t.dataLimite)}d</span>
                                 </li>
@@ -166,8 +174,8 @@ class ViewRenderer {
                             ${proximosExames.map(e => `
                                 <li>
                                     <div>
-                                        <strong>${e.titulo}</strong>
-                                        <small>${e.materia}</small>
+                                        <strong>${this.esc(e.titulo)}</strong>
+                                        <small>${this.esc(e.materia)}</small>
                                     </div>
                                     <span class="tag ${this.app.getExamRiskClass(e)}">${diasAte(e.data)}d</span>
                                 </li>
@@ -187,7 +195,7 @@ class ViewRenderer {
                             ${materiasAtrasadas.map(m => `
                                 <li>
                                     <div>
-                                        <strong>${m.materia}</strong>
+                                        <strong>${this.esc(m.materia)}</strong>
                                         <small>${m.nuncaEstudou ? 'Sem registro de estudo' : `${m.dias} dias sem estudar`}</small>
                                     </div>
                                     <span class="tag ${m.nuncaEstudou || m.dias >= 7 ? 'danger' : 'warning'}">
@@ -210,7 +218,7 @@ class ViewRenderer {
                     <div class="semana-grid">
                         ${resumoSemana.map(dia => `
                             <div class="dia-card">
-                                <h4>${dia.nome}</h4>
+                                <h4>${this.esc(dia.nome)}</h4>
                                 <div class="sessao-item">
                                     <span>Estudo</span>
                                     <strong>${dia.horas.toFixed(1)}h</strong>
@@ -234,15 +242,15 @@ class ViewRenderer {
                     <div class="plano-ia">
                         ${planoIA.map(item => `
                             <div class="plano-item">
-                                <div class="plano-materia">${item.materia}</div>
+                                <div class="plano-materia">${this.esc(item.materia)}</div>
                                 <div class="plano-detalhes">
-                                    <span class="tag ${item.prioridade}">${item.tipo} • ${item.duracao}min</span>
+                                    <span class="tag ${this.esc(item.prioridade)}">${this.esc(item.tipo)} • ${this.esc(item.duracao)}min</span>
                                 </div>
-                                <div class="plano-motivo">💡 ${item.motivo}</div>
+                                <div class="plano-motivo">💡 ${this.esc(item.motivo)}</div>
                                 <button class="btn-secondary btn-adicionar-sessao-rapida"
-                                        data-materia="${item.materia}"
-                                        data-tipo="${item.tipo}"
-                                        data-duracao="${item.duracao}">
+                                        data-materia="${this.esc(item.materia)}"
+                                        data-tipo="${this.esc(item.tipo)}"
+                                        data-duracao="${this.esc(item.duracao)}">
                                     <i class="fas fa-plus"></i> Adicionar
                                 </button>
                             </div>
@@ -316,203 +324,170 @@ class ViewRenderer {
     }
 
     renderGradeHoraria() {
-    if (!window.scheduleManager) {
-        return '<div class="card"><div class="card-body"><p class="text-secondary">Erro ao carregar grade horária</p></div></div>';
-    }
+        if (!window.scheduleManager) {
+            return '<div class="card"><div class="card-body"><p class="text-secondary">Erro ao carregar grade horária</p></div></div>';
+        }
 
-    window.scheduleManager.loadAulas();
+        window.scheduleManager.loadAulas();
 
-    const dias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-    const diaAtual = new Date().getDay();
-    const aulas = window.scheduleManager.loadAulas() || [];
-    const totalAulas = aulas.length;
-    const horasSemana = this.calcularHorasAulaSemana(aulas);
+        const dias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+        const aulas = window.scheduleManager.loadAulas() || [];
+        const totalAulas = aulas.length;
+        const horasSemana = this.calcularHorasAulaSemana(aulas);
 
-    // Criar IDs únicos para evitar conflitos
-    const viewModeId = 'grade-view-mode-' + Date.now();
-    const daySelectId = 'grade-day-select-' + Date.now();
-    const containerId = 'schedule-vertical-container-' + Date.now();
+        const uid = Date.now().toString();
+        const viewModeId = `grade-view-mode-${uid}`;
+        const daySelectId = `grade-day-select-${uid}`;
+        const wrapperId = `grade-day-select-wrapper-${uid}`;
+        const containerId = `schedule-vertical-container-${uid}`;
 
-    const html = `
-        <div class="view-header">
-            <h2><i class="fas fa-calendar-week"></i> Grade Horária</h2>
-            <button class="btn-primary" id="btn-nova-aula"><i class="fas fa-plus"></i> Nova Aula</button>
-        </div>
+        const currentViewMode = window.scheduleManager.viewMode === 'week' ? 'semana' : 'dia';
+        const currentDay = Number.isInteger(window.scheduleManager.selectedDay)
+            ? window.scheduleManager.selectedDay
+            : new Date().getDay();
 
-        <div class="card" style="margin-bottom: 24px;">
-            <div class="card-body">
-                <div class="form-row" style="margin-bottom:0;">
-                    <div class="form-group" style="margin-bottom:0;">
-                        <label>Visualização</label>
-                        <select id="${viewModeId}" class="grade-view-mode">
-                            <option value="dia">Dia atual / um dia</option>
-                            <option value="semana">Semana toda</option>
-                        </select>
-                    </div>
-                    <div class="form-group" style="margin-bottom:0;" id="grade-day-select-wrapper-${Date.now()}">
-                        <label>Dia</label>
-                        <select id="${daySelectId}" class="grade-day-select">
-                            ${dias.map((dia, index) => `
-                                <option value="${index}">${dia}</option>
-                            `).join('')}
-                        </select>
+        setTimeout(() => {
+            this.setupGradeHoraria(containerId, viewModeId, daySelectId, wrapperId);
+        }, 50);
+
+        return `
+            <div class="view-header">
+                <h2><i class="fas fa-calendar-week"></i> Grade Horária</h2>
+                <button class="btn-primary" id="btn-nova-aula"><i class="fas fa-plus"></i> Nova Aula</button>
+            </div>
+
+            <div class="card" style="margin-bottom: 24px;">
+                <div class="card-body">
+                    <div class="form-row" style="margin-bottom:0;">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>Visualização</label>
+                            <select id="${viewModeId}" class="grade-view-mode">
+                                <option value="dia" ${currentViewMode === 'dia' ? 'selected' : ''}>Dia atual / um dia</option>
+                                <option value="semana" ${currentViewMode === 'semana' ? 'selected' : ''}>Semana toda</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;" id="${wrapperId}">
+                            <label>Dia</label>
+                            <select id="${daySelectId}" class="grade-day-select">
+                                ${dias.map((dia, index) => `
+                                    <option value="${index}" ${index === currentDay ? 'selected' : ''}>${dia}</option>
+                                `).join('')}
+                            </select>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <div class="schedule-container card" style="padding: 20px; margin-bottom: 24px;">
-            <div id="${containerId}" style="min-height: 600px;"></div>
-        </div>
+            <div class="schedule-container card" style="padding: 20px; margin-bottom: 24px;">
+                <div id="${containerId}" style="min-height: 600px;"></div>
+            </div>
 
-        <div class="dashboard-grid">
-            <div class="card">
+            <div class="dashboard-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Resumo da Grade</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="stats-row">
+                            <div class="stat-item">
+                                <span class="stat-value">${totalAulas}</span>
+                                <span class="stat-label">aulas</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value">${horasSemana.toFixed(1)}h</span>
+                                <span class="stat-label">semana</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value">${(totalAulas ? horasSemana / totalAulas : 0).toFixed(1)}h</span>
+                                <span class="stat-label">média</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="aulas-list card">
                 <div class="card-header">
-                    <h3>Resumo da Grade</h3>
+                    <h3>Minhas Aulas (${this.app.data.classSchedule?.length || 0})</h3>
                 </div>
                 <div class="card-body">
-                    <div class="stats-row">
-                        <div class="stat-item">
-                            <span class="stat-value">${totalAulas}</span>
-                            <span class="stat-label">aulas</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-value">${horasSemana.toFixed(1)}h</span>
-                            <span class="stat-label">semana</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-value">${(totalAulas ? horasSemana / totalAulas : 0).toFixed(1)}h</span>
-                            <span class="stat-label">média</span>
-                        </div>
-                    </div>
+                    <ul class="item-list">
+                        ${(this.app.data.classSchedule || []).map(a => `
+                            <li>
+                                <div>
+                                    <strong>${this.esc(a.materia)}</strong><br>
+                                    <small>${dias[parseInt(a.dia, 10)]} • ${this.esc(a.inicio)} - ${this.esc(a.fim)}</small>
+                                    ${a.sala ? `<br><small>Sala: ${this.esc(a.sala)}</small>` : ''}
+                                    ${a.professor ? `<br><small>Prof: ${this.esc(a.professor)}</small>` : ''}
+                                </div>
+                                <div style="display:flex; gap:8px;">
+                                    <button class="btn-icon btn-editar-aula" data-id="${this.esc(a.id)}" title="Editar aula">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn-icon btn-remover-aula" data-id="${this.esc(a.id)}" title="Remover aula" style="color: var(--accent-danger);">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </li>
+                        `).join('') || '<li>Nenhuma aula cadastrada</li>'}
+                    </ul>
                 </div>
             </div>
-        </div>
+        `;
+    }
 
-        <div class="aulas-list card">
-            <div class="card-header">
-                <h3>Minhas Aulas (${this.app.data.classSchedule?.length || 0})</h3>
-            </div>
-            <div class="card-body">
-                <ul class="item-list">
-                    ${(this.app.data.classSchedule || []).map(a => `
-                        <li>
-                            <div>
-                                <strong>${a.materia}</strong><br>
-                                <small>${dias[parseInt(a.dia, 10)]} • ${a.inicio} - ${a.fim}</small>
-                                ${a.sala ? `<br><small>Sala: ${a.sala}</small>` : ''}
-                                ${a.professor ? `<br><small>Prof: ${a.professor}</small>` : ''}
-                            </div>
-                            <div style="display:flex; gap:8px;">
-                                <button class="btn-icon btn-editar-aula" data-id="${a.id}" title="Editar aula">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button class="btn-icon btn-remover-aula" data-id="${a.id}" title="Remover aula" style="color: var(--accent-danger);">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
-                        </li>
-                    `).join('') || '<li>Nenhuma aula cadastrada</li>'}
-                </ul>
-            </div>
-        </div>
-    `;
+    setupGradeHoraria(containerId, viewModeId, daySelectId, wrapperId) {
+        const container = document.getElementById(containerId);
+        const modoSelect = document.getElementById(viewModeId);
+        const diaSelect = document.getElementById(daySelectId);
+        const dayWrapper = document.getElementById(wrapperId);
 
-    // Agendar a renderização da grade para depois que o DOM estiver pronto
-    setTimeout(() => {
-        this.setupGradeHoraria(containerId, viewModeId, daySelectId);
-    }, 100);
+        if (!container || !window.scheduleManager || !modoSelect || !diaSelect) return;
 
-    return html;
-}
+        const renderizar = () => {
+            const modo = modoSelect.value;
+            const diaSelecionado = parseInt(diaSelect.value, 10);
 
-// Adicione este novo método no ViewRenderer:
-setupGradeHoraria(containerId, viewModeId, daySelectId) {
-    const container = document.getElementById(containerId);
-    if (!container || !window.scheduleManager) return;
-
-    const modoSelect = document.getElementById(viewModeId);
-    const diaSelect = document.getElementById(daySelectId);
-    const dayWrapper = document.getElementById('grade-day-select-wrapper-' + Date.now());
-    
-    if (!modoSelect || !diaSelect) return;
-
-    // Função para renderizar baseado no modo atual
-    const renderizar = () => {
-        const modo = modoSelect.value;
-        const diaSelecionado = parseInt(diaSelect.value, 10);
-
-        if (dayWrapper) {
-            dayWrapper.style.display = modo === 'semana' ? 'none' : 'block';
-        }
-
-        const aulas = window.scheduleManager.loadAulas() || [];
-
-        if (!aulas.length) {
-            container.innerHTML = '<p class="text-secondary" style="padding:20px;">Nenhuma aula cadastrada</p>';
-            return;
-        }
-
-        if (modo === 'semana') {
-            // Renderizar visão semanal
-            const dias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-            let weeklyHtml = '<div class="weekly-schedule">';
-            
-            for (let dia = 0; dia < 7; dia++) {
-                const aulasDia = aulas
-                    .filter(a => parseInt(a.dia, 10) === dia)
-                    .sort((a, b) => a.inicio.localeCompare(b.inicio));
-
-                weeklyHtml += `
-                    <div class="weekly-day-column">
-                        <h4>${dias[dia]}</h4>
-                        <div class="weekly-events">
-                            ${aulasDia.length ? aulasDia.map(aula => `
-                                <div class="weekly-event" data-aula-id="${aula.id}" style="border-left: 4px solid ${aula.cor || '#3b82f6'}; cursor:pointer; padding:8px; margin-bottom:4px; background:var(--bg-secondary);">
-                                    <strong>${aula.materia}</strong>
-                                    <div>${aula.inicio} - ${aula.fim}</div>
-                                    ${aula.sala ? `<small>📍 ${aula.sala}</small>` : ''}
-                                    ${aula.professor ? `<small>👤 ${aula.professor}</small>` : ''}
-                                </div>
-                            `).join('') : '<p class="text-secondary" style="padding:8px;">Sem aulas</p>'}
-                        </div>
-                    </div>
-                `;
+            if (dayWrapper) {
+                dayWrapper.style.display = modo === 'semana' ? 'none' : 'block';
             }
-            
-            weeklyHtml += '</div>';
-            container.innerHTML = weeklyHtml;
 
-            // Adicionar eventos de clique nos eventos semanais
-            container.querySelectorAll('.weekly-event').forEach(item => {
-                item.addEventListener('click', e => {
-                    const aulaId = e.currentTarget.dataset.aulaId;
-                    if (aulaId && window.app) {
-                        window.app.openAulaModal(aulaId);
-                    }
-                });
-            });
-        } else {
-            // Renderizar visão do dia usando o ScheduleManager
-            window.scheduleManager.renderGradeDia(diaSelecionado, containerId);
-        }
-    };
+            window.scheduleManager.viewMode = modo === 'semana' ? 'week' : 'day';
+            window.scheduleManager.selectedDay = diaSelecionado;
 
-    // Renderizar inicialmente com o dia atual
-    diaSelect.value = new Date().getDay();
-    renderizar();
+            const aulas = window.scheduleManager.loadAulas() || [];
 
-    // Adicionar event listeners
-    modoSelect.addEventListener('change', renderizar);
-    diaSelect.addEventListener('change', renderizar);
-}
+            if (!aulas.length) {
+                container.innerHTML = '<p class="text-secondary" style="padding:20px;">Nenhuma aula cadastrada</p>';
+                return;
+            }
+
+            if (modo === 'semana') {
+                window.scheduleManager.renderGradeSemanal(containerId);
+            } else {
+                window.scheduleManager.renderGradeDia(diaSelecionado, containerId);
+            }
+        };
+
+        renderizar();
+
+        modoSelect.addEventListener('change', renderizar);
+        diaSelect.addEventListener('change', renderizar);
+    }
+
     renderSessoes() {
-        const hoje = new Date().toDateString();
-        const sessoesHoje = this.app.data.sessions.filter(s => new Date(s.data).toDateString() === hoje && !s.concluida);
+        const hoje = toDateString();
+        const agora = new Date();
+
+        const sessoesHoje = this.app.data.sessions.filter(s => toDateString(s.data) === hoje && !s.concluida);
         const futuras = this.app.data.sessions
-            .filter(s => new Date(s.data) > new Date() && !s.concluida)
+            .filter(s => new Date(s.data) > agora && !s.concluida && toDateString(s.data) !== hoje)
             .sort((a, b) => new Date(a.data) - new Date(b.data));
-        const concluidas = this.app.data.sessions.filter(s => s.concluida).slice(0, 10);
+
+        const concluidas = this.app.data.sessions
+            .filter(s => s.concluida)
+            .sort((a, b) => new Date(b.data) - new Date(a.data))
+            .slice(0, 10);
 
         return `
             <div class="view-header">
@@ -528,17 +503,17 @@ setupGradeHoraria(containerId, viewModeId, daySelectId) {
                             ${sessoesHoje.map(s => `
                                 <li>
                                     <div>
-                                        <strong>${s.materia}</strong>
-                                        <small>${s.tipo} • ${s.duracao}min • ${formatarHora(s.data)}</small>
+                                        <strong>${this.esc(s.materia)}</strong>
+                                        <small>${this.esc(s.tipo)} • ${this.esc(s.duracao)}min • ${formatarHora(s.data)}</small>
                                     </div>
                                     <div style="display:flex; gap:8px;">
-                                        <button class="btn-icon btn-editar-sessao" data-id="${s.id}" title="Editar sessão">
+                                        <button class="btn-icon btn-editar-sessao" data-id="${this.esc(s.id)}" title="Editar sessão">
                                             <i class="fas fa-edit"></i>
                                         </button>
-                                        <button class="btn-icon btn-concluir-sessao" data-id="${s.id}" title="Concluir sessão">
+                                        <button class="btn-icon btn-concluir-sessao" data-id="${this.esc(s.id)}" title="Concluir sessão">
                                             <i class="fas fa-check-circle"></i>
                                         </button>
-                                        <button class="btn-icon btn-excluir-sessao" data-id="${s.id}" title="Excluir sessão" style="color: var(--accent-danger);">
+                                        <button class="btn-icon btn-excluir-sessao" data-id="${this.esc(s.id)}" title="Excluir sessão" style="color: var(--accent-danger);">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </div>
@@ -556,14 +531,14 @@ setupGradeHoraria(containerId, viewModeId, daySelectId) {
                             ${futuras.map(s => `
                                 <li>
                                     <div>
-                                        <strong>${s.materia}</strong>
-                                        <small>${new Date(s.data).toLocaleDateString()} • ${formatarHora(s.data)} • ${s.tipo}</small>
+                                        <strong>${this.esc(s.materia)}</strong>
+                                        <small>${formatarData(s.data)} • ${formatarHora(s.data)} • ${this.esc(s.tipo)}</small>
                                     </div>
                                     <div style="display:flex; gap:8px;">
-                                        <button class="btn-icon btn-editar-sessao" data-id="${s.id}" title="Editar sessão">
+                                        <button class="btn-icon btn-editar-sessao" data-id="${this.esc(s.id)}" title="Editar sessão">
                                             <i class="fas fa-edit"></i>
                                         </button>
-                                        <button class="btn-icon btn-excluir-sessao" data-id="${s.id}" title="Excluir sessão" style="color: var(--accent-danger);">
+                                        <button class="btn-icon btn-excluir-sessao" data-id="${this.esc(s.id)}" title="Excluir sessão" style="color: var(--accent-danger);">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </div>
@@ -581,12 +556,12 @@ setupGradeHoraria(containerId, viewModeId, daySelectId) {
                             ${concluidas.map(s => `
                                 <li>
                                     <div>
-                                        <strong>${s.materia}</strong>
-                                        <small>${new Date(s.data).toLocaleDateString()}</small>
+                                        <strong>${this.esc(s.materia)}</strong>
+                                        <small>${formatarData(s.data)}</small>
                                     </div>
                                     <div style="display:flex; gap:8px;">
                                         <i class="fas fa-check" style="color: var(--accent-success);"></i>
-                                        <button class="btn-icon btn-excluir-sessao" data-id="${s.id}" title="Excluir sessão" style="color: var(--accent-danger);">
+                                        <button class="btn-icon btn-excluir-sessao" data-id="${this.esc(s.id)}" title="Excluir sessão" style="color: var(--accent-danger);">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </div>
@@ -601,8 +576,13 @@ setupGradeHoraria(containerId, viewModeId, daySelectId) {
     }
 
     renderTarefas() {
-        const pendentes = this.app.data.tasks.filter(t => !t.concluida);
-        const concluidas = this.app.data.tasks.filter(t => t.concluida);
+        const pendentes = this.app.data.tasks
+            .filter(t => !t.concluida)
+            .sort((a, b) => new Date(a.dataLimite) - new Date(b.dataLimite));
+
+        const concluidas = this.app.data.tasks
+            .filter(t => t.concluida)
+            .sort((a, b) => new Date(b.dataLimite) - new Date(a.dataLimite));
 
         return `
             <div class="view-header">
@@ -618,15 +598,18 @@ setupGradeHoraria(containerId, viewModeId, daySelectId) {
                             ${pendentes.map(t => `
                                 <li>
                                     <div>
-                                        <strong>${t.titulo}</strong>
-                                        <small>${t.materia} • até ${new Date(t.dataLimite).toLocaleDateString()}</small>
+                                        <strong>${this.esc(t.titulo)}</strong>
+                                        <small>${this.esc(t.materia)} • até ${formatarData(t.dataLimite)}</small>
                                     </div>
                                     <div style="display:flex; gap:8px;">
-                                        <span class="tag ${t.prioridade}">${t.prioridade}</span>
-                                        <button class="btn-icon btn-concluir-tarefa" data-id="${t.id}" title="Concluir tarefa">
+                                        <span class="tag ${this.esc(t.prioridade)}">${this.esc(t.prioridade)}</span>
+                                        <button class="btn-icon btn-editar-tarefa" data-id="${this.esc(t.id)}" title="Editar tarefa">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn-icon btn-concluir-tarefa" data-id="${this.esc(t.id)}" title="Concluir tarefa">
                                             <i class="fas fa-check-circle"></i>
                                         </button>
-                                        <button class="btn-icon btn-excluir-tarefa" data-id="${t.id}" title="Excluir tarefa" style="color: var(--accent-danger);">
+                                        <button class="btn-icon btn-excluir-tarefa" data-id="${this.esc(t.id)}" title="Excluir tarefa" style="color: var(--accent-danger);">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </div>
@@ -644,12 +627,15 @@ setupGradeHoraria(containerId, viewModeId, daySelectId) {
                             ${concluidas.slice(0, 10).map(t => `
                                 <li>
                                     <div>
-                                        <strong>${t.titulo}</strong>
-                                        <small>${t.materia}</small>
+                                        <strong>${this.esc(t.titulo)}</strong>
+                                        <small>${this.esc(t.materia)}</small>
                                     </div>
                                     <div style="display:flex; gap:8px;">
                                         <i class="fas fa-check" style="color: var(--accent-success);"></i>
-                                        <button class="btn-icon btn-excluir-tarefa" data-id="${t.id}" title="Excluir tarefa" style="color: var(--accent-danger);">
+                                        <button class="btn-icon btn-editar-tarefa" data-id="${this.esc(t.id)}" title="Editar tarefa">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn-icon btn-excluir-tarefa" data-id="${this.esc(t.id)}" title="Excluir tarefa" style="color: var(--accent-danger);">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </div>
@@ -664,12 +650,14 @@ setupGradeHoraria(containerId, viewModeId, daySelectId) {
     }
 
     renderProvas() {
+        const agora = toDateOnly(new Date());
+
         const proximas = this.app.data.exams
-            .filter(e => new Date(e.data) >= new Date() && !e.concluida)
+            .filter(e => toDateOnly(e.data) >= agora && !e.concluida)
             .sort((a, b) => new Date(a.data) - new Date(b.data));
-        
+
         const passadas = this.app.data.exams
-            .filter(e => new Date(e.data) < new Date() || e.concluida)
+            .filter(e => toDateOnly(e.data) < agora || e.concluida)
             .sort((a, b) => new Date(b.data) - new Date(a.data))
             .slice(0, 10);
 
@@ -687,14 +675,15 @@ setupGradeHoraria(containerId, viewModeId, daySelectId) {
                             ${proximas.map(e => `
                                 <li>
                                     <div>
-                                        <strong>${e.titulo}</strong>
-                                        <small>${e.materia} • ${e.tipo} • ${new Date(e.data).toLocaleDateString()}</small>
+                                        <strong>${this.esc(e.titulo)}</strong>
+                                        <small>${this.esc(e.materia)} • ${this.esc(e.tipo)} • ${formatarData(e.data)}</small>
                                     </div>
                                     <div style="display:flex; gap:8px;">
-                                        <span class="tag ${this.app.getExamRiskClass(e)}">
-                                            ${diasAte(e.data)} dias
-                                        </span>
-                                        <button class="btn-icon btn-excluir-prova" data-id="${e.id}" title="Excluir evento" style="color: var(--accent-danger);">
+                                        <span class="tag ${this.app.getExamRiskClass(e)}">${diasAte(e.data)} dias</span>
+                                        <button class="btn-icon btn-editar-prova" data-id="${this.esc(e.id)}" title="Editar evento">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn-icon btn-excluir-prova" data-id="${this.esc(e.id)}" title="Excluir evento" style="color: var(--accent-danger);">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </div>
@@ -712,12 +701,15 @@ setupGradeHoraria(containerId, viewModeId, daySelectId) {
                             ${passadas.map(e => `
                                 <li>
                                     <div>
-                                        <strong>${e.titulo}</strong>
-                                        <small>${e.materia} • ${new Date(e.data).toLocaleDateString()}</small>
+                                        <strong>${this.esc(e.titulo)}</strong>
+                                        <small>${this.esc(e.materia)} • ${formatarData(e.data)}</small>
                                     </div>
                                     <div style="display:flex; gap:8px;">
                                         <span class="tag success">Concluído</span>
-                                        <button class="btn-icon btn-excluir-prova" data-id="${e.id}" title="Excluir evento" style="color: var(--accent-danger);">
+                                        <button class="btn-icon btn-editar-prova" data-id="${this.esc(e.id)}" title="Editar evento">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn-icon btn-excluir-prova" data-id="${this.esc(e.id)}" title="Excluir evento" style="color: var(--accent-danger);">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </div>
@@ -744,26 +736,26 @@ setupGradeHoraria(containerId, viewModeId, daySelectId) {
                     return `
                         <div class="card materia-map">
                             <div class="card-header">
-                                <h3>${s.nome}</h3>
+                                <h3>${this.esc(s.nome)}</h3>
                                 <span class="badge">${topicos.length} tópicos</span>
                             </div>
                             <div class="card-body">
                                 ${topicos.map(t => `
                                     <div class="topico-item">
                                         <div class="topico-info">
-                                            <strong>${t.nome}</strong>
-                                            <span class="tag ${t.status}">${t.status}</span>
+                                            <strong>${this.esc(t.nome)}</strong>
+                                            <span class="tag ${this.esc(t.status)}">${this.esc(t.status)}</span>
                                         </div>
                                         <div class="topico-meta">
-                                            <span data-tooltip="Dificuldade">📊 ${t.dificuldade}/5</span>
-                                            <span data-tooltip="Confiança">🎯 ${t.confianca}/5</span>
-                                            <span data-tooltip="Última revisão">🔄 ${t.ultimaRevisao ? diasDesde(t.ultimaRevisao) : 0}d</span>
+                                            <span>📊 ${this.esc(t.dificuldade)}/5</span>
+                                            <span>🎯 ${this.esc(t.confianca)}/5</span>
+                                            <span>🔄 ${t.ultimaRevisao ? diasDesde(t.ultimaRevisao) : 0}d</span>
                                         </div>
                                         <div style="margin-top:10px; display:flex; justify-content:flex-end; gap:8px;">
-                                            <button class="btn-icon btn-editar-topico" data-id="${t.id}" title="Editar tópico">
+                                            <button class="btn-icon btn-editar-topico" data-id="${this.esc(t.id)}" title="Editar tópico">
                                                 <i class="fas fa-edit"></i>
                                             </button>
-                                            <button class="btn-icon btn-excluir-topico" data-id="${t.id}" title="Excluir tópico" style="color: var(--accent-danger);">
+                                            <button class="btn-icon btn-excluir-topico" data-id="${this.esc(t.id)}" title="Excluir tópico" style="color: var(--accent-danger);">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </div>
@@ -791,30 +783,42 @@ setupGradeHoraria(containerId, viewModeId, daySelectId) {
                     return `
                         <div class="card">
                             <div class="card-header">
-                                <h3>${s.nome}</h3>
+                                <h3>${this.esc(s.nome)}</h3>
                                 <span>${materiais.length} itens</span>
                             </div>
                             <div class="card-body">
                                 <ul class="item-list">
-                                    ${materiais.map(m => `
-                                        <li>
-                                            <div style="display:flex; align-items:center; gap:8px;">
-                                                <i class="fas ${this.getMaterialIcon(m.tipo)}"></i>
-                                                <div>
-                                                    <strong>${m.titulo}</strong><br>
-                                                    <small>${m.tipo}</small>
+                                    ${materiais.map(m => {
+                                        const isExternal = ['link', 'pdf', 'video'].includes(m.tipo);
+                                        const contentPreview = m.tipo === 'anotacao'
+                                            ? `<small>${this.esc(String(m.conteudo || '').slice(0, 80))}${String(m.conteudo || '').length > 80 ? '...' : ''}</small>`
+                                            : `<small>${this.esc(m.tipo)}</small>`;
+
+                                        return `
+                                            <li>
+                                                <div style="display:flex; align-items:center; gap:8px;">
+                                                    <i class="fas ${this.getMaterialIcon(m.tipo)}"></i>
+                                                    <div>
+                                                        <strong>${this.esc(m.titulo)}</strong><br>
+                                                        ${contentPreview}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div style="display:flex; gap:8px;">
-                                                <a href="${m.conteudo}" target="_blank" class="btn-icon" title="Abrir material">
-                                                    <i class="fas fa-external-link-alt"></i>
-                                                </a>
-                                                <button class="btn-icon btn-excluir-material" data-id="${m.id}" title="Excluir material" style="color: var(--accent-danger);">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </div>
-                                        </li>
-                                    `).join('')}
+                                                <div style="display:flex; gap:8px;">
+                                                    ${isExternal ? `
+                                                        <a href="${this.esc(m.conteudo)}" target="_blank" rel="noopener noreferrer" class="btn-icon" title="Abrir material">
+                                                            <i class="fas fa-external-link-alt"></i>
+                                                        </a>
+                                                    ` : ''}
+                                                    <button class="btn-icon btn-editar-material" data-id="${this.esc(m.id)}" title="Editar material">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button class="btn-icon btn-excluir-material" data-id="${this.esc(m.id)}" title="Excluir material" style="color: var(--accent-danger);">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </li>
+                                        `;
+                                    }).join('')}
                                     ${!materiais.length ? '<li>Nenhum material cadastrado</li>' : ''}
                                 </ul>
                             </div>
@@ -837,9 +841,9 @@ setupGradeHoraria(containerId, viewModeId, daySelectId) {
         for (let i = 1; i <= diasNoMes; i++) dias.push(i);
 
         const eventos = [
-            ...this.app.data.sessions.map(s => ({ ...s, tipo: 'sessao', data: s.data })),
-            ...this.app.data.tasks.map(t => ({ ...t, tipo: 'tarefa', data: t.dataLimite })),
-            ...this.app.data.exams.map(e => ({ ...e, tipo: 'exame', data: e.data }))
+            ...this.app.data.sessions.map(s => ({ ...s, tipo: 'sessao', data: s.data, label: s.topico || s.materia })),
+            ...this.app.data.tasks.map(t => ({ ...t, tipo: 'tarefa', data: t.dataLimite, label: t.titulo })),
+            ...this.app.data.exams.map(e => ({ ...e, tipo: 'exame', data: e.data, label: e.titulo }))
         ];
 
         return `
@@ -861,8 +865,8 @@ setupGradeHoraria(containerId, viewModeId, daySelectId) {
                                 const eventosDia = eventos.filter(e => {
                                     const data = new Date(e.data);
                                     return data.getDate() === d &&
-                                           data.getMonth() === hoje.getMonth() &&
-                                           data.getFullYear() === hoje.getFullYear();
+                                        data.getMonth() === hoje.getMonth() &&
+                                        data.getFullYear() === hoje.getFullYear();
                                 });
 
                                 return `
@@ -871,7 +875,7 @@ setupGradeHoraria(containerId, viewModeId, daySelectId) {
                                         ${eventosDia.length ? `
                                             <div class="day-events">
                                                 ${eventosDia.slice(0, 3).map(e => `
-                                                    <div class="event-indicator" title="${e.titulo || e.materia}">
+                                                    <div class="event-indicator" title="${this.esc(e.label)}">
                                                         <i class="fas ${this.getEventIcon(e.tipo)}"></i>
                                                     </div>
                                                 `).join('')}
@@ -904,8 +908,8 @@ setupGradeHoraria(containerId, viewModeId, daySelectId) {
                     return `
                         <div class="card subject-grade-card">
                             <div class="card-header">
-                                <h3>${s.nome}</h3>
-                                <span class="risk-indicator risk-${previsao.risco}">${previsao.risco}</span>
+                                <h3>${this.esc(s.nome)}</h3>
+                                <span class="risk-indicator risk-${this.esc(previsao.risco)}">${this.esc(previsao.risco)}</span>
                             </div>
                             <div class="card-body">
                                 <div class="grade-stats">
@@ -915,11 +919,11 @@ setupGradeHoraria(containerId, viewModeId, daySelectId) {
                                     </div>
                                     <div class="grade-item">
                                         <span class="grade-label">Nota desejada</span>
-                                        <span class="grade-value">${s.notaDesejada}</span>
+                                        <span class="grade-value">${this.esc(s.notaDesejada)}</span>
                                     </div>
                                     <div class="grade-item">
                                         <span class="grade-label">Necessário</span>
-                                        <span class="grade-value">${previsao.notaNecessaria}</span>
+                                        <span class="grade-value">${this.esc(previsao.notaNecessaria)}</span>
                                     </div>
                                 </div>
                                 <div class="progress-container">
@@ -931,7 +935,7 @@ setupGradeHoraria(containerId, viewModeId, daySelectId) {
                                         <div class="progress-fill" style="width: ${previsao.chance}%"></div>
                                     </div>
                                 </div>
-                                <p class="previsao-motivo">💡 ${previsao.motivo}</p>
+                                <p class="previsao-motivo">💡 ${this.esc(previsao.motivo)}</p>
                                 
                                 <div style="margin-top:16px;">
                                     <h4>Notas Registradas</h4>
@@ -939,12 +943,17 @@ setupGradeHoraria(containerId, viewModeId, daySelectId) {
                                         ${notas.map(n => `
                                             <li>
                                                 <div>
-                                                    <strong>${n.avaliacao}</strong>
-                                                    <small>Nota: ${n.valor} • Peso: ${n.peso}%</small>
+                                                    <strong>${this.esc(n.avaliacao)}</strong>
+                                                    <small>Nota: ${this.esc(n.valor)} • Peso: ${this.esc(n.peso)}%</small>
                                                 </div>
-                                                <button class="btn-icon btn-excluir-nota" data-id="${n.id}" title="Excluir nota" style="color: var(--accent-danger);">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
+                                                <div style="display:flex; gap:8px;">
+                                                    <button class="btn-icon btn-editar-nota" data-id="${this.esc(n.id)}" title="Editar nota">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button class="btn-icon btn-excluir-nota" data-id="${this.esc(n.id)}" title="Excluir nota" style="color: var(--accent-danger);">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
                                             </li>
                                         `).join('')}
                                         ${!notas.length ? '<li>Nenhuma nota registrada</li>' : ''}
@@ -968,7 +977,8 @@ setupGradeHoraria(containerId, viewModeId, daySelectId) {
             { id: 'agua', nome: 'Beber água', icone: 'fa-tint' },
             { id: 'anotacoes', nome: 'Ler anotações', icone: 'fa-sticky-note' }
         ];
-        const hoje = new Date().toDateString();
+
+        const hoje = toDateString();
 
         return `
             <h2><i class="fas fa-heart"></i> Hábitos e Rotina</h2>
@@ -981,16 +991,14 @@ setupGradeHoraria(containerId, viewModeId, daySelectId) {
                     <div class="card-body">
                         <div class="habitos-list">
                             ${habitos.map(h => {
-                                const feito = this.app.data.habits.some(hb =>
-                                    hb.id === h.id && new Date(hb.data).toDateString() === hoje
-                                );
+                                const feito = this.app.data.habits.some(hb => hb.id === h.id && toDateString(hb.data) === hoje);
                                 return `
                                     <div class="habito-item">
                                         <div class="habito-info">
                                             <i class="fas ${h.icone}"></i>
-                                            <span>${h.nome}</span>
+                                            <span>${this.esc(h.nome)}</span>
                                         </div>
-                                        <button class="btn-icon toggle-habito ${feito ? 'active' : ''}" data-habito="${h.id}">
+                                        <button class="btn-icon toggle-habito ${feito ? 'active' : ''}" data-habito="${this.esc(h.id)}">
                                             <i class="fas ${feito ? 'fa-check-circle' : 'fa-circle'}"></i>
                                         </button>
                                     </div>
@@ -1014,7 +1022,7 @@ setupGradeHoraria(containerId, viewModeId, daySelectId) {
                                 <span class="stat-label">esta semana</span>
                             </div>
                             <div class="stat-item">
-                                <span class="stat-value">${this.app.data.user?.streak || 0}</span>
+                                <span class="stat-value">${this.esc(this.app.data.user?.streak || 0)}</span>
                                 <span class="stat-label">dias seguidos</span>
                             </div>
                         </div>
@@ -1056,7 +1064,7 @@ setupGradeHoraria(containerId, viewModeId, daySelectId) {
                 <div class="card">
                     <div class="card-header"><h3>🔥 Melhor Dia</h3></div>
                     <div class="card-body text-center">
-                        <div class="big-number">${this.app.calcularMelhorDia()}</div>
+                        <div class="big-number">${this.esc(this.app.calcularMelhorDia())}</div>
                         <p>${this.app.calcularMelhorDiaHoras()}h</p>
                     </div>
                 </div>
@@ -1075,7 +1083,7 @@ setupGradeHoraria(containerId, viewModeId, daySelectId) {
                 <div class="card-body">
                     ${horasPorMateria.map(item => `
                         <div class="stat-row">
-                            <div class="stat-label">${item.materia}</div>
+                            <div class="stat-label">${this.esc(item.materia)}</div>
                             <div class="progress-bar">
                                 <div class="progress-fill" style="width: ${(item.horas / maxHorasMateria) * 100}%"></div>
                             </div>
@@ -1092,7 +1100,7 @@ setupGradeHoraria(containerId, viewModeId, daySelectId) {
                         ${horasPorTipo.map(t => `
                             <div class="tipo-item">
                                 <div class="tipo-header">
-                                    <span>${t.tipo}</span>
+                                    <span>${this.esc(t.tipo)}</span>
                                     <span>${t.horas.toFixed(1)}h</span>
                                 </div>
                                 <div class="progress-bar">
@@ -1210,7 +1218,7 @@ setupGradeHoraria(containerId, viewModeId, daySelectId) {
                     <p><strong>Study Life Control</strong></p>
                     <p>Versão: 3.0.0</p>
                     <p>Sistema inteligente para estudantes universitários</p>
-                    <p>Conectado como: ${auth.currentUser?.email || 'Não conectado'}</p>
+                    <p>Conectado como: ${this.esc(auth.currentUser?.email || 'Não conectado')}</p>
                 </div>
             </div>
         `;
@@ -1228,12 +1236,12 @@ setupGradeHoraria(containerId, viewModeId, daySelectId) {
                     const totalSessoes = this.app.data.sessions.filter(ses => ses.materia === s.nome).length;
                     const totalTarefas = this.app.data.tasks.filter(t => t.materia === s.nome && !t.concluida).length;
                     const totalProvas = this.app.data.exams.filter(e => e.materia === s.nome && new Date(e.data) >= new Date()).length;
-                    
+
                     return `
                         <div class="card subject-card">
                             <div class="card-header">
-                                <h3>${s.nome}</h3>
-                                <span class="badge" style="background: ${this.getDificuldadeColor(s.dificuldade)};">Dificuldade ${s.dificuldade}/5</span>
+                                <h3>${this.esc(s.nome)}</h3>
+                                <span class="badge" style="background: ${this.getDificuldadeColor(s.dificuldade)};">Dificuldade ${this.esc(s.dificuldade)}/5</span>
                             </div>
                             <div class="card-body">
                                 <div class="subject-stats">
@@ -1242,10 +1250,10 @@ setupGradeHoraria(containerId, viewModeId, daySelectId) {
                                     <div><i class="fas fa-graduation-cap"></i> ${totalProvas} provas</div>
                                 </div>
                                 <div class="subject-actions" style="display:flex; gap:8px; margin-top:16px;">
-                                    <button class="btn-secondary btn-editar-materia" data-id="${s.id}" style="flex:1;">
+                                    <button class="btn-secondary btn-editar-materia" data-id="${this.esc(s.id)}" style="flex:1;">
                                         <i class="fas fa-edit"></i> Editar
                                     </button>
-                                    <button class="btn-danger btn-excluir-materia" data-id="${s.id}" style="flex:1;">
+                                    <button class="btn-danger btn-excluir-materia" data-id="${this.esc(s.id)}" style="flex:1;">
                                         <i class="fas fa-trash"></i> Excluir
                                     </button>
                                 </div>
@@ -1265,11 +1273,11 @@ setupGradeHoraria(containerId, viewModeId, daySelectId) {
                 : 'fa-info-circle';
 
         return `
-            <div class="alert-card ${alert.type}">
+            <div class="alert-card ${this.esc(alert.type)}">
                 <i class="fas ${icon}"></i>
                 <div class="alert-content">
-                    <div class="alert-title">${alert.title}</div>
-                    <div class="alert-description">${alert.message}</div>
+                    <div class="alert-title">${this.esc(alert.title)}</div>
+                    <div class="alert-description">${this.esc(alert.message)}</div>
                 </div>
             </div>
         `;
@@ -1305,9 +1313,9 @@ setupGradeHoraria(containerId, viewModeId, daySelectId) {
     }
 
     renderSessoesFocoHoje() {
-        const hoje = new Date().toDateString();
+        const hoje = toDateString();
         const sessoes = this.app.data.sessions.filter(s =>
-            new Date(s.data).toDateString() === hoje && s.concluida && s.tipo === 'foco'
+            toDateString(s.data) === hoje && s.concluida && s.tipo === 'foco'
         );
 
         if (!sessoes.length) {
@@ -1316,8 +1324,8 @@ setupGradeHoraria(containerId, viewModeId, daySelectId) {
 
         return sessoes.map(s => `
             <li>
-                <span>${s.materia}</span>
-                <span>${s.duracao} min</span>
+                <span>${this.esc(s.materia)}</span>
+                <span>${this.esc(s.duracao)} min</span>
             </li>
         `).join('');
     }
@@ -1335,7 +1343,7 @@ setupGradeHoraria(containerId, viewModeId, daySelectId) {
             const [h, m] = aula.inicio.split(':');
             const horaAula = new Date(hoje);
             horaAula.setHours(parseInt(h, 10), parseInt(m, 10), 0, 0);
-            
+
             if (horaAula < hoje) {
                 dataAula.setDate(hoje.getDate() + 7);
             }
@@ -1378,14 +1386,14 @@ setupGradeHoraria(containerId, viewModeId, daySelectId) {
     }
 
     getResumoHorasEstudo() {
-        const hoje = new Date();
-        const inicioSemana = new Date(hoje);
-        inicioSemana.setDate(hoje.getDate() - hoje.getDay());
+        const hoje = toDateString();
+        const inicioSemana = new Date();
+        inicioSemana.setDate(inicioSemana.getDate() - inicioSemana.getDay());
 
         const sessoesConcluidas = this.app.data.sessions.filter(s => s.concluida);
 
         const horasHoje = sessoesConcluidas
-            .filter(s => new Date(s.data).toDateString() === hoje.toDateString())
+            .filter(s => toDateString(s.data) === hoje)
             .reduce((acc, s) => acc + s.duracao, 0) / 60;
 
         const horasSemana = sessoesConcluidas
@@ -1453,49 +1461,6 @@ setupGradeHoraria(containerId, viewModeId, daySelectId) {
 
     calcularHorasAulaSemana(aulas) {
         return aulas.reduce((total, aula) => total + (calcularDuracaoMinutos(aula.inicio, aula.fim) / 60), 0);
-    }
-
-    renderGradeSemanalCards(aulas) {
-        const dias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-
-        return `
-            <div class="weekly-schedule">
-                ${dias.map((dia, index) => {
-                    const aulasDia = aulas
-                        .filter(a => parseInt(a.dia, 10) === index)
-                        .sort((a, b) => a.inicio.localeCompare(b.inicio));
-
-                    return `
-                        <div class="weekly-day-column">
-                            <h4>${dia}</h4>
-                            <div class="weekly-events">
-                                ${aulasDia.length ? aulasDia.map(aula => `
-                                    <div class="weekly-event" data-aula-id="${aula.id}" style="border-left-color: ${aula.cor || '#3b82f6'};">
-                                        <strong>${aula.materia}</strong>
-                                        <div>${aula.inicio} - ${aula.fim}</div>
-                                        ${aula.sala ? `<small>📍 ${aula.sala}</small>` : ''}
-                                        ${aula.professor ? `<small>👤 ${aula.professor}</small>` : ''}
-                                    </div>
-                                `).join('') : '<p class="text-secondary">Sem aulas</p>'}
-                            </div>
-                        </div>
-                    `;
-                }).join('')}
-            </div>
-        `;
-    }
-
-    bindWeeklyScheduleClicks() {
-        setTimeout(() => {
-            document.querySelectorAll('.weekly-event').forEach(item => {
-                item.addEventListener('click', e => {
-                    const aulaId = e.currentTarget.dataset.aulaId;
-                    if (aulaId && window.app) {
-                        window.app.openAulaModal(aulaId);
-                    }
-                });
-            });
-        }, 100);
     }
 }
 

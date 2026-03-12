@@ -2,89 +2,81 @@
 
 let currentUser = null;
 
-// Função para aguardar app existir com timeo
-function waitForApp(timeout = 5000) {
-    return new Promise((resolve, reject) => {
-        if (window.app) return resolve(window.app);
-        const start = Date.now();
-        const checkInterval = setInterval(() => {
-            if (window.app) {
-                clearInterval(checkInterval);
-                resolve(window.app);
-            } else if (Date.now() - start > timeout) {
-                clearInterval(checkInterval); // <-- Adicione esta linha para parar o loop
-                reject(new Error('window.app não foi inicializado a tempo'));
-            }
-        }, 50);
-    });
-}
-
-// Inicializar listener de autenticação
 auth.onAuthStateChanged(async (user) => {
-    if (user) {
-        currentUser = user;
-        document.getElementById('login-screen').style.display = 'none';
-        
-        try {
-            // Aguardar app ser criado com timeout
-            const app = await waitForApp();
-            
-            // Carregar dados do usuário
-            await window.dbService.loadUserData(user.uid);
-            
-            // Verificar se é primeira vez
-            if (!app.data.user) {
-                document.getElementById('setup-screen').style.display = 'flex';
-                document.getElementById('main-dashboard').style.display = 'none';
-                app.renderSetupForm();
-            } else {
-                document.getElementById('setup-screen').style.display = 'none';
-                document.getElementById('main-dashboard').style.display = 'block';
-                await app.init();
-            }
-        } catch (error) {
-            console.error('Erro na inicialização:', error);
+    const loginScreen = document.getElementById('login-screen');
+    const setupScreen = document.getElementById('setup-screen');
+    const mainDashboard = document.getElementById('main-dashboard');
+
+    try {
+        if (window.showLoading) window.showLoading();
+
+        if (!window.app) {
+            console.error('window.app ainda não existe');
             if (window.showToast) {
-                window.showToast('Erro ao inicializar aplicação. Recarregue a página.', 'error');
+                window.showToast('App ainda não inicializado. Recarregue a página.', 'error');
             }
-        } finally {
-            if (window.hideLoading) window.hideLoading();
+            return;
         }
-    } else {
-        currentUser = null;
-        document.getElementById('login-screen').style.display = 'flex';
-        document.getElementById('setup-screen').style.display = 'none';
-        document.getElementById('main-dashboard').style.display = 'none';
+
+        if (user) {
+            currentUser = user;
+
+            if (loginScreen) loginScreen.style.display = 'none';
+
+            const data = await window.dbService.loadUserData(user.uid);
+
+            if (!data.user) {
+                if (setupScreen) setupScreen.style.display = 'flex';
+                if (mainDashboard) mainDashboard.style.display = 'none';
+                window.app.renderSetupForm();
+            } else {
+                if (setupScreen) setupScreen.style.display = 'none';
+                if (mainDashboard) mainDashboard.style.display = 'block';
+                await window.app.init();
+            }
+        } else {
+            currentUser = null;
+
+            if (loginScreen) loginScreen.style.display = 'flex';
+            if (setupScreen) setupScreen.style.display = 'none';
+            if (mainDashboard) mainDashboard.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Erro na autenticação/inicialização:', error);
+        if (window.showToast) {
+            window.showToast('Erro ao inicializar aplicação. Recarregue a página.', 'error');
+        }
+    } finally {
         if (window.hideLoading) window.hideLoading();
     }
 });
 
-// Login com Google
 async function loginWithGoogle() {
     try {
         if (window.showLoading) window.showLoading();
         await auth.signInWithPopup(googleProvider);
     } catch (error) {
-        if (window.hideLoading) window.hideLoading();
+        console.error('Erro no login:', error);
         if (window.showToast) {
             window.showToast('Erro ao fazer login: ' + error.message, 'error');
         }
+    } finally {
+        if (window.hideLoading) window.hideLoading();
     }
 }
 
-// Logout
 async function logout() {
     try {
         await auth.signOut();
-        if (window.showToast) window.showToast('Desconectado com sucesso');
+        if (window.showToast) window.showToast('Desconectado com sucesso', 'success');
     } catch (error) {
+        console.error('Erro no logout:', error);
         if (window.showToast) {
             window.showToast('Erro ao sair: ' + error.message, 'error');
         }
     }
 }
 
-// Event listeners
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('login-google')?.addEventListener('click', loginWithGoogle);
     document.getElementById('logout-btn')?.addEventListener('click', logout);
