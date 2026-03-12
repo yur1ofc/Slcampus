@@ -1,4 +1,4 @@
-// schedule.js - Grade horária com modo dia/semana, edição e conflitos
+// schedule.js - Grade horária CORRIGIDA
 
 class ScheduleManager {
     constructor() {

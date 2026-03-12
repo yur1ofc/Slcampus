@@ -1,3 +1,5 @@
+// views.js - Renderizador de visualizações COMPLETO E CORRIGIDO
+
 class ViewRenderer {
     constructor(app) {
         this.app = app;
@@ -437,7 +439,7 @@ class ViewRenderer {
                                     <button class="btn-icon btn-editar-aula" data-id="${a.id}" title="Editar aula">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <button class="btn-icon btn-remover-aula" data-id="${a.id}" title="Remover aula">
+                                    <button class="btn-icon btn-remover-aula" data-id="${a.id}" title="Remover aula" style="color: var(--accent-danger);">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </div>
@@ -481,6 +483,9 @@ class ViewRenderer {
                                         <button class="btn-icon btn-concluir-sessao" data-id="${s.id}" title="Concluir sessão">
                                             <i class="fas fa-check-circle"></i>
                                         </button>
+                                        <button class="btn-icon btn-excluir-sessao" data-id="${s.id}" title="Excluir sessão" style="color: var(--accent-danger);">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
                                     </div>
                                 </li>
                             `).join('')}
@@ -499,9 +504,14 @@ class ViewRenderer {
                                         <strong>${s.materia}</strong>
                                         <small>${new Date(s.data).toLocaleDateString()} • ${formatarHora(s.data)} • ${s.tipo}</small>
                                     </div>
-                                    <button class="btn-icon btn-editar-sessao" data-id="${s.id}" title="Editar sessão">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
+                                    <div style="display:flex; gap:8px;">
+                                        <button class="btn-icon btn-editar-sessao" data-id="${s.id}" title="Editar sessão">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn-icon btn-excluir-sessao" data-id="${s.id}" title="Excluir sessão" style="color: var(--accent-danger);">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
                                 </li>
                             `).join('')}
                             ${!futuras.length ? '<li>Nenhuma sessão futura</li>' : ''}
@@ -519,7 +529,12 @@ class ViewRenderer {
                                         <strong>${s.materia}</strong>
                                         <small>${new Date(s.data).toLocaleDateString()}</small>
                                     </div>
-                                    <i class="fas fa-check" style="color: var(--accent-success);"></i>
+                                    <div style="display:flex; gap:8px;">
+                                        <i class="fas fa-check" style="color: var(--accent-success);"></i>
+                                        <button class="btn-icon btn-excluir-sessao" data-id="${s.id}" title="Excluir sessão" style="color: var(--accent-danger);">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
                                 </li>
                             `).join('')}
                             ${!concluidas.length ? '<li>Nenhuma sessão concluída</li>' : ''}
@@ -551,10 +566,13 @@ class ViewRenderer {
                                         <strong>${t.titulo}</strong>
                                         <small>${t.materia} • até ${new Date(t.dataLimite).toLocaleDateString()}</small>
                                     </div>
-                                    <div>
+                                    <div style="display:flex; gap:8px;">
                                         <span class="tag ${t.prioridade}">${t.prioridade}</span>
-                                        <button class="btn-icon btn-concluir-tarefa" data-id="${t.id}">
+                                        <button class="btn-icon btn-concluir-tarefa" data-id="${t.id}" title="Concluir tarefa">
                                             <i class="fas fa-check-circle"></i>
+                                        </button>
+                                        <button class="btn-icon btn-excluir-tarefa" data-id="${t.id}" title="Excluir tarefa" style="color: var(--accent-danger);">
+                                            <i class="fas fa-trash"></i>
                                         </button>
                                     </div>
                                 </li>
@@ -574,7 +592,12 @@ class ViewRenderer {
                                         <strong>${t.titulo}</strong>
                                         <small>${t.materia}</small>
                                     </div>
-                                    <i class="fas fa-check" style="color: var(--accent-success);"></i>
+                                    <div style="display:flex; gap:8px;">
+                                        <i class="fas fa-check" style="color: var(--accent-success);"></i>
+                                        <button class="btn-icon btn-excluir-tarefa" data-id="${t.id}" title="Excluir tarefa" style="color: var(--accent-danger);">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
                                 </li>
                             `).join('')}
                             ${!concluidas.length ? '<li>Nenhuma tarefa concluída</li>' : ''}
@@ -589,6 +612,11 @@ class ViewRenderer {
         const proximas = this.app.data.exams
             .filter(e => new Date(e.data) >= new Date() && !e.concluida)
             .sort((a, b) => new Date(a.data) - new Date(b.data));
+        
+        const passadas = this.app.data.exams
+            .filter(e => new Date(e.data) < new Date() || e.concluida)
+            .sort((a, b) => new Date(b.data) - new Date(a.data))
+            .slice(0, 10);
 
         return `
             <div class="view-header">
@@ -605,12 +633,15 @@ class ViewRenderer {
                                 <li>
                                     <div>
                                         <strong>${e.titulo}</strong>
-                                        <small>${e.materia} • ${e.tipo}</small>
+                                        <small>${e.materia} • ${e.tipo} • ${new Date(e.data).toLocaleDateString()}</small>
                                     </div>
-                                    <div>
+                                    <div style="display:flex; gap:8px;">
                                         <span class="tag ${this.app.getExamRiskClass(e)}">
                                             ${diasAte(e.data)} dias
                                         </span>
+                                        <button class="btn-icon btn-excluir-prova" data-id="${e.id}" title="Excluir evento" style="color: var(--accent-danger);">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
                                     </div>
                                 </li>
                             `).join('')}
@@ -620,17 +651,25 @@ class ViewRenderer {
                 </div>
 
                 <div class="card">
-                    <div class="card-header"><h3>📊 Por Matéria</h3></div>
+                    <div class="card-header"><h3>📜 Eventos Passados</h3></div>
                     <div class="card-body">
-                        ${this.app.data.subjects.map(s => {
-                            const examsSubject = this.app.data.exams.filter(e => e.materia === s.nome);
-                            return `
-                                <div class="subject-stats">
-                                    <h4>${s.nome}</h4>
-                                    <p>${examsSubject.length} eventos</p>
-                                </div>
-                            `;
-                        }).join('')}
+                        <ul class="item-list">
+                            ${passadas.map(e => `
+                                <li>
+                                    <div>
+                                        <strong>${e.titulo}</strong>
+                                        <small>${e.materia} • ${new Date(e.data).toLocaleDateString()}</small>
+                                    </div>
+                                    <div style="display:flex; gap:8px;">
+                                        <span class="tag success">Concluído</span>
+                                        <button class="btn-icon btn-excluir-prova" data-id="${e.id}" title="Excluir evento" style="color: var(--accent-danger);">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </li>
+                            `).join('')}
+                            ${!passadas.length ? '<li>Nenhum evento passado</li>' : ''}
+                        </ul>
                     </div>
                 </div>
             </div>
@@ -665,9 +704,12 @@ class ViewRenderer {
                                             <span data-tooltip="Confiança">🎯 ${t.confianca}/5</span>
                                             <span data-tooltip="Última revisão">🔄 ${t.ultimaRevisao ? diasDesde(t.ultimaRevisao) : 0}d</span>
                                         </div>
-                                        <div style="margin-top:10px; display:flex; justify-content:flex-end;">
+                                        <div style="margin-top:10px; display:flex; justify-content:flex-end; gap:8px;">
                                             <button class="btn-icon btn-editar-topico" data-id="${t.id}" title="Editar tópico">
                                                 <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn-icon btn-excluir-topico" data-id="${t.id}" title="Excluir tópico" style="color: var(--accent-danger);">
+                                                <i class="fas fa-trash"></i>
                                             </button>
                                         </div>
                                     </div>
@@ -701,13 +743,21 @@ class ViewRenderer {
                                 <ul class="item-list">
                                     ${materiais.map(m => `
                                         <li>
-                                            <div>
+                                            <div style="display:flex; align-items:center; gap:8px;">
                                                 <i class="fas ${this.getMaterialIcon(m.tipo)}"></i>
-                                                <strong>${m.titulo}</strong>
+                                                <div>
+                                                    <strong>${m.titulo}</strong><br>
+                                                    <small>${m.tipo}</small>
+                                                </div>
                                             </div>
-                                            <a href="${m.conteudo}" target="_blank" class="btn-icon">
-                                                <i class="fas fa-external-link-alt"></i>
-                                            </a>
+                                            <div style="display:flex; gap:8px;">
+                                                <a href="${m.conteudo}" target="_blank" class="btn-icon" title="Abrir material">
+                                                    <i class="fas fa-external-link-alt"></i>
+                                                </a>
+                                                <button class="btn-icon btn-excluir-material" data-id="${m.id}" title="Excluir material" style="color: var(--accent-danger);">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
                                         </li>
                                     `).join('')}
                                     ${!materiais.length ? '<li>Nenhum material cadastrado</li>' : ''}
@@ -766,7 +816,7 @@ class ViewRenderer {
                                         ${eventosDia.length ? `
                                             <div class="day-events">
                                                 ${eventosDia.slice(0, 3).map(e => `
-                                                    <div class="event-indicator" data-tooltip="${e.titulo || e.materia}">
+                                                    <div class="event-indicator" title="${e.titulo || e.materia}">
                                                         <i class="fas ${this.getEventIcon(e.tipo)}"></i>
                                                     </div>
                                                 `).join('')}
@@ -827,6 +877,24 @@ class ViewRenderer {
                                     </div>
                                 </div>
                                 <p class="previsao-motivo">💡 ${previsao.motivo}</p>
+                                
+                                <div style="margin-top:16px;">
+                                    <h4>Notas Registradas</h4>
+                                    <ul class="item-list">
+                                        ${notas.map(n => `
+                                            <li>
+                                                <div>
+                                                    <strong>${n.avaliacao}</strong>
+                                                    <small>Nota: ${n.valor} • Peso: ${n.peso}%</small>
+                                                </div>
+                                                <button class="btn-icon btn-excluir-nota" data-id="${n.id}" title="Excluir nota" style="color: var(--accent-danger);">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </li>
+                                        `).join('')}
+                                        ${!notas.length ? '<li>Nenhuma nota registrada</li>' : ''}
+                                    </ul>
+                                </div>
                             </div>
                         </div>
                     `;
@@ -1093,6 +1161,47 @@ class ViewRenderer {
         `;
     }
 
+    renderMaterias() {
+        return `
+            <div class="view-header">
+                <h2><i class="fas fa-book"></i> Matérias</h2>
+                <button class="btn-primary" id="btn-nova-materia"><i class="fas fa-plus"></i> Nova Matéria</button>
+            </div>
+
+            <div class="dashboard-grid">
+                ${this.app.data.subjects.map(s => {
+                    const totalSessoes = this.app.data.sessions.filter(ses => ses.materia === s.nome).length;
+                    const totalTarefas = this.app.data.tasks.filter(t => t.materia === s.nome && !t.concluida).length;
+                    const totalProvas = this.app.data.exams.filter(e => e.materia === s.nome && new Date(e.data) >= new Date()).length;
+                    
+                    return `
+                        <div class="card subject-card">
+                            <div class="card-header">
+                                <h3>${s.nome}</h3>
+                                <span class="badge" style="background: ${this.getDificuldadeColor(s.dificuldade)};">Dificuldade ${s.dificuldade}/5</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="subject-stats">
+                                    <div><i class="fas fa-clock"></i> ${totalSessoes} sessões</div>
+                                    <div><i class="fas fa-tasks"></i> ${totalTarefas} tarefas</div>
+                                    <div><i class="fas fa-graduation-cap"></i> ${totalProvas} provas</div>
+                                </div>
+                                <div class="subject-actions" style="display:flex; gap:8px; margin-top:16px;">
+                                    <button class="btn-secondary btn-editar-materia" data-id="${s.id}" style="flex:1;">
+                                        <i class="fas fa-edit"></i> Editar
+                                    </button>
+                                    <button class="btn-danger btn-excluir-materia" data-id="${s.id}" style="flex:1;">
+                                        <i class="fas fa-trash"></i> Excluir
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+    }
+
     renderAlert(alert) {
         const icon = alert.type === 'warning'
             ? 'fa-exclamation-triangle'
@@ -1129,7 +1238,7 @@ class ViewRenderer {
             const intensidade = temEstudo ? 100 : 20;
 
             html += `
-                <div class="chart-bar-container" data-tooltip="${temEstudo ? 'Estudou' : 'Não estudou'}">
+                <div class="chart-bar-container" title="${temEstudo ? 'Estudou' : 'Não estudou'}">
                     <div class="chart-bar" style="height: ${intensidade}px"></div>
                     <span class="chart-label">${['D', 'S', 'T', 'Q', 'Q', 'S', 'S'][i]}</span>
                 </div>
@@ -1167,6 +1276,14 @@ class ViewRenderer {
             dataAula.setDate(hoje.getDate() + (parseInt(aula.dia, 10) - diaSemana));
         } else if (parseInt(aula.dia, 10) < diaSemana) {
             dataAula.setDate(hoje.getDate() + (7 - diaSemana + parseInt(aula.dia, 10)));
+        } else {
+            const [h, m] = aula.inicio.split(':');
+            const horaAula = new Date(hoje);
+            horaAula.setHours(parseInt(h, 10), parseInt(m, 10), 0, 0);
+            
+            if (horaAula < hoje) {
+                dataAula.setDate(hoje.getDate() + 7);
+            }
         }
 
         const [h, m] = aula.inicio.split(':');
@@ -1192,6 +1309,17 @@ class ViewRenderer {
             exame: 'fa-graduation-cap'
         };
         return icons[tipo] || 'fa-calendar';
+    }
+
+    getDificuldadeColor(dificuldade) {
+        const cores = {
+            1: '#10b981',
+            2: '#34d399',
+            3: '#f59e0b',
+            4: '#f97316',
+            5: '#ef4444'
+        };
+        return cores[dificuldade] || '#3b82f6';
     }
 
     getResumoHorasEstudo() {
@@ -1290,8 +1418,8 @@ class ViewRenderer {
                                     <div class="weekly-event" data-aula-id="${aula.id}" style="border-left-color: ${aula.cor || '#3b82f6'};">
                                         <strong>${aula.materia}</strong>
                                         <div>${aula.inicio} - ${aula.fim}</div>
-                                        ${aula.sala ? `<small>Sala: ${aula.sala}</small>` : ''}
-                                        ${aula.professor ? `<small>Prof: ${aula.professor}</small>` : ''}
+                                        ${aula.sala ? `<small>📍 ${aula.sala}</small>` : ''}
+                                        ${aula.professor ? `<small>👤 ${aula.professor}</small>` : ''}
                                     </div>
                                 `).join('') : '<p class="text-secondary">Sem aulas</p>'}
                             </div>
@@ -1303,14 +1431,16 @@ class ViewRenderer {
     }
 
     bindWeeklyScheduleClicks() {
-        document.querySelectorAll('.weekly-event').forEach(item => {
-            item.addEventListener('click', e => {
-                const aulaId = e.currentTarget.dataset.aulaId;
-                if (aulaId && window.app) {
-                    window.app.openAulaModal(aulaId);
-                }
+        setTimeout(() => {
+            document.querySelectorAll('.weekly-event').forEach(item => {
+                item.addEventListener('click', e => {
+                    const aulaId = e.currentTarget.dataset.aulaId;
+                    if (aulaId && window.app) {
+                        window.app.openAulaModal(aulaId);
+                    }
+                });
             });
-        });
+        }, 100);
     }
 }
 
