@@ -2263,3 +2263,289 @@ input:checked + .toggle-slider:before {
 .loading {
     animation: pulse 1.5s infinite;
 }
+
+/* Adicionar ao style.css */
+
+/* Mobile First Improvements */
+@media (max-width: 768px) {
+    /* Dashboard */
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    
+    .card {
+        margin-bottom: 16px;
+    }
+    
+    .card-header {
+        padding: 16px;
+    }
+    
+    .card-body {
+        padding: 16px;
+    }
+    
+    /* Quick Actions */
+    .quick-actions {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .quick-actions .btn-primary {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    /* Schedule Controls */
+    .schedule-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .view-toggle {
+        width: 100%;
+    }
+    
+    .view-toggle-btn {
+        flex: 1;
+        text-align: center;
+    }
+    
+    .day-selector {
+        width: 100%;
+    }
+    
+    .day-selector select {
+        width: 100%;
+    }
+    
+    /* Mentor IA */
+    .mentor-ia-container {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+    
+    .chat-container {
+        height: 60vh;
+    }
+    
+    .sugestoes-container {
+        margin-top: 16px;
+    }
+    
+    .sugestoes-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    /* Modais */
+    .modal-content {
+        margin: 20px;
+        width: calc(100% - 40px);
+        max-height: 80vh;
+    }
+    
+    .modal-header {
+        padding: 16px;
+    }
+    
+    .modal-form {
+        padding: 16px;
+    }
+    
+    /* Forms */
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    
+    .materia-fields {
+        grid-template-columns: 1fr;
+    }
+    
+    /* Lists */
+    .item-list li {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .item-list li > div:last-child {
+        align-self: flex-end;
+    }
+    
+    /* Aula list */
+    .aula-list-item {
+        flex-direction: column;
+    }
+    
+    .aula-info {
+        width: 100%;
+    }
+    
+    .aula-actions {
+        align-self: flex-end;
+        margin-top: 8px;
+    }
+    
+    /* Timer */
+    .timer-display {
+        font-size: 48px;
+    }
+    
+    .timer-controls {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .timer-btn {
+        width: 100%;
+    }
+    
+    /* Charts */
+    .chart-bars {
+        gap: 8px;
+    }
+    
+    .chart-bar-container {
+        width: 25px;
+    }
+    
+    /* Sidebar adjustments for mobile */
+    .sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+        transform: translateX(0);
+    }
+    
+    .main-content {
+        margin-left: 0;
+    }
+    
+    .dashboard-layout {
+        flex-direction: column;
+    }
+    
+    .sidebar-nav {
+        display: flex;
+        flex-wrap: wrap;
+        padding: 12px;
+    }
+    
+    .nav-item {
+        flex: 1 0 auto;
+        min-width: 80px;
+        justify-content: center;
+        padding: 8px;
+    }
+    
+    .nav-item span {
+        display: none;
+    }
+    
+    .nav-item i {
+        margin: 0;
+        font-size: 20px;
+    }
+    
+    .sidebar-footer {
+        display: none;
+    }
+    
+    /* Content header */
+    .content-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 16px;
+    }
+    
+    .header-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    /* Toast */
+    #toast-container {
+        left: 20px;
+        right: 20px;
+        top: 20px;
+    }
+    
+    .toast {
+        max-width: none;
+    }
+}
+
+/* Tablet Improvements */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .dashboard-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .weekly-schedule-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .sidebar {
+        width: 80px;
+    }
+    
+    .sidebar .logo span,
+    .sidebar .nav-item span {
+        display: none;
+    }
+    
+    .main-content {
+        margin-left: 80px;
+    }
+}
+
+/* Touch-friendly improvements */
+button, 
+.btn-primary, 
+.btn-secondary, 
+.nav-item,
+.schedule-event-block,
+.weekly-event {
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+button:active,
+.btn-primary:active,
+.btn-secondary:active {
+    transform: scale(0.98);
+}
+
+/* Better scrolling on mobile */
+.view-container {
+    -webkit-overflow-scrolling: touch;
+}
+
+.modal-content {
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Loading indicator improvements */
+.loading-container {
+    position: fixed;
+    z-index: 10000;
+}
+
+/* Fix for 100vh on mobile */
+.dashboard-layout {
+    min-height: -webkit-fill-available;
+}
+
+/* Better form inputs on mobile */
+input, select, textarea {
+    font-size: 16px !important; /* Prevents zoom on iOS */
+}
+
+@media (max-width: 768px) {
+    input, select, textarea {
+        font-size: 16px;
+    }
+}

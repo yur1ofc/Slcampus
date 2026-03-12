@@ -12,13 +12,16 @@ class ViewRenderer {
         const progresso = this.app.calcularProgressoHoje();
         const tarefasUrgentes = this.app.getUrgentTasks();
         const proximosExames = this.app.getUpcomingExams(7);
-        
+        const horasResumo = this.getResumoHorasEstudo();
+        const materiasAtrasadas = this.getMateriasAtrasadas();
+        const resumoSemana = this.getResumoSemana();
+
         if (window.aiAssistant) {
             window.aiAssistant.updateContext(this.app.data);
         }
-        
+
         const planoIA = window.aiAssistant ? window.aiAssistant.generateDailyPlan() : [];
-        
+
         const proximaAula = window.scheduleManager ? window.scheduleManager.getProximaAula() : null;
         const aulaAtual = window.scheduleManager ? window.scheduleManager.getAulaAtual() : null;
 
@@ -49,36 +52,82 @@ class ViewRenderer {
                     </div>
                 </div>
             ` : ''}
-            
+
             ${alerts.length ? `
                 <div class="alerts-container">
                     <h3><i class="fas fa-exclamation-triangle"></i> Alertas Inteligentes</h3>
                     ${alerts.map(a => this.renderAlert(a)).join('')}
                 </div>
             ` : ''}
-            
+
             <div class="dashboard-grid">
                 <div class="card">
-                    <div class="card-header"><h3><i class="fas fa-clock"></i> Progresso Hoje</h3><i class="fas fa-chart-line"></i></div>
+                    <div class="card-header">
+                        <h3><i class="fas fa-clock"></i> Progresso Hoje</h3>
+                        <i class="fas fa-chart-line"></i>
+                    </div>
                     <div class="card-body">
                         <div class="progress-container">
-                            <div class="progress-label"><span>Planejado: ${this.app.data.user?.horasMaximas || 6}h</span><span>${progresso.concluido}h</span></div>
-                            <div class="progress-bar"><div class="progress-fill" style="width: ${progresso.percentual}%"></div></div>
+                            <div class="progress-label">
+                                <span>Planejado: ${this.app.data.user?.horasMaximas || 6}h</span>
+                                <span>${progresso.concluido}h</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${progresso.percentual}%"></div>
+                            </div>
                         </div>
                         <div class="stats-row">
-                            <div class="stat-item"><span class="stat-value">${this.app.data.user?.streak || 0}</span><span class="stat-label">streak</span></div>
-                            <div class="stat-item"><span class="stat-value">${this.app.calcularProdutividade()}</span><span class="stat-label">produtividade</span></div>
-                            <div class="stat-item"><span class="stat-value">${tarefasUrgentes.length}</span><span class="stat-label">urgentes</span></div>
+                            <div class="stat-item">
+                                <span class="stat-value">${this.app.data.user?.streak || 0}</span>
+                                <span class="stat-label">streak</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value">${this.app.calcularProdutividade()}</span>
+                                <span class="stat-label">produtividade</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value">${tarefasUrgentes.length}</span>
+                                <span class="stat-label">urgentes</span>
+                            </div>
                         </div>
                     </div>
                 </div>
                 
                 <div class="card">
-                    <div class="card-header"><h3><i class="fas fa-exclamation-circle"></i> Risco Acadêmico</h3><i class="fas fa-shield-alt"></i></div>
+                    <div class="card-header">
+                        <h3><i class="fas fa-book-open"></i> Horas Estudadas</h3>
+                        <i class="fas fa-stopwatch"></i>
+                    </div>
+                    <div class="card-body">
+                        <div class="stats-row">
+                            <div class="stat-item">
+                                <span class="stat-value">${horasResumo.hoje.toFixed(1)}h</span>
+                                <span class="stat-label">hoje</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value">${horasResumo.semana.toFixed(1)}h</span>
+                                <span class="stat-label">semana</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value">${horasResumo.total.toFixed(1)}h</span>
+                                <span class="stat-label">total</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-exclamation-circle"></i> Risco Acadêmico</h3>
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
                     <div class="card-body">
                         ${risk.length ? risk.map(r => `
                             <div class="risk-item">
-                                <div class="risk-info"><strong>${r.materia}</strong><span class="risk-indicator risk-${r.nivel}">${r.nivel}</span></div>
+                                <div class="risk-info">
+                                    <strong>${r.materia}</strong>
+                                    <span class="risk-indicator risk-${r.nivel}">${r.nivel}</span>
+                                </div>
                                 <p class="risk-desc">${r.motivo}</p>
                             </div>
                         `).join('') : '<p class="text-secondary">Nenhum risco identificado</p>'}
@@ -86,7 +135,10 @@ class ViewRenderer {
                 </div>
                 
                 <div class="card">
-                    <div class="card-header"><h3><i class="fas fa-tasks"></i> Tarefas Urgentes</h3><i class="fas fa-clock"></i></div>
+                    <div class="card-header">
+                        <h3><i class="fas fa-tasks"></i> Tarefas Urgentes</h3>
+                        <i class="fas fa-clock"></i>
+                    </div>
                     <div class="card-body">
                         <ul class="item-list">
                             ${tarefasUrgentes.map(t => `
@@ -102,9 +154,14 @@ class ViewRenderer {
                         </ul>
                     </div>
                 </div>
-                
+            </div>
+
+            <div class="dashboard-grid">
                 <div class="card">
-                    <div class="card-header"><h3><i class="fas fa-graduation-cap"></i> Próximas Provas</h3><i class="fas fa-calendar"></i></div>
+                    <div class="card-header">
+                        <h3><i class="fas fa-graduation-cap"></i> Próximas Provas</h3>
+                        <i class="fas fa-calendar"></i>
+                    </div>
                     <div class="card-body">
                         <ul class="item-list">
                             ${proximosExames.map(e => `
@@ -118,6 +175,51 @@ class ViewRenderer {
                             `).join('')}
                             ${!proximosExames.length ? '<li>Nenhuma prova próxima</li>' : ''}
                         </ul>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-history"></i> Matérias Atrasadas</h3>
+                        <i class="fas fa-book"></i>
+                    </div>
+                    <div class="card-body">
+                        <ul class="item-list">
+                            ${materiasAtrasadas.map(m => `
+                                <li>
+                                    <div>
+                                        <strong>${m.materia}</strong>
+                                        <small>${m.dias} dias sem estudar</small>
+                                    </div>
+                                    <span class="tag ${m.dias >= 7 ? 'danger' : 'warning'}">${m.dias}d</span>
+                                </li>
+                            `).join('')}
+                            ${!materiasAtrasadas.length ? '<li>Nenhuma matéria atrasada</li>' : ''}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-calendar-week"></i> Resumo da Semana</h3>
+                    <i class="fas fa-chart-bar"></i>
+                </div>
+                <div class="card-body">
+                    <div class="semana-grid">
+                        ${resumoSemana.map(dia => `
+                            <div class="dia-card">
+                                <h4>${dia.nome}</h4>
+                                <div class="sessao-item">
+                                    <span>Estudo</span>
+                                    <strong>${dia.horas.toFixed(1)}h</strong>
+                                </div>
+                                <div class="sessao-item">
+                                    <span>Aulas</span>
+                                    <strong>${dia.aulas}</strong>
+                                </div>
+                            </div>
+                        `).join('')}
                     </div>
                 </div>
             </div>
@@ -153,7 +255,7 @@ class ViewRenderer {
                 <button class="btn-primary" id="quick-sessao"><i class="fas fa-clock"></i> Nova Sessão</button>
                 <button class="btn-primary" id="quick-tarefa"><i class="fas fa-tasks"></i> Nova Tarefa</button>
                 <button class="btn-primary" id="quick-prova"><i class="fas fa-graduation-cap"></i> Nova Prova</button>
-                <button class="btn-primary" id="quick-foco"><i class="fas fa-clock"></i> Modo Foco</button>
+                <button class="btn-primary" id="quick-foco"><i class="fas fa-bullseye"></i> Modo Foco</button>
             </div>
         `;
     }
@@ -219,29 +321,42 @@ class ViewRenderer {
 
         window.scheduleManager.loadAulas();
 
+        const dias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+        const diaAtual = new Date().getDay();
+        const aulas = window.scheduleManager.loadAulas() || [];
+        const totalAulas = aulas.length;
+        const horasSemana = this.calcularHorasAulaSemana(aulas);
+
         setTimeout(() => {
             const container = document.getElementById('schedule-vertical-container');
             if (!container || !window.scheduleManager) return;
 
-            const aulas = window.scheduleManager.loadAulas();
+            const modo = document.getElementById('grade-view-mode')?.value || 'dia';
+            const diaSelecionado = parseInt(document.getElementById('grade-day-select')?.value || diaAtual, 10);
 
             if (!aulas.length) {
                 container.innerHTML = '<p class="text-secondary" style="padding:20px;">Nenhuma aula cadastrada</p>';
                 return;
             }
 
-            const hoje = new Date().getDay();
-            let diaParaRenderizar = hoje;
+            if (modo === 'semana') {
+                container.innerHTML = this.renderGradeSemanalCards(aulas);
+                this.bindWeeklyScheduleClicks();
+            } else {
+                let diaParaRenderizar = diaSelecionado;
+                const aulasDia = window.scheduleManager.getAulasPorDia(diaParaRenderizar);
 
-            const aulasHoje = window.scheduleManager.getAulasPorDia(hoje);
+                if (!aulasDia.length) {
+                    const diasComAula = [...new Set(aulas.map(a => parseInt(a.dia)))].sort((a, b) => a - b);
+                    if (diasComAula.length) {
+                        diaParaRenderizar = diasComAula[0];
+                        const selectDia = document.getElementById('grade-day-select');
+                        if (selectDia) selectDia.value = diaParaRenderizar;
+                    }
+                }
 
-            if (!aulasHoje.length) {
-                const diasComAula = [...new Set(aulas.map(a => parseInt(a.dia)))].sort((a, b) => a - b);
-                diaParaRenderizar = diasComAula[0];
+                window.scheduleManager.renderGradeDia(diaParaRenderizar, 'schedule-vertical-container');
             }
-
-            console.log(`🎯 Renderizando grade para dia ${diaParaRenderizar} com ${aulas.length} aulas`);
-            window.scheduleManager.renderGradeDia(diaParaRenderizar, 'schedule-vertical-container');
         }, 100);
 
         return `
@@ -249,9 +364,55 @@ class ViewRenderer {
                 <h2><i class="fas fa-calendar-week"></i> Grade Horária</h2>
                 <button class="btn-primary" id="btn-nova-aula"><i class="fas fa-plus"></i> Nova Aula</button>
             </div>
+
+            <div class="card" style="margin-bottom: 24px;">
+                <div class="card-body">
+                    <div class="form-row" style="margin-bottom:0;">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>Visualização</label>
+                            <select id="grade-view-mode">
+                                <option value="dia">Dia atual / um dia</option>
+                                <option value="semana">Semana toda</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;" id="grade-day-select-wrapper">
+                            <label>Dia</label>
+                            <select id="grade-day-select">
+                                ${dias.map((dia, index) => `
+                                    <option value="${index}" ${index === diaAtual ? 'selected' : ''}>${dia}</option>
+                                `).join('')}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
             
             <div class="schedule-container card" style="padding: 20px; margin-bottom: 24px;">
                 <div id="schedule-vertical-container"></div>
+            </div>
+
+            <div class="dashboard-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Resumo da Grade</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="stats-row">
+                            <div class="stat-item">
+                                <span class="stat-value">${totalAulas}</span>
+                                <span class="stat-label">aulas</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value">${horasSemana.toFixed(1)}h</span>
+                                <span class="stat-label">semana</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value">${(totalAulas ? horasSemana / totalAulas : 0).toFixed(1)}h</span>
+                                <span class="stat-label">média</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
             
             <div class="aulas-list card">
@@ -261,7 +422,6 @@ class ViewRenderer {
                 <div class="card-body">
                     <ul class="item-list">
                         ${this.app.data.classSchedule?.map(a => {
-                            const dias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
                             return `
                                 <li>
                                     <div>
@@ -285,8 +445,10 @@ class ViewRenderer {
     renderSessoes() {
         const hoje = new Date().toDateString();
         const sessoesHoje = this.app.data.sessions.filter(s => new Date(s.data).toDateString() === hoje && !s.concluida);
-        const futuras = this.app.data.sessions.filter(s => new Date(s.data) > new Date() && !s.concluida).sort((a,b)=>new Date(a.data)-new Date(b.data));
-        const concluidas = this.app.data.sessions.filter(s => s.concluida).slice(0,10);
+        const futuras = this.app.data.sessions
+            .filter(s => new Date(s.data) > new Date() && !s.concluida)
+            .sort((a, b) => new Date(a.data) - new Date(b.data));
+        const concluidas = this.app.data.sessions.filter(s => s.concluida).slice(0, 10);
         
         return `
             <div class="view-header">
@@ -342,7 +504,7 @@ class ViewRenderer {
                                         <strong>${s.materia}</strong>
                                         <small>${new Date(s.data).toLocaleDateString()}</small>
                                     </div>
-                                    <i class="fas fa-check" style="color: var(--success);"></i>
+                                    <i class="fas fa-check" style="color: var(--accent-success);"></i>
                                 </li>
                             `).join('')}
                             ${!concluidas.length ? '<li>Nenhuma sessão concluída</li>' : ''}
@@ -391,13 +553,13 @@ class ViewRenderer {
                     <div class="card-header"><h3>✅ Concluídas (${concluidas.length})</h3></div>
                     <div class="card-body">
                         <ul class="item-list">
-                            ${concluidas.slice(0,10).map(t => `
+                            ${concluidas.slice(0, 10).map(t => `
                                 <li>
                                     <div>
                                         <strong>${t.titulo}</strong>
                                         <small>${t.materia}</small>
                                     </div>
-                                    <i class="fas fa-check" style="color: var(--success);"></i>
+                                    <i class="fas fa-check" style="color: var(--accent-success);"></i>
                                 </li>
                             `).join('')}
                             ${!concluidas.length ? '<li>Nenhuma tarefa concluída</li>' : ''}
@@ -409,8 +571,9 @@ class ViewRenderer {
     }
 
     renderProvas() {
-        const proximas = this.app.data.exams.filter(e => new Date(e.data) >= new Date() && !e.concluida)
-            .sort((a,b)=>new Date(a.data)-new Date(b.data));
+        const proximas = this.app.data.exams
+            .filter(e => new Date(e.data) >= new Date() && !e.concluida)
+            .sort((a, b) => new Date(a.data) - new Date(b.data));
         
         return `
             <div class="view-header">
@@ -544,7 +707,7 @@ class ViewRenderer {
         const diasNoMes = ultimoDia.getDate();
         const primeiroDiaSemana = primeiroDia.getDay();
 
-        let dias = [];
+        const dias = [];
         for (let i = 0; i < primeiroDiaSemana; i++) dias.push(null);
         for (let i = 1; i <= diasNoMes; i++) dias.push(i);
 
@@ -572,8 +735,8 @@ class ViewRenderer {
                                 
                                 const eventosDia = eventos.filter(e => {
                                     const data = new Date(e.data);
-                                    return data.getDate() === d && 
-                                           data.getMonth() === hoje.getMonth() && 
+                                    return data.getDate() === d &&
+                                           data.getMonth() === hoje.getMonth() &&
                                            data.getFullYear() === hoje.getFullYear();
                                 });
 
@@ -582,13 +745,12 @@ class ViewRenderer {
                                         <span class="day-number">${d}</span>
                                         ${eventosDia.length ? `
                                             <div class="day-events">
-                                                ${eventosDia.slice(0,3).map(e => `
+                                                ${eventosDia.slice(0, 3).map(e => `
                                                     <div class="event-indicator" data-tooltip="${e.titulo || e.materia}">
                                                         <i class="fas ${this.getEventIcon(e.tipo)}"></i>
                                                     </div>
                                                 `).join('')}
-                                                ${eventosDia.length > 3 ? 
-                                                    `<span class="more-events">+${eventosDia.length-3}</span>` : ''}
+                                                ${eventosDia.length > 3 ? `<span class="more-events">+${eventosDia.length - 3}</span>` : ''}
                                             </div>
                                         ` : ''}
                                     </div>
@@ -676,7 +838,7 @@ class ViewRenderer {
                     <div class="card-body">
                         <div class="habitos-list">
                             ${habitos.map(h => {
-                                const feito = this.app.data.habits.some(hb => 
+                                const feito = this.app.data.habits.some(hb =>
                                     hb.id === h.id && new Date(hb.data).toDateString() === hoje
                                 );
                                 return `
@@ -685,8 +847,7 @@ class ViewRenderer {
                                             <i class="fas ${h.icone}"></i>
                                             <span>${h.nome}</span>
                                         </div>
-                                        <button class="btn-icon toggle-habito ${feito ? 'active' : ''}" 
-                                                data-habito="${h.id}">
+                                        <button class="btn-icon toggle-habito ${feito ? 'active' : ''}" data-habito="${h.id}">
                                             <i class="fas ${feito ? 'fa-check-circle' : 'fa-circle'}"></i>
                                         </button>
                                     </div>
@@ -726,9 +887,9 @@ class ViewRenderer {
         const total = this.app.data.sessions.filter(s => s.concluida)
             .reduce((a, s) => a + s.duracao / 60, 0);
         
-        const maxHorasMateria = horasPorMateria.length ? 
+        const maxHorasMateria = horasPorMateria.length ?
             Math.max(...horasPorMateria.map(h => h.horas)) : 1;
-        const maxHorasTipo = horasPorTipo.length ? 
+        const maxHorasTipo = horasPorTipo.length ?
             Math.max(...horasPorTipo.map(t => t.horas)) : 1;
 
         return `
@@ -915,8 +1076,11 @@ class ViewRenderer {
     }
 
     renderAlert(alert) {
-        const icon = alert.type === 'warning' ? 'fa-exclamation-triangle' : 
-                     alert.type === 'danger' ? 'fa-exclamation-circle' : 'fa-info-circle';
+        const icon = alert.type === 'warning'
+            ? 'fa-exclamation-triangle'
+            : alert.type === 'danger'
+                ? 'fa-exclamation-circle'
+                : 'fa-info-circle';
         
         return `
             <div class="alert-card ${alert.type}">
@@ -940,7 +1104,7 @@ class ViewRenderer {
             const data = new Date(inicio);
             data.setDate(inicio.getDate() + i);
             
-            const temEstudo = this.app.data.sessions.some(s => 
+            const temEstudo = this.app.data.sessions.some(s =>
                 new Date(s.data).toDateString() === data.toDateString() && s.concluida
             );
             
@@ -949,7 +1113,7 @@ class ViewRenderer {
             html += `
                 <div class="chart-bar-container" data-tooltip="${temEstudo ? 'Estudou' : 'Não estudou'}">
                     <div class="chart-bar" style="height: ${intensidade}px"></div>
-                    <span class="chart-label">${['D','S','T','Q','Q','S','S'][i]}</span>
+                    <span class="chart-label">${['D', 'S', 'T', 'Q', 'Q', 'S', 'S'][i]}</span>
                 </div>
             `;
         }
@@ -960,7 +1124,7 @@ class ViewRenderer {
 
     renderSessoesFocoHoje() {
         const hoje = new Date().toDateString();
-        const sessoes = this.app.data.sessions.filter(s => 
+        const sessoes = this.app.data.sessions.filter(s =>
             new Date(s.data).toDateString() === hoje && s.concluida && s.tipo === 'foco'
         );
         
@@ -979,7 +1143,7 @@ class ViewRenderer {
     getProximaAulaDateTime(aula) {
         const hoje = new Date();
         const diaSemana = hoje.getDay();
-        let dataAula = new Date(hoje);
+        const dataAula = new Date(hoje);
         
         if (parseInt(aula.dia) > diaSemana) {
             dataAula.setDate(hoje.getDate() + (parseInt(aula.dia) - diaSemana));
@@ -988,7 +1152,7 @@ class ViewRenderer {
         }
         
         const [h, m] = aula.inicio.split(':');
-        dataAula.setHours(parseInt(h), parseInt(m), 0);
+        dataAula.setHours(parseInt(h), parseInt(m), 0, 0);
         
         return dataAula.toISOString();
     }
@@ -1010,6 +1174,122 @@ class ViewRenderer {
             exame: 'fa-graduation-cap'
         };
         return icons[tipo] || 'fa-calendar';
+    }
+
+    getResumoHorasEstudo() {
+        const hoje = new Date();
+        const inicioSemana = new Date(hoje);
+        inicioSemana.setDate(hoje.getDate() - hoje.getDay());
+
+        const sessoesConcluidas = this.app.data.sessions.filter(s => s.concluida);
+
+        const horasHoje = sessoesConcluidas
+            .filter(s => new Date(s.data).toDateString() === hoje.toDateString())
+            .reduce((acc, s) => acc + s.duracao, 0) / 60;
+
+        const horasSemana = sessoesConcluidas
+            .filter(s => new Date(s.data) >= inicioSemana)
+            .reduce((acc, s) => acc + s.duracao, 0) / 60;
+
+        const horasTotal = sessoesConcluidas
+            .reduce((acc, s) => acc + s.duracao, 0) / 60;
+
+        return {
+            hoje: horasHoje,
+            semana: horasSemana,
+            total: horasTotal
+        };
+    }
+
+    getMateriasAtrasadas() {
+        return this.app.data.subjects.map(subject => {
+            const ultimaSessao = this.app.data.sessions
+                .filter(s => s.materia === subject.nome && s.concluida)
+                .sort((a, b) => new Date(b.data) - new Date(a.data))[0];
+
+            if (!ultimaSessao) {
+                return { materia: subject.nome, dias: 999 };
+            }
+
+            return {
+                materia: subject.nome,
+                dias: diasDesde(ultimaSessao.data)
+            };
+        })
+        .filter(item => item.dias >= 5)
+        .sort((a, b) => b.dias - a.dias)
+        .slice(0, 5);
+    }
+
+    getResumoSemana() {
+        const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+        const hoje = new Date();
+        const inicioSemana = new Date(hoje);
+        inicioSemana.setDate(hoje.getDate() - hoje.getDay());
+
+        return diasSemana.map((nome, index) => {
+            const data = new Date(inicioSemana);
+            data.setDate(inicioSemana.getDate() + index);
+
+            const horas = this.app.data.sessions
+                .filter(s => s.concluida && new Date(s.data).toDateString() === data.toDateString())
+                .reduce((acc, s) => acc + s.duracao, 0) / 60;
+
+            const aulas = (window.scheduleManager?.getAulasPorDia(index) || []).length;
+
+            return {
+                nome,
+                horas,
+                aulas
+            };
+        });
+    }
+
+    calcularHorasAulaSemana(aulas) {
+        return aulas.reduce((total, aula) => {
+            return total + (calcularDuracaoMinutos(aula.inicio, aula.fim) / 60);
+        }, 0);
+    }
+
+    renderGradeSemanalCards(aulas) {
+        const dias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+
+        return `
+            <div class="weekly-schedule">
+                ${dias.map((dia, index) => {
+                    const aulasDia = aulas
+                        .filter(a => parseInt(a.dia) === index)
+                        .sort((a, b) => a.inicio.localeCompare(b.inicio));
+
+                    return `
+                        <div class="weekly-day-column">
+                            <h4>${dia}</h4>
+                            <div class="weekly-events">
+                                ${aulasDia.length ? aulasDia.map(aula => `
+                                    <div class="weekly-event" data-aula-id="${aula.id}" style="border-left-color: ${aula.cor || '#3b82f6'};">
+                                        <strong>${aula.materia}</strong>
+                                        <div>${aula.inicio} - ${aula.fim}</div>
+                                        ${aula.sala ? `<small>Sala: ${aula.sala}</small>` : ''}
+                                        ${aula.professor ? `<small>Prof: ${aula.professor}</small>` : ''}
+                                    </div>
+                                `).join('') : '<p class="text-secondary">Sem aulas</p>'}
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+    }
+
+    bindWeeklyScheduleClicks() {
+        document.querySelectorAll('.weekly-event').forEach(item => {
+            item.addEventListener('click', (e) => {
+                const aulaId = e.currentTarget.dataset.aulaId;
+                if (aulaId && window.app) {
+                    window.app.openAulaModal(aulaId);
+                }
+            });
+        });
     }
 }
 
