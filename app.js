@@ -514,32 +514,37 @@ class StudyLifeControl {
 
         // GRADE HORÁRIA
         if (view === 'grade-horaria') {
-    document.getElementById('btn-nova-aula')?.addEventListener('click', () => this.openModal('aula'));
+            document.getElementById('btn-nova-aula')?.addEventListener('click', () => this.openModal('aula'));
 
-    document.querySelectorAll('.btn-remover-aula').forEach(btn => {
-        btn.addEventListener('click', async e => {
-            const id = e.currentTarget.dataset.id;
-            if (window.scheduleManager) {
-                await window.scheduleManager.removeAula(id);
-                document.dispatchEvent(new Event('aulas-atualizadas'));
-            }
-            this.loadView('grade-horaria');
-            showToast('Aula removida');
-        });
-    });
+            document.querySelectorAll('.btn-remover-aula').forEach(btn => {
+                btn.addEventListener('click', async e => {
+                    const id = e.currentTarget.dataset.id;
+                    if (window.scheduleManager) {
+                        await window.scheduleManager.removeAula(id);
+                        document.dispatchEvent(new Event('aulas-atualizadas'));
+                    }
+                    this.loadView('grade-horaria');
+                    showToast('Aula removida');
+                });
+            });
 
-    document.querySelectorAll('.btn-editar-aula').forEach(btn => {
-        btn.addEventListener('click', e => this.editarAula(e.currentTarget.dataset.id));
-    });
+            document.querySelectorAll('.btn-editar-aula').forEach(btn => {
+                btn.addEventListener('click', e => this.editarAula(e.currentTarget.dataset.id));
+            });
 
-    document.getElementById('exportar-grade')?.addEventListener('click', () => this.exportarGradeHoraria());
+            document.getElementById('grade-view-mode')?.addEventListener('change', () => {
+                this.loadView('grade-horaria');
+            });
 
-    // Chamar a renderização do conteúdo da grade
-    setTimeout(() => {
-        if (this.viewRenderer) {
-            this.viewRenderer.renderGradeHorariaConteudo();
+            document.getElementById('grade-day-select')?.addEventListener('change', () => {
+                const modo = document.getElementById('grade-view-mode')?.value || 'dia';
+                if (modo === 'dia') {
+                    this.loadView('grade-horaria');
+                }
+            });
+
+            document.getElementById('exportar-grade')?.addEventListener('click', () => this.exportarGradeHoraria());
         }
-    }, 200);
 
         // MENTOR IA
         if (view === 'mentor-ia') {
