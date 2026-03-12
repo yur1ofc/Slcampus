@@ -463,7 +463,7 @@ class ViewRenderer {
             }
 
             if (modo === 'semana') {
-                window.scheduleManager.renderGradeSemanal(containerId);
+                this.renderGradeSemanalComHoras(containerId);
             } else {
                 window.scheduleManager.renderGradeDia(diaSelecionado, containerId);
             }
@@ -473,6 +473,103 @@ class ViewRenderer {
 
         modoSelect.addEventListener('change', renderizar);
         diaSelect.addEventListener('change', renderizar);
+    }
+
+    renderGradeSemanalComHoras(containerId) {
+        const container = document.getElementById(containerId);
+        if (!container || !window.scheduleManager) return;
+
+        const aulas = window.scheduleManager.loadAulas() || [];
+        const dias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+        const horarioInicio = window.scheduleManager.HORARIO_INICIO || 7;
+        const horarioFim = window.scheduleManager.HORARIO_FIM || 22;
+        const alturaPorHora = window.scheduleManager.ALTURA_POR_HORA || 80;
+
+        const totalHoras = horarioFim - horarioInicio + 1;
+        const alturaTotal = totalHoras * alturaPorHora;
+
+        const getTop = (horario) => {
+            const [h, m] = String(horario).split(':').map(Number);
+            const minutosDesdeInicio = ((h - horarioInicio) * 60) + m;
+            return Math.max(0, (minutosDesdeInicio / 60) * alturaPorHora);
+        };
+
+        const getHeight = (inicio, fim) => {
+            const duracao = calcularDuracaoMinutos(inicio, fim);
+            return Math.max(24, (duracao / 60) * alturaPorHora);
+        };
+
+        container.innerHTML = `
+            <div class="weekly-timeline">
+                <div class="weekly-timeline-header">
+                    <div class="weekly-time-spacer"></div>
+                    ${dias.map(dia => `<div class="weekly-day-header">${dia}</div>`).join('')}
+                </div>
+
+                <div class="weekly-timeline-body" style="height:${alturaTotal}px;">
+                    <div class="weekly-time-column">
+                        ${Array.from({ length: totalHoras }, (_, i) => {
+                            const hora = horarioInicio + i;
+                            return `
+                                <div class="weekly-time-slot" style="height:${alturaPorHora}px;">
+                                    ${String(hora).padStart(2, '0')}:00
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+
+                    <div class="weekly-grid-area">
+                        ${dias.map((_, diaIndex) => `
+                            <div class="weekly-day-column-grid" data-dia="${diaIndex}">
+                                ${Array.from({ length: totalHoras }, () => `
+                                    <div class="weekly-hour-cell" style="height:${alturaPorHora}px;"></div>
+                                `).join('')}
+                            </div>
+                        `).join('')}
+
+                        <div class="weekly-events-layer">
+                            ${aulas.map(aula => {
+                                const dia = parseInt(aula.dia, 10);
+                                const top = getTop(aula.inicio);
+                                const height = getHeight(aula.inicio, aula.fim);
+                                const cor = aula.cor || '#3b82f6';
+
+                                return `
+                                    <div
+                                        class="weekly-event-block"
+                                        data-aula-id="${this.esc(aula.id)}"
+                                        style="
+                                            top:${top}px;
+                                            left:calc(${dia} * (100% / 7) + 8px);
+                                            width:calc((100% / 7) - 16px);
+                                            height:${height}px;
+                                            background:${cor}22;
+                                            border-left:4px solid ${cor};
+                                        "
+                                    >
+                                        <div class="event-content">
+                                            <strong>${this.esc(aula.materia)}</strong>
+                                            <div class="event-time">${this.esc(aula.inicio)} - ${this.esc(aula.fim)}</div>
+                                            ${aula.sala ? `<div class="event-room">📍 ${this.esc(aula.sala)}</div>` : ''}
+                                            ${aula.professor ? `<div class="event-prof">👤 ${this.esc(aula.professor)}</div>` : ''}
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        container.querySelectorAll('.weekly-event-block').forEach(item => {
+            item.addEventListener('click', e => {
+                const aulaId = e.currentTarget.dataset.aulaId;
+                if (aulaId && window.app) {
+                    window.app.openAulaModal(aulaId);
+                }
+            });
+        });
     }
 
     renderSessoes() {
@@ -1388,6 +1485,7 @@ class ViewRenderer {
     getResumoHorasEstudo() {
         const hoje = toDateString();
         const inicioSemana = new Date();
+        inicioSemana.setHours(0, 0, 0, 0);
         inicioSemana.setDate(inicioSemana.getDate() - inicioSemana.getDay());
 
         const sessoesConcluidas = this.app.data.sessions.filter(s => s.concluida);
@@ -1443,6 +1541,7 @@ class ViewRenderer {
         const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
         const hoje = new Date();
         const inicioSemana = new Date(hoje);
+        inicioSemana.setHours(0, 0, 0, 0);
         inicioSemana.setDate(hoje.getDate() - hoje.getDay());
 
         return diasSemana.map((nome, index) => {

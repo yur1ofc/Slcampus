@@ -2551,3 +2551,115 @@ input:checked + .toggle-slider:before {
         align-items: flex-start;
     }
 }
+
+.weekly-timeline {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.weekly-timeline-header {
+    display: grid;
+    grid-template-columns: 70px repeat(7, 1fr);
+    gap: 0;
+    margin-bottom: 0;
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: var(--bg-tertiary);
+}
+
+.weekly-time-spacer {
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    min-height: 48px;
+}
+
+.weekly-day-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px;
+    font-weight: 600;
+    color: var(--accent-primary);
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    text-align: center;
+    padding: 8px;
+}
+
+.weekly-timeline-body {
+    display: grid;
+    grid-template-columns: 70px 1fr;
+    position: relative;
+    min-width: 1100px;
+}
+
+.weekly-time-column {
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
+    z-index: 1;
+}
+
+.weekly-time-slot {
+    padding: 8px 6px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border);
+}
+
+.weekly-grid-area {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+}
+
+.weekly-day-column-grid {
+    position: relative;
+    border-right: 1px solid var(--border);
+}
+
+.weekly-hour-cell {
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.01);
+}
+
+.weekly-events-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2;
+}
+
+.weekly-event-block {
+    position: absolute;
+    border-radius: 10px;
+    padding: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.weekly-event-block:hover {
+    transform: scale(1.01);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+}
+
+@media (max-width: 768px) {
+    .weekly-timeline-body {
+        min-width: 900px;
+    }
+
+    .weekly-day-header {
+        font-size: 12px;
+        padding: 6px;
+    }
+
+    .weekly-event-block .event-content {
+        font-size: 11px;
+    }
+}
