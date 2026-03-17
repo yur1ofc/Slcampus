@@ -197,6 +197,8 @@
                         <a href="#" class="nav-item active" data-view="dashboard"><i class="fas fa-chart-pie"></i><span>Dashboard</span></a>
                         <a href="#" class="nav-item" data-view="mentor-ia"><i class="fas fa-robot"></i><span>Mentor IA</span><span class="badge">IA</span></a>
                         <a href="#" class="nav-item" data-view="grade-horaria"><i class="fas fa-calendar-week"></i><span>Grade Horária</span></a>
+                        <a href="#" class="nav-item" data-view="materias"><i class="fas fa-book"></i><span>Matérias</span></a>
+                        <a href="#" class="nav-item" data-view="grade-curricular"><i class="fas fa-sitemap"></i><span>Grade Curricular</span></a>
                         <a href="#" class="nav-item" data-view="sessoes"><i class="fas fa-clock"></i><span>Sessões de Estudo</span></a>
                         <a href="#" class="nav-item" data-view="tarefas"><i class="fas fa-tasks"></i><span>Tarefas</span></a>
                         <a href="#" class="nav-item" data-view="provas"><i class="fas fa-graduation-cap"></i><span>Provas e Trabalhos</span></a>
@@ -577,6 +579,110 @@
                 </div>
                 <div class="form-actions">
                     <button type="submit" class="btn-primary">Salvar Material</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <div id="modal-materia" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-book"></i> Matéria</h2>
+                <span class="close-modal" onclick="this.closest('.modal').style.display='none'">&times;</span>
+            </div>
+            <form id="form-materia" class="modal-form">
+                <div class="form-group">
+                    <label>Nome da matéria</label>
+                    <input type="text" id="materia-nome-modal" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Dificuldade (1 a 5)</label>
+                        <input type="number" id="materia-dificuldade-modal" min="1" max="5" value="3" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Peso / prioridade (1 a 5)</label>
+                        <input type="number" id="materia-peso-modal" min="1" max="5" value="3" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Nota desejada</label>
+                        <input type="number" id="materia-nota-desejada-modal" min="0" max="10" step="0.1" value="7" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Carga horária da matéria</label>
+                        <input type="number" id="materia-carga-horaria-modal" min="0" placeholder="Ex: 60">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Professor (opcional)</label>
+                    <input type="text" id="materia-professor-modal" placeholder="Nome do professor">
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">Salvar Matéria</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modal-curriculum" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-sitemap"></i> Componente Curricular</h2>
+                <span class="close-modal" onclick="this.closest('.modal').style.display='none'">&times;</span>
+            </div>
+            <form id="form-curriculum" class="modal-form">
+                <div class="form-group">
+                    <label>Nome da disciplina/componente</label>
+                    <input type="text" id="curriculum-nome" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Semestre sugerido</label>
+                        <input type="number" id="curriculum-semestre" min="1" max="20" placeholder="Ex: 3">
+                    </div>
+                    <div class="form-group">
+                        <label>Carga horária</label>
+                        <input type="number" id="curriculum-carga-horaria" min="0" placeholder="Ex: 60" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select id="curriculum-status" required>
+                            <option value="nao-cursada">Não cursada</option>
+                            <option value="cursando">Cursando</option>
+                            <option value="concluida">Concluída</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Tipo</label>
+                        <select id="curriculum-tipo" required>
+                            <option value="obrigatoria">Obrigatória</option>
+                            <option value="optativa">Optativa</option>
+                            <option value="extensao">Extensão</option>
+                            <option value="atividade">Atividade complementar</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Créditos</label>
+                        <input type="number" id="curriculum-creditos" min="0" step="0.5" placeholder="Ex: 4">
+                    </div>
+                    <div class="form-group">
+                        <label>Pré-requisitos</label>
+                        <input type="text" id="curriculum-prerequisitos" placeholder="Ex: Cálculo I, Física I">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Observações</label>
+                    <textarea id="curriculum-observacoes" rows="4" placeholder="Anotações úteis sobre a disciplina"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">Salvar Componente</button>
                 </div>
             </form>
         </div>
