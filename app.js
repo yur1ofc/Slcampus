@@ -852,6 +852,7 @@ class StudyLifeControl {
             if (btn) btn.textContent = this.editingCurriculumId ? 'Atualizar Componente' : 'Salvar Componente';
 
             document.getElementById('curriculum-nome').value = data.nome || '';
+            document.getElementById('curriculum-codigo').value = data.codigo || '';
             document.getElementById('curriculum-semestre').value = data.semestre || '';
             document.getElementById('curriculum-carga-horaria').value = data.cargaHoraria || '';
             document.getElementById('curriculum-status').value = data.status || 'nao-cursada';
@@ -963,6 +964,7 @@ class StudyLifeControl {
 
         const curriculumData = {
             nome: document.getElementById('curriculum-nome')?.value?.trim() || '',
+            codigo: document.getElementById('curriculum-codigo')?.value?.trim().toUpperCase() || '',
             semestre: document.getElementById('curriculum-semestre')?.value?.trim() || '',
             cargaHoraria: parseInt(document.getElementById('curriculum-carga-horaria')?.value, 10) || 0,
             status: document.getElementById('curriculum-status')?.value || 'nao-cursada',
@@ -2075,38 +2077,38 @@ class StudyLifeControl {
 window.StudyLifeControl = StudyLifeControl;
 
 const UFOB_ENGINEERING_CIVIL_REFERENCE = [
-    { semestre: '1', nome: 'Cálculo Diferencial I', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
-    { semestre: '1', nome: 'Introdução à Engenharia Civil', cargaHoraria: 30, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
-    { semestre: '1', nome: 'Geometria Analítica', cargaHoraria: 90, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
-    { semestre: '1', nome: 'Programação de Computadores I', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
-    { semestre: '1', nome: 'Introdução ao Desenho Técnico', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
-    { semestre: '1', nome: 'Filosofia e História das Ciências', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
-    { semestre: '1', nome: 'Oficina de Leitura e Produção Textual', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
-    { semestre: '1', nome: 'Ética e Política', cargaHoraria: 30, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
-    { semestre: '2', nome: 'Cálculo Diferencial II', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Cálculo Diferencial I', 'Geometria Analítica'] },
-    { semestre: '2', nome: 'Física Geral I', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
-    { semestre: '2', nome: 'Álgebra Linear I', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Geometria Analítica'] },
-    { semestre: '2', nome: 'Programação de Computadores II', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Programação de Computadores I'] },
-    { semestre: '2', nome: 'Desenho Arquitetônico', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Introdução ao Desenho Técnico'] },
-    { semestre: '2', nome: 'Cálculo Integral I', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Cálculo Diferencial I'] },
-    { semestre: '2', nome: 'Oficina de Leitura e Produção de Textos Acadêmicos', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Oficina de Leitura e Produção Textual'] },
-    { semestre: '2', nome: 'Física Experimental I', cargaHoraria: 30, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
-    { semestre: '3', nome: 'Cálculo Integral II', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Geometria Analítica', 'Cálculo Integral I'] },
-    { semestre: '3', nome: 'Física Geral II', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Física Geral I'] },
-    { semestre: '3', nome: 'Mecânica Geral', cargaHoraria: 90, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Física Geral I', 'Cálculo Integral I'] },
-    { semestre: '3', nome: 'Equações Diferenciais Ordinárias', cargaHoraria: 90, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Álgebra Linear I', 'Cálculo Integral I'] },
-    { semestre: '3', nome: 'Fundamentos de Química Geral e Inorgânica', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
-    { semestre: '3', nome: 'Fundamentos de Química Geral Experimental', cargaHoraria: 30, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Fundamentos de Química Geral e Inorgânica'] },
-    { semestre: '3', nome: 'Geologia Geral', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
-    { semestre: '3', nome: 'Física Experimental II', cargaHoraria: 30, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Física Geral I', 'Física Experimental I'] },
-    { semestre: '4', nome: 'Cálculo Numérico', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Equações Diferenciais Ordinárias', 'Programação de Computadores II'] },
-    { semestre: '4', nome: 'Física Geral III', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Física Geral II'] },
-    { semestre: '4', nome: 'Resistência dos Materiais I', cargaHoraria: 90, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Mecânica Geral'] },
-    { semestre: '4', nome: 'Introdução à Administração', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Introdução à Engenharia Civil'] },
-    { semestre: '4', nome: 'Topografia', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Desenho Arquitetônico'] },
-    { semestre: '4', nome: 'Materiais de Construção I', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Fundamentos de Química Geral Experimental'] },
-    { semestre: '4', nome: 'Métodos Estatísticos', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Cálculo Integral I'] },
-    { semestre: '4', nome: 'Física Experimental III', cargaHoraria: 30, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Física Geral II', 'Física Experimental II'] }
+    { codigo: '', semestre: '1', nome: 'Cálculo Diferencial I', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
+    { codigo: '', semestre: '1', nome: 'Introdução à Engenharia Civil', cargaHoraria: 30, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
+    { codigo: '', semestre: '1', nome: 'Geometria Analítica', cargaHoraria: 90, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
+    { codigo: '', semestre: '1', nome: 'Programação de Computadores I', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
+    { codigo: '', semestre: '1', nome: 'Introdução ao Desenho Técnico', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
+    { codigo: '', semestre: '1', nome: 'Filosofia e História das Ciências', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
+    { codigo: '', semestre: '1', nome: 'Oficina de Leitura e Produção Textual', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
+    { codigo: '', semestre: '1', nome: 'Ética e Política', cargaHoraria: 30, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
+    { codigo: '', semestre: '2', nome: 'Cálculo Diferencial II', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Cálculo Diferencial I', 'Geometria Analítica'] },
+    { codigo: '', semestre: '2', nome: 'Física Geral I', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
+    { codigo: '', semestre: '2', nome: 'Álgebra Linear I', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Geometria Analítica'] },
+    { codigo: '', semestre: '2', nome: 'Programação de Computadores II', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Programação de Computadores I'] },
+    { codigo: '', semestre: '2', nome: 'Desenho Arquitetônico', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Introdução ao Desenho Técnico'] },
+    { codigo: '', semestre: '2', nome: 'Cálculo Integral I', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Cálculo Diferencial I'] },
+    { codigo: '', semestre: '2', nome: 'Oficina de Leitura e Produção de Textos Acadêmicos', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Oficina de Leitura e Produção Textual'] },
+    { codigo: '', semestre: '2', nome: 'Física Experimental I', cargaHoraria: 30, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
+    { codigo: '', semestre: '3', nome: 'Cálculo Integral II', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Geometria Analítica', 'Cálculo Integral I'] },
+    { codigo: '', semestre: '3', nome: 'Física Geral II', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Física Geral I'] },
+    { codigo: '', semestre: '3', nome: 'Mecânica Geral', cargaHoraria: 90, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Física Geral I', 'Cálculo Integral I'] },
+    { codigo: '', semestre: '3', nome: 'Equações Diferenciais Ordinárias', cargaHoraria: 90, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Álgebra Linear I', 'Cálculo Integral I'] },
+    { codigo: '', semestre: '3', nome: 'Fundamentos de Química Geral e Inorgânica', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
+    { codigo: '', semestre: '3', nome: 'Fundamentos de Química Geral Experimental', cargaHoraria: 30, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Fundamentos de Química Geral e Inorgânica'] },
+    { codigo: '', semestre: '3', nome: 'Geologia Geral', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
+    { codigo: '', semestre: '3', nome: 'Física Experimental II', cargaHoraria: 30, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Física Geral I', 'Física Experimental I'] },
+    { codigo: '', semestre: '4', nome: 'Cálculo Numérico', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Equações Diferenciais Ordinárias', 'Programação de Computadores II'] },
+    { codigo: '', semestre: '4', nome: 'Física Geral III', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Física Geral II'] },
+    { codigo: '', semestre: '4', nome: 'Resistência dos Materiais I', cargaHoraria: 90, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Mecânica Geral'] },
+    { codigo: '', semestre: '4', nome: 'Introdução à Administração', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Introdução à Engenharia Civil'] },
+    { codigo: '', semestre: '4', nome: 'Topografia', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Desenho Arquitetônico'] },
+    { codigo: '', semestre: '4', nome: 'Materiais de Construção I', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Fundamentos de Química Geral Experimental'] },
+    { codigo: '', semestre: '4', nome: 'Métodos Estatísticos', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Cálculo Integral I'] },
+    { codigo: '', semestre: '4', nome: 'Física Experimental III', cargaHoraria: 30, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Física Geral II', 'Física Experimental II'] }
 ];
 
 StudyLifeControl.prototype.getUfobCurriculumReference = function() {
@@ -2124,7 +2126,7 @@ StudyLifeControl.prototype.normalizePrerequisitos = function(value) {
     const raw = String(value || '').trim();
     if (!raw) return [];
     return raw
-        .split(/\s*(?:,|;|\+|\/|\be\b|\band\b)\s*/i)
+        .split(/\s*(?:\||,|;|\+|\/|\be\b|\band\b)\s*/i)
         .map(v => v.trim())
         .filter(Boolean);
 };
@@ -2133,6 +2135,7 @@ StudyLifeControl.prototype.normalizeCurriculumItem = function(item) {
     const normalized = { ...item };
     normalized.semestre = String(item.semestre || '').trim();
     normalized.nome = String(item.nome || '').trim();
+    normalized.codigo = String(item.codigo || '').trim().toUpperCase();
     normalized.cargaHoraria = Number(item.cargaHoraria) || 0;
     normalized.creditos = Number(item.creditos) || 0;
     normalized.status = item.status || 'nao-cursada';
@@ -2153,11 +2156,67 @@ StudyLifeControl.prototype.getNormalizedCurriculum = function() {
     return this.data.curriculum;
 };
 
+
+StudyLifeControl.prototype.getCurriculumSmartSuggestions = function(currentName = '', selectedSemester = '') {
+    const normalizedCurrentName = this.slugifyName(currentName);
+    const semesterNumber = parseInt(selectedSemester || 0, 10) || 0;
+    const referenceMatch = this.getUfobCurriculumReference().find(item => this.slugifyName(item.nome) === normalizedCurrentName);
+    const current = this.getNormalizedCurriculum();
+    const previousSemesterItems = current
+        .filter(item => (parseInt(item.semestre || 0, 10) < semesterNumber || !semesterNumber) && this.slugifyName(item.nome) !== normalizedCurrentName)
+        .sort((a, b) => (parseInt(b.semestre || 0, 10) || 0) - (parseInt(a.semestre || 0, 10) || 0))
+        .slice(0, 12)
+        .map(item => item.nome);
+
+    const suggestions = [];
+    if (referenceMatch?.prerequisitos?.length) suggestions.push(...referenceMatch.prerequisitos);
+    suggestions.push(...previousSemesterItems);
+
+    return [...new Map(suggestions.filter(Boolean).map(name => [this.slugifyName(name), name])).values()].slice(0, 8);
+};
+
+StudyLifeControl.prototype.renderCurriculumAISuggestions = function(currentName = '', selectedSemester = '') {
+    const container = document.getElementById('curriculum-ai-suggestions');
+    if (!container) return;
+    const suggestions = this.getCurriculumSmartSuggestions(currentName, selectedSemester)
+        .filter(nome => !this.curriculumPrerequisitosSelecionados.includes(nome));
+    if (!suggestions.length) {
+        container.innerHTML = '<div class="ai-helper-card"><div><strong>Assistente de pré-requisitos</strong><p>Digite o nome da disciplina ou semestre que eu tento puxar sugestões automaticamente.</p></div></div>';
+        return;
+    }
+    container.innerHTML = `
+        <div class="ai-helper-card">
+            <div class="ai-helper-head">
+                <div>
+                    <strong>Assistente de pré-requisitos</strong>
+                    <p>Com base no nome da disciplina, semestre e matérias já cadastradas, estas parecem ser as mais prováveis.</p>
+                </div>
+                <span class="badge badge-soft">Sugestões</span>
+            </div>
+            <div class="ai-suggestion-list">
+                ${suggestions.map(nome => `<button type="button" class="ai-suggestion-pill" data-value="${escapeHtml(nome)}"><i class="fas fa-sparkles"></i> ${escapeHtml(nome)}</button>`).join('')}
+            </div>
+        </div>
+    `;
+    container.querySelectorAll('.ai-suggestion-pill').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (!this.curriculumPrerequisitosSelecionados.includes(btn.dataset.value)) {
+                this.curriculumPrerequisitosSelecionados.push(btn.dataset.value);
+                this.curriculumPrerequisitosSelecionados = [...new Set(this.curriculumPrerequisitosSelecionados)];
+                this.setupCurriculumModalUI(currentName);
+                document.getElementById('curriculum-prerequisito-busca').focus();
+            }
+        });
+    });
+};
+
 StudyLifeControl.prototype.setupCurriculumModalUI = function(currentName = '') {
     const searchInput = document.getElementById('curriculum-prerequisito-busca');
     const hiddenInput = document.getElementById('curriculum-prerequisitos');
     const tagsContainer = document.getElementById('curriculum-prerequisitos-tags');
     const suggestions = document.getElementById('curriculum-prerequisitos-sugestoes');
+    const semesterInput = document.getElementById('curriculum-semestre');
+    const nameInput = document.getElementById('curriculum-nome');
     if (!searchInput || !hiddenInput || !tagsContainer || !suggestions) return;
 
     const updateHidden = () => {
@@ -2170,6 +2229,7 @@ StudyLifeControl.prototype.setupCurriculumModalUI = function(currentName = '') {
                 this.curriculumPrerequisitosSelecionados = this.curriculumPrerequisitosSelecionados.filter(item => item !== btn.dataset.value);
                 updateHidden();
                 renderSuggestions();
+                this.renderCurriculumAISuggestions(nameInput?.value || currentName, semesterInput?.value || '');
             });
         });
     };
@@ -2180,7 +2240,7 @@ StudyLifeControl.prototype.setupCurriculumModalUI = function(currentName = '') {
 
     const renderSuggestions = () => {
         const term = this.slugifyName(searchInput.value);
-        const filtered = pool.filter(nome => !this.curriculumPrerequisitosSelecionados.includes(nome) && (!term || this.slugifyName(nome).includes(term))).slice(0, 12);
+        const filtered = pool.filter(nome => !this.curriculumPrerequisitosSelecionados.includes(nome) && (!term || this.slugifyName(nome).includes(term))).slice(0, 16);
         suggestions.innerHTML = filtered.map(nome => `<button type="button" class="prereq-option" data-value="${escapeHtml(nome)}">${escapeHtml(nome)}</button>`).join('');
         suggestions.querySelectorAll('.prereq-option').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -2189,6 +2249,7 @@ StudyLifeControl.prototype.setupCurriculumModalUI = function(currentName = '') {
                 searchInput.value = '';
                 updateHidden();
                 renderSuggestions();
+                this.renderCurriculumAISuggestions(nameInput?.value || currentName, semesterInput?.value || '');
             });
         });
     };
@@ -2202,6 +2263,7 @@ StudyLifeControl.prototype.setupCurriculumModalUI = function(currentName = '') {
         searchInput.value = '';
         updateHidden();
         renderSuggestions();
+        this.renderCurriculumAISuggestions(nameInput?.value || currentName, semesterInput?.value || '');
     });
 
     document.querySelectorAll('.btn-ch-preset').forEach(btn => {
@@ -2214,23 +2276,30 @@ StudyLifeControl.prototype.setupCurriculumModalUI = function(currentName = '') {
         };
     });
 
-    const nomeInput = document.getElementById('curriculum-nome');
-    nomeInput?.addEventListener('blur', () => {
-        const typed = this.slugifyName(nomeInput.value);
+    const autofillFromReference = () => {
+        const typed = this.slugifyName(nameInput?.value || '');
         const match = this.getUfobCurriculumReference().find(item => this.slugifyName(item.nome) === typed);
-        if (!match) return;
-        if (!document.getElementById('curriculum-carga-horaria').value) document.getElementById('curriculum-carga-horaria').value = match.cargaHoraria;
-        if (!document.getElementById('curriculum-semestre').value) document.getElementById('curriculum-semestre').value = match.semestre;
-        if (!Number(document.getElementById('curriculum-creditos').value)) document.getElementById('curriculum-creditos').value = match.creditos || '';
-        if (!this.curriculumPrerequisitosSelecionados.length && match.prerequisitos?.length) {
-            this.curriculumPrerequisitosSelecionados = [...match.prerequisitos];
-            updateHidden();
-            renderSuggestions();
+        if (match) {
+            if (!document.getElementById('curriculum-carga-horaria').value) document.getElementById('curriculum-carga-horaria').value = match.cargaHoraria;
+            if (!document.getElementById('curriculum-semestre').value) document.getElementById('curriculum-semestre').value = match.semestre;
+            if (!Number(document.getElementById('curriculum-creditos').value)) document.getElementById('curriculum-creditos').value = match.creditos || '';
+            if (!document.getElementById('curriculum-codigo').value && match.codigo) document.getElementById('curriculum-codigo').value = match.codigo;
+            if (!this.curriculumPrerequisitosSelecionados.length && match.prerequisitos?.length) {
+                this.curriculumPrerequisitosSelecionados = [...match.prerequisitos];
+                updateHidden();
+                renderSuggestions();
+            }
         }
-    });
+        this.renderCurriculumAISuggestions(nameInput?.value || currentName, semesterInput?.value || '');
+    };
+
+    nameInput?.addEventListener('blur', autofillFromReference);
+    nameInput?.addEventListener('input', () => this.renderCurriculumAISuggestions(nameInput?.value || currentName, semesterInput?.value || ''));
+    semesterInput?.addEventListener('input', () => this.renderCurriculumAISuggestions(nameInput?.value || currentName, semesterInput?.value || ''));
 
     updateHidden();
     renderSuggestions();
+    this.renderCurriculumAISuggestions(nameInput?.value || currentName, semesterInput?.value || '');
 };
 
 StudyLifeControl.prototype.importarGradeUfob = async function() {
@@ -2268,6 +2337,7 @@ StudyLifeControl.prototype.handleCurriculumSubmit = async function(e) {
     e.preventDefault();
     const curriculumData = {
         nome: document.getElementById('curriculum-nome')?.value?.trim() || '',
+        codigo: document.getElementById('curriculum-codigo')?.value?.trim().toUpperCase() || '',
         semestre: document.getElementById('curriculum-semestre')?.value?.trim() || '',
         cargaHoraria: parseInt(document.getElementById('curriculum-carga-horaria')?.value, 10) || 0,
         status: document.getElementById('curriculum-status')?.value || 'nao-cursada',
