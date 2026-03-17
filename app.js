@@ -45,6 +45,7 @@ class StudyLifeControl {
         this.editingMaterialId = null;
         this.editingCurriculumId = null;
         this.editingExtraCourseId = null;
+        this.curriculumPrerequisitosSelecionados = [];
     }
 
     async init() {
@@ -79,6 +80,7 @@ class StudyLifeControl {
         this.data = data || (typeof DEFAULT_APP_DATA === 'function' ? DEFAULT_APP_DATA() : this.data);
         if (!Array.isArray(this.data.curriculum)) this.data.curriculum = [];
         if (!Array.isArray(this.data.extraCourses)) this.data.extraCourses = [];
+        this.normalizeCurriculumInMemory();
         return this.data;
     }
 
@@ -331,6 +333,7 @@ class StudyLifeControl {
         this.editingMaterialId = null;
         this.editingCurriculumId = null;
         this.editingExtraCourseId = null;
+        this.curriculumPrerequisitosSelecionados = [];
 
         const sessaoBtn = document.querySelector('#form-sessao .btn-primary');
         const topicoBtn = document.querySelector('#form-topico .btn-primary');
@@ -597,6 +600,7 @@ class StudyLifeControl {
 
         if (view === 'grade-curricular') {
             document.getElementById('btn-novo-curriculum')?.addEventListener('click', () => this.openModal('curriculum'));
+            document.getElementById('btn-importar-ufob')?.addEventListener('click', () => this.importarGradeUfob());
 
             document.querySelectorAll('.btn-editar-curriculum').forEach(btn => {
                 btn.addEventListener('click', e => this.editarCurriculum(e.currentTarget.dataset.id));
@@ -745,7 +749,7 @@ class StudyLifeControl {
     }
 
     openModal(modalType, data = {}) {
-        if (['sessao', 'tarefa', 'prova', 'topico', 'nota', 'material', 'aula', 'curriculum'].includes(modalType)) {
+        if (['sessao', 'tarefa', 'prova', 'topico', 'nota', 'material', 'aula', 'curriculum', 'extra-course'].includes(modalType)) {
             this.populateSubjectSelects();
         }
 
@@ -855,6 +859,8 @@ class StudyLifeControl {
             document.getElementById('curriculum-creditos').value = data.creditos || '';
             document.getElementById('curriculum-prerequisitos').value = data.prerequisitos || '';
             document.getElementById('curriculum-observacoes').value = data.observacoes || '';
+            this.curriculumPrerequisitosSelecionados = this.normalizePrerequisitos(data.prerequisitosLista || data.prerequisitos || '');
+            this.setupCurriculumModalUI(data.nome || '');
         }
 
         if (modalType === 'extra-course') {
@@ -864,9 +870,9 @@ class StudyLifeControl {
             document.getElementById('extra-course-nome').value = data.nome || '';
             document.getElementById('extra-course-plataforma').value = data.plataforma || '';
             document.getElementById('extra-course-area').value = data.area || '';
-            document.getElementById('extra-course-status').value = data.status || 'planejado';
+            document.getElementById('extra-course-status').value = data.status || 'em-andamento';
             document.getElementById('extra-course-meta-horas').value = data.metaHoras || '';
-            document.getElementById('extra-course-horas-concluidas').value = data.horasConcluidas || '';
+            document.getElementById('extra-course-horas-estudadas').value = data.horasEstudadas || '';
             document.getElementById('extra-course-progresso').value = data.progresso || '';
             document.getElementById('extra-course-data-inicio').value = data.dataInicio || '';
             document.getElementById('extra-course-link').value = data.link || '';
@@ -1005,6 +1011,8 @@ class StudyLifeControl {
         const success = await dbService.updateItem('curriculum', id, curriculumData);
         if (success) {
             this.editingCurriculumId = null;
+        this.editingExtraCourseId = null;
+        this.curriculumPrerequisitosSelecionados = [];
             this.loadView(this.currentView);
             showToast('Componente curricular atualizado!');
         }
@@ -1025,88 +1033,6 @@ class StudyLifeControl {
         if (success) {
             this.loadView(this.currentView);
             showToast('Componente curricular excluído!');
-        }
-    }
-
-    async handleExtraCourseSubmit(e) {
-        e.preventDefault();
-
-        const extraCourseData = {
-            nome: document.getElementById('extra-course-nome')?.value?.trim() || '',
-            plataforma: document.getElementById('extra-course-plataforma')?.value?.trim() || '',
-            area: document.getElementById('extra-course-area')?.value?.trim() || '',
-            status: document.getElementById('extra-course-status')?.value || 'planejado',
-            metaHoras: parseFloat(document.getElementById('extra-course-meta-horas')?.value) || 0,
-            horasConcluidas: parseFloat(document.getElementById('extra-course-horas-concluidas')?.value) || 0,
-            progresso: Math.max(0, Math.min(100, parseInt(document.getElementById('extra-course-progresso')?.value, 10) || 0)),
-            dataInicio: document.getElementById('extra-course-data-inicio')?.value || '',
-            link: document.getElementById('extra-course-link')?.value?.trim() || '',
-            observacoes: document.getElementById('extra-course-observacoes')?.value?.trim() || ''
-        };
-
-        if (!extraCourseData.nome) {
-            showToast('Informe o nome do curso extra', 'warning');
-            return;
-        }
-
-        if (extraCourseData.metaHoras > 0 && !document.getElementById('extra-course-progresso')?.value) {
-            extraCourseData.progresso = Math.max(0, Math.min(100, Math.round((extraCourseData.horasConcluidas / extraCourseData.metaHoras) * 100)));
-        }
-
-        if (this.editingExtraCourseId) {
-            await this.salvarExtraCourseEditado(this.editingExtraCourseId, extraCourseData);
-        } else {
-            await this.salvarNovoExtraCourse(extraCourseData);
-        }
-
-        document.getElementById('modal-extra-course').style.display = 'none';
-        this.resetModalStates();
-    }
-
-    async salvarNovoExtraCourse(extraCourseData) {
-        if (!Array.isArray(this.data.extraCourses)) this.data.extraCourses = [];
-
-        const existe = this.data.extraCourses.some(item => item.nome.toLowerCase() === extraCourseData.nome.toLowerCase());
-        if (existe) {
-            showToast('Esse curso extra já foi cadastrado', 'warning');
-            return;
-        }
-
-        const success = await dbService.addItem('extraCourses', {
-            id: generateId(),
-            ...extraCourseData
-        });
-
-        if (success) {
-            this.loadView(this.currentView);
-            showToast('Curso extra adicionado!');
-        }
-    }
-
-    async salvarExtraCourseEditado(id, extraCourseData) {
-        const success = await dbService.updateItem('extraCourses', id, extraCourseData);
-        if (success) {
-            this.editingExtraCourseId = null;
-            this.loadView(this.currentView);
-            showToast('Curso extra atualizado!');
-        }
-    }
-
-    editarExtraCourse(id) {
-        const item = (this.data.extraCourses || []).find(c => c.id === id);
-        if (!item) return;
-
-        this.editingExtraCourseId = id;
-        this.openModal('extra-course', item);
-    }
-
-    async excluirExtraCourse(id) {
-        if (!confirm('Deseja excluir este curso extra?')) return;
-
-        const success = await dbService.removeItem('extraCourses', id);
-        if (success) {
-            this.loadView(this.currentView);
-            showToast('Curso extra excluído!');
         }
     }
 
@@ -1568,6 +1494,8 @@ class StudyLifeControl {
             document.getElementById('modal-material').style.display = 'none';
             this.editingMaterialId = null;
         this.editingCurriculumId = null;
+        this.editingExtraCourseId = null;
+        this.curriculumPrerequisitosSelecionados = [];
             this.resetModalStates();
             this.loadView(this.currentView);
             showToast(isEditing ? 'Material atualizado!' : 'Material adicionado!');
@@ -2145,3 +2073,258 @@ class StudyLifeControl {
 }
 
 window.StudyLifeControl = StudyLifeControl;
+
+const UFOB_ENGINEERING_CIVIL_REFERENCE = [
+    { semestre: '1', nome: 'Cálculo Diferencial I', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
+    { semestre: '1', nome: 'Introdução à Engenharia Civil', cargaHoraria: 30, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
+    { semestre: '1', nome: 'Geometria Analítica', cargaHoraria: 90, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
+    { semestre: '1', nome: 'Programação de Computadores I', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
+    { semestre: '1', nome: 'Introdução ao Desenho Técnico', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
+    { semestre: '1', nome: 'Filosofia e História das Ciências', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
+    { semestre: '1', nome: 'Oficina de Leitura e Produção Textual', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
+    { semestre: '1', nome: 'Ética e Política', cargaHoraria: 30, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
+    { semestre: '2', nome: 'Cálculo Diferencial II', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Cálculo Diferencial I', 'Geometria Analítica'] },
+    { semestre: '2', nome: 'Física Geral I', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
+    { semestre: '2', nome: 'Álgebra Linear I', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Geometria Analítica'] },
+    { semestre: '2', nome: 'Programação de Computadores II', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Programação de Computadores I'] },
+    { semestre: '2', nome: 'Desenho Arquitetônico', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Introdução ao Desenho Técnico'] },
+    { semestre: '2', nome: 'Cálculo Integral I', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Cálculo Diferencial I'] },
+    { semestre: '2', nome: 'Oficina de Leitura e Produção de Textos Acadêmicos', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Oficina de Leitura e Produção Textual'] },
+    { semestre: '2', nome: 'Física Experimental I', cargaHoraria: 30, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
+    { semestre: '3', nome: 'Cálculo Integral II', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Geometria Analítica', 'Cálculo Integral I'] },
+    { semestre: '3', nome: 'Física Geral II', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Física Geral I'] },
+    { semestre: '3', nome: 'Mecânica Geral', cargaHoraria: 90, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Física Geral I', 'Cálculo Integral I'] },
+    { semestre: '3', nome: 'Equações Diferenciais Ordinárias', cargaHoraria: 90, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Álgebra Linear I', 'Cálculo Integral I'] },
+    { semestre: '3', nome: 'Fundamentos de Química Geral e Inorgânica', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
+    { semestre: '3', nome: 'Fundamentos de Química Geral Experimental', cargaHoraria: 30, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Fundamentos de Química Geral e Inorgânica'] },
+    { semestre: '3', nome: 'Geologia Geral', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: [] },
+    { semestre: '3', nome: 'Física Experimental II', cargaHoraria: 30, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Física Geral I', 'Física Experimental I'] },
+    { semestre: '4', nome: 'Cálculo Numérico', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Equações Diferenciais Ordinárias', 'Programação de Computadores II'] },
+    { semestre: '4', nome: 'Física Geral III', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Física Geral II'] },
+    { semestre: '4', nome: 'Resistência dos Materiais I', cargaHoraria: 90, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Mecânica Geral'] },
+    { semestre: '4', nome: 'Introdução à Administração', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Introdução à Engenharia Civil'] },
+    { semestre: '4', nome: 'Topografia', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Desenho Arquitetônico'] },
+    { semestre: '4', nome: 'Materiais de Construção I', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Fundamentos de Química Geral Experimental'] },
+    { semestre: '4', nome: 'Métodos Estatísticos', cargaHoraria: 60, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Cálculo Integral I'] },
+    { semestre: '4', nome: 'Física Experimental III', cargaHoraria: 30, creditos: 0, tipo: 'obrigatoria', prerequisitos: ['Física Geral II', 'Física Experimental II'] }
+];
+
+StudyLifeControl.prototype.getUfobCurriculumReference = function() {
+    return UFOB_ENGINEERING_CIVIL_REFERENCE.map(item => ({ ...item, prerequisitosLista: [...item.prerequisitos] }));
+};
+
+StudyLifeControl.prototype.slugifyName = function(value) {
+    return String(value || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+};
+
+StudyLifeControl.prototype.normalizePrerequisitos = function(value) {
+    if (Array.isArray(value)) {
+        return value.map(v => String(v || '').trim()).filter(Boolean);
+    }
+    const raw = String(value || '').trim();
+    if (!raw) return [];
+    return raw
+        .split(/\s*(?:,|;|\+|\/|\be\b|\band\b)\s*/i)
+        .map(v => v.trim())
+        .filter(Boolean);
+};
+
+StudyLifeControl.prototype.normalizeCurriculumItem = function(item) {
+    const normalized = { ...item };
+    normalized.semestre = String(item.semestre || '').trim();
+    normalized.nome = String(item.nome || '').trim();
+    normalized.cargaHoraria = Number(item.cargaHoraria) || 0;
+    normalized.creditos = Number(item.creditos) || 0;
+    normalized.status = item.status || 'nao-cursada';
+    normalized.tipo = item.tipo || 'obrigatoria';
+    normalized.prerequisitosLista = this.normalizePrerequisitos(item.prerequisitosLista || item.prerequisitos || '');
+    normalized.prerequisitos = normalized.prerequisitosLista.join(' | ');
+    return normalized;
+};
+
+StudyLifeControl.prototype.normalizeCurriculumInMemory = function() {
+    if (!Array.isArray(this.data.curriculum)) this.data.curriculum = [];
+    this.data.curriculum = this.data.curriculum.map(item => this.normalizeCurriculumItem(item));
+    if (!Array.isArray(this.data.extraCourses)) this.data.extraCourses = [];
+};
+
+StudyLifeControl.prototype.getNormalizedCurriculum = function() {
+    this.normalizeCurriculumInMemory();
+    return this.data.curriculum;
+};
+
+StudyLifeControl.prototype.setupCurriculumModalUI = function(currentName = '') {
+    const searchInput = document.getElementById('curriculum-prerequisito-busca');
+    const hiddenInput = document.getElementById('curriculum-prerequisitos');
+    const tagsContainer = document.getElementById('curriculum-prerequisitos-tags');
+    const suggestions = document.getElementById('curriculum-prerequisitos-sugestoes');
+    if (!searchInput || !hiddenInput || !tagsContainer || !suggestions) return;
+
+    const updateHidden = () => {
+        hiddenInput.value = this.curriculumPrerequisitosSelecionados.join(' | ');
+        tagsContainer.innerHTML = this.curriculumPrerequisitosSelecionados.map(req => `
+            <span class="chip chip-removable">${escapeHtml(req)} <button type="button" class="chip-remove" data-value="${escapeHtml(req)}">×</button></span>
+        `).join('');
+        tagsContainer.querySelectorAll('.chip-remove').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.curriculumPrerequisitosSelecionados = this.curriculumPrerequisitosSelecionados.filter(item => item !== btn.dataset.value);
+                updateHidden();
+                renderSuggestions();
+            });
+        });
+    };
+
+    const pool = [...new Map([...this.getNormalizedCurriculum(), ...this.getUfobCurriculumReference()]
+        .filter(item => item.nome && this.slugifyName(item.nome) !== this.slugifyName(currentName))
+        .map(item => [this.slugifyName(item.nome), item.nome])).values()];
+
+    const renderSuggestions = () => {
+        const term = this.slugifyName(searchInput.value);
+        const filtered = pool.filter(nome => !this.curriculumPrerequisitosSelecionados.includes(nome) && (!term || this.slugifyName(nome).includes(term))).slice(0, 12);
+        suggestions.innerHTML = filtered.map(nome => `<button type="button" class="prereq-option" data-value="${escapeHtml(nome)}">${escapeHtml(nome)}</button>`).join('');
+        suggestions.querySelectorAll('.prereq-option').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.curriculumPrerequisitosSelecionados.push(btn.dataset.value);
+                this.curriculumPrerequisitosSelecionados = [...new Set(this.curriculumPrerequisitosSelecionados)];
+                searchInput.value = '';
+                updateHidden();
+                renderSuggestions();
+            });
+        });
+    };
+
+    searchInput.oninput = renderSuggestions;
+    searchInput.onclick = renderSuggestions;
+    document.getElementById('btn-add-custom-prereq')?.addEventListener('click', () => {
+        const value = searchInput.value.trim();
+        if (!value) return;
+        if (!this.curriculumPrerequisitosSelecionados.includes(value)) this.curriculumPrerequisitosSelecionados.push(value);
+        searchInput.value = '';
+        updateHidden();
+        renderSuggestions();
+    });
+
+    document.querySelectorAll('.btn-ch-preset').forEach(btn => {
+        btn.onclick = () => {
+            if (btn.dataset.value === '0') {
+                document.getElementById('curriculum-carga-horaria').focus();
+                return;
+            }
+            document.getElementById('curriculum-carga-horaria').value = btn.dataset.value;
+        };
+    });
+
+    const nomeInput = document.getElementById('curriculum-nome');
+    nomeInput?.addEventListener('blur', () => {
+        const typed = this.slugifyName(nomeInput.value);
+        const match = this.getUfobCurriculumReference().find(item => this.slugifyName(item.nome) === typed);
+        if (!match) return;
+        if (!document.getElementById('curriculum-carga-horaria').value) document.getElementById('curriculum-carga-horaria').value = match.cargaHoraria;
+        if (!document.getElementById('curriculum-semestre').value) document.getElementById('curriculum-semestre').value = match.semestre;
+        if (!Number(document.getElementById('curriculum-creditos').value)) document.getElementById('curriculum-creditos').value = match.creditos || '';
+        if (!this.curriculumPrerequisitosSelecionados.length && match.prerequisitos?.length) {
+            this.curriculumPrerequisitosSelecionados = [...match.prerequisitos];
+            updateHidden();
+            renderSuggestions();
+        }
+    });
+
+    updateHidden();
+    renderSuggestions();
+};
+
+StudyLifeControl.prototype.importarGradeUfob = async function() {
+    this.normalizeCurriculumInMemory();
+    const current = this.getNormalizedCurriculum();
+    const existingMap = new Map(current.map(item => [this.slugifyName(item.nome), item]));
+    const merged = [...current];
+    let added = 0;
+    this.getUfobCurriculumReference().forEach(item => {
+        const key = this.slugifyName(item.nome);
+        if (existingMap.has(key)) {
+            const target = existingMap.get(key);
+            target.semestre = target.semestre || item.semestre;
+            target.cargaHoraria = Number(target.cargaHoraria) || item.cargaHoraria;
+            target.creditos = Number(target.creditos) || item.creditos;
+            const prereqs = new Set([...(target.prerequisitosLista || []), ...(item.prerequisitos || [])]);
+            target.prerequisitosLista = [...prereqs];
+            target.prerequisitos = target.prerequisitosLista.join(' | ');
+            target.tipo = target.tipo || item.tipo;
+        } else {
+            merged.push({ id: generateId(), ...item, prerequisitosLista: [...item.prerequisitos], prerequisitos: item.prerequisitos.join(' | '), status: 'nao-cursada', observacoes: '' });
+            added += 1;
+        }
+    });
+    this.data.curriculum = merged.map(item => this.normalizeCurriculumItem(item));
+    const success = await dbService.saveData('curriculum', this.data.curriculum);
+    if (success) {
+        this.loadView('grade-curricular');
+        showToast(added ? `${added} componente(s) sugerido(s) pela UFOB foram adicionados.` : 'Sua grade já foi reorganizada com as referências da UFOB.');
+    }
+};
+
+const originalHandleCurriculumSubmit = StudyLifeControl.prototype.handleCurriculumSubmit;
+StudyLifeControl.prototype.handleCurriculumSubmit = async function(e) {
+    e.preventDefault();
+    const curriculumData = {
+        nome: document.getElementById('curriculum-nome')?.value?.trim() || '',
+        semestre: document.getElementById('curriculum-semestre')?.value?.trim() || '',
+        cargaHoraria: parseInt(document.getElementById('curriculum-carga-horaria')?.value, 10) || 0,
+        status: document.getElementById('curriculum-status')?.value || 'nao-cursada',
+        tipo: document.getElementById('curriculum-tipo')?.value || 'obrigatoria',
+        creditos: parseFloat(document.getElementById('curriculum-creditos')?.value) || 0,
+        prerequisitosLista: [...new Set(this.curriculumPrerequisitosSelecionados || [])],
+        observacoes: document.getElementById('curriculum-observacoes')?.value?.trim() || ''
+    };
+    curriculumData.prerequisitos = curriculumData.prerequisitosLista.join(' | ');
+    if (!curriculumData.nome) return showToast('Informe o nome da disciplina/componente', 'warning');
+    if (!curriculumData.cargaHoraria) return showToast('Informe a carga horária', 'warning');
+    if (this.editingCurriculumId) await this.salvarCurriculumEditado(this.editingCurriculumId, curriculumData);
+    else await this.salvarNovoCurriculum(curriculumData);
+    document.getElementById('modal-curriculum').style.display = 'none';
+    this.resetModalStates();
+};
+
+StudyLifeControl.prototype.handleExtraCourseSubmit = async function(e) {
+    e.preventDefault();
+    const courseData = {
+        nome: document.getElementById('extra-course-nome')?.value?.trim() || '',
+        plataforma: document.getElementById('extra-course-plataforma')?.value?.trim() || '',
+        area: document.getElementById('extra-course-area')?.value?.trim() || '',
+        status: document.getElementById('extra-course-status')?.value || 'em-andamento',
+        metaHoras: parseFloat(document.getElementById('extra-course-meta-horas')?.value) || 0,
+        horasEstudadas: parseFloat(document.getElementById('extra-course-horas-estudadas')?.value) || 0,
+        progresso: parseFloat(document.getElementById('extra-course-progresso')?.value) || 0,
+        dataInicio: document.getElementById('extra-course-data-inicio')?.value || '',
+        link: document.getElementById('extra-course-link')?.value?.trim() || '',
+        observacoes: document.getElementById('extra-course-observacoes')?.value?.trim() || ''
+    };
+    if (!courseData.nome) return showToast('Informe o nome do curso', 'warning');
+    if (!Array.isArray(this.data.extraCourses)) this.data.extraCourses = [];
+    if (this.editingExtraCourseId) {
+        const success = await dbService.updateItem('extraCourses', this.editingExtraCourseId, courseData);
+        if (success) showToast('Curso extra atualizado!');
+    } else {
+        const success = await dbService.addItem('extraCourses', { id: generateId(), ...courseData });
+        if (success) showToast('Curso extra adicionado!');
+    }
+    document.getElementById('modal-extra-course').style.display = 'none';
+    this.resetModalStates();
+    this.loadView('cursos-extras');
+};
+
+StudyLifeControl.prototype.editarExtraCourse = function(id) {
+    const item = (this.data.extraCourses || []).find(c => c.id === id);
+    if (!item) return;
+    this.editingExtraCourseId = id;
+    this.openModal('extra-course', item);
+};
+
+StudyLifeControl.prototype.excluirExtraCourse = async function(id) {
+    if (!confirm('Deseja excluir este curso extra?')) return;
+    const success = await dbService.removeItem('extraCourses', id);
+    if (success) {
+        this.loadView('cursos-extras');
+        showToast('Curso extra excluído!');
+    }
+};
