@@ -17,6 +17,7 @@ class StudyLifeControl {
             classDiaries: [],
             reviews: [],
             curriculum: [],
+            extraCourses: [],
             attendance: {},
             settings: {
                 heavyMode: false,
@@ -43,6 +44,7 @@ class StudyLifeControl {
         this.editingGradeId = null;
         this.editingMaterialId = null;
         this.editingCurriculumId = null;
+        this.editingExtraCourseId = null;
     }
 
     async init() {
@@ -76,6 +78,7 @@ class StudyLifeControl {
         const data = await dbService.loadUserData(user.uid);
         this.data = data || (typeof DEFAULT_APP_DATA === 'function' ? DEFAULT_APP_DATA() : this.data);
         if (!Array.isArray(this.data.curriculum)) this.data.curriculum = [];
+        if (!Array.isArray(this.data.extraCourses)) this.data.extraCourses = [];
         return this.data;
     }
 
@@ -298,6 +301,7 @@ class StudyLifeControl {
         document.getElementById('form-material')?.addEventListener('submit', e => this.handleMaterialSubmit(e));
         document.getElementById('form-materia')?.addEventListener('submit', e => this.handleMateriaSubmit(e));
         document.getElementById('form-curriculum')?.addEventListener('submit', e => this.handleCurriculumSubmit(e));
+        document.getElementById('form-extra-course')?.addEventListener('submit', e => this.handleExtraCourseSubmit(e));
         document.getElementById('form-aula')?.addEventListener('submit', e => this.handleAulaSubmit(e));
         document.getElementById('form-daily-log')?.addEventListener('submit', e => this.handleDailyLogSubmit(e));
         document.getElementById('form-class-diary')?.addEventListener('submit', e => this.handleClassDiarySubmit(e));
@@ -326,6 +330,7 @@ class StudyLifeControl {
         this.editingGradeId = null;
         this.editingMaterialId = null;
         this.editingCurriculumId = null;
+        this.editingExtraCourseId = null;
 
         const sessaoBtn = document.querySelector('#form-sessao .btn-primary');
         const topicoBtn = document.querySelector('#form-topico .btn-primary');
@@ -336,6 +341,7 @@ class StudyLifeControl {
         const materialBtn = document.querySelector('#form-material .btn-primary');
         const materiaBtn = document.querySelector('#form-materia .btn-primary');
         const curriculumBtn = document.querySelector('#form-curriculum .btn-primary');
+        const extraCourseBtn = document.querySelector('#form-extra-course .btn-primary');
 
         if (sessaoBtn) sessaoBtn.textContent = 'Agendar Sessão';
         if (topicoBtn) topicoBtn.textContent = 'Adicionar Tópico';
@@ -346,6 +352,7 @@ class StudyLifeControl {
         if (materialBtn) materialBtn.textContent = 'Salvar Material';
         if (materiaBtn) materiaBtn.textContent = 'Salvar Matéria';
         if (curriculumBtn) curriculumBtn.textContent = 'Salvar Componente';
+        if (extraCourseBtn) extraCourseBtn.textContent = 'Salvar Curso';
     }
 
     applyHeavyMode() {
@@ -413,6 +420,7 @@ class StudyLifeControl {
             case 'configuracoes': html = this.viewRenderer.renderConfiguracoes(); break;
             case 'materias': html = this.viewRenderer.renderMaterias(); break;
             case 'grade-curricular': html = this.viewRenderer.renderGradeCurricular(); break;
+            case 'cursos-extras': html = this.viewRenderer.renderCursosExtras(); break;
             default: html = this.viewRenderer.renderDashboard();
         }
 
@@ -596,6 +604,18 @@ class StudyLifeControl {
 
             document.querySelectorAll('.btn-excluir-curriculum').forEach(btn => {
                 btn.addEventListener('click', e => this.excluirCurriculum(e.currentTarget.dataset.id));
+            });
+        }
+
+        if (view === 'cursos-extras') {
+            document.getElementById('btn-novo-extra-course')?.addEventListener('click', () => this.openModal('extra-course'));
+
+            document.querySelectorAll('.btn-editar-extra-course').forEach(btn => {
+                btn.addEventListener('click', e => this.editarExtraCourse(e.currentTarget.dataset.id));
+            });
+
+            document.querySelectorAll('.btn-excluir-extra-course').forEach(btn => {
+                btn.addEventListener('click', e => this.excluirExtraCourse(e.currentTarget.dataset.id));
             });
         }
 
@@ -837,6 +857,22 @@ class StudyLifeControl {
             document.getElementById('curriculum-observacoes').value = data.observacoes || '';
         }
 
+        if (modalType === 'extra-course') {
+            const btn = document.querySelector('#form-extra-course .btn-primary');
+            if (btn) btn.textContent = this.editingExtraCourseId ? 'Atualizar Curso' : 'Salvar Curso';
+
+            document.getElementById('extra-course-nome').value = data.nome || '';
+            document.getElementById('extra-course-plataforma').value = data.plataforma || '';
+            document.getElementById('extra-course-area').value = data.area || '';
+            document.getElementById('extra-course-status').value = data.status || 'planejado';
+            document.getElementById('extra-course-meta-horas').value = data.metaHoras || '';
+            document.getElementById('extra-course-horas-concluidas').value = data.horasConcluidas || '';
+            document.getElementById('extra-course-progresso').value = data.progresso || '';
+            document.getElementById('extra-course-data-inicio').value = data.dataInicio || '';
+            document.getElementById('extra-course-link').value = data.link || '';
+            document.getElementById('extra-course-observacoes').value = data.observacoes || '';
+        }
+
         const modal = document.getElementById(`modal-${modalType}`);
         if (modal) modal.style.display = 'block';
     }
@@ -989,6 +1025,88 @@ class StudyLifeControl {
         if (success) {
             this.loadView(this.currentView);
             showToast('Componente curricular excluído!');
+        }
+    }
+
+    async handleExtraCourseSubmit(e) {
+        e.preventDefault();
+
+        const extraCourseData = {
+            nome: document.getElementById('extra-course-nome')?.value?.trim() || '',
+            plataforma: document.getElementById('extra-course-plataforma')?.value?.trim() || '',
+            area: document.getElementById('extra-course-area')?.value?.trim() || '',
+            status: document.getElementById('extra-course-status')?.value || 'planejado',
+            metaHoras: parseFloat(document.getElementById('extra-course-meta-horas')?.value) || 0,
+            horasConcluidas: parseFloat(document.getElementById('extra-course-horas-concluidas')?.value) || 0,
+            progresso: Math.max(0, Math.min(100, parseInt(document.getElementById('extra-course-progresso')?.value, 10) || 0)),
+            dataInicio: document.getElementById('extra-course-data-inicio')?.value || '',
+            link: document.getElementById('extra-course-link')?.value?.trim() || '',
+            observacoes: document.getElementById('extra-course-observacoes')?.value?.trim() || ''
+        };
+
+        if (!extraCourseData.nome) {
+            showToast('Informe o nome do curso extra', 'warning');
+            return;
+        }
+
+        if (extraCourseData.metaHoras > 0 && !document.getElementById('extra-course-progresso')?.value) {
+            extraCourseData.progresso = Math.max(0, Math.min(100, Math.round((extraCourseData.horasConcluidas / extraCourseData.metaHoras) * 100)));
+        }
+
+        if (this.editingExtraCourseId) {
+            await this.salvarExtraCourseEditado(this.editingExtraCourseId, extraCourseData);
+        } else {
+            await this.salvarNovoExtraCourse(extraCourseData);
+        }
+
+        document.getElementById('modal-extra-course').style.display = 'none';
+        this.resetModalStates();
+    }
+
+    async salvarNovoExtraCourse(extraCourseData) {
+        if (!Array.isArray(this.data.extraCourses)) this.data.extraCourses = [];
+
+        const existe = this.data.extraCourses.some(item => item.nome.toLowerCase() === extraCourseData.nome.toLowerCase());
+        if (existe) {
+            showToast('Esse curso extra já foi cadastrado', 'warning');
+            return;
+        }
+
+        const success = await dbService.addItem('extraCourses', {
+            id: generateId(),
+            ...extraCourseData
+        });
+
+        if (success) {
+            this.loadView(this.currentView);
+            showToast('Curso extra adicionado!');
+        }
+    }
+
+    async salvarExtraCourseEditado(id, extraCourseData) {
+        const success = await dbService.updateItem('extraCourses', id, extraCourseData);
+        if (success) {
+            this.editingExtraCourseId = null;
+            this.loadView(this.currentView);
+            showToast('Curso extra atualizado!');
+        }
+    }
+
+    editarExtraCourse(id) {
+        const item = (this.data.extraCourses || []).find(c => c.id === id);
+        if (!item) return;
+
+        this.editingExtraCourseId = id;
+        this.openModal('extra-course', item);
+    }
+
+    async excluirExtraCourse(id) {
+        if (!confirm('Deseja excluir este curso extra?')) return;
+
+        const success = await dbService.removeItem('extraCourses', id);
+        if (success) {
+            this.loadView(this.currentView);
+            showToast('Curso extra excluído!');
         }
     }
 
