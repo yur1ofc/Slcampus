@@ -2768,3 +2768,84 @@ input:checked + .toggle-slider:before {
         align-items: flex-start;
     }
 }
+
+
+/* Grade curricular e cursos extras */
+.curriculum-groups {
+    display: grid;
+    gap: 20px;
+}
+
+.curriculum-list {
+    display: grid;
+    gap: 14px;
+}
+
+.curriculum-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 16px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 14px;
+    background: rgba(15, 23, 42, 0.22);
+}
+
+.curriculum-main {
+    flex: 1;
+}
+
+.curriculum-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.curriculum-top h4 {
+    margin: 0;
+}
+
+.curriculum-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    margin-bottom: 10px;
+}
+
+.curriculum-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.tag.success,
+.risk-indicator.risk-success {
+    background: rgba(16, 185, 129, 0.15);
+    color: #22c55e;
+}
+
+.tag.secondary {
+    background: rgba(148, 163, 184, 0.18);
+    color: #cbd5e1;
+}
+
+@media (max-width: 768px) {
+    .curriculum-item {
+        flex-direction: column;
+    }
+
+    .curriculum-actions {
+        width: 100%;
+    }
+
+    .curriculum-actions > * {
+        flex: 1;
+        text-align: center;
+    }
+}
