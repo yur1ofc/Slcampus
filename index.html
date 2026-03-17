@@ -199,6 +199,7 @@
                         <a href="#" class="nav-item" data-view="grade-horaria"><i class="fas fa-calendar-week"></i><span>Grade Horária</span></a>
                         <a href="#" class="nav-item" data-view="materias"><i class="fas fa-book"></i><span>Matérias</span></a>
                         <a href="#" class="nav-item" data-view="grade-curricular"><i class="fas fa-sitemap"></i><span>Grade Curricular</span></a>
+                        <a href="#" class="nav-item" data-view="cursos-extras"><i class="fas fa-language"></i><span>Cursos Extras</span></a>
                         <a href="#" class="nav-item" data-view="sessoes"><i class="fas fa-clock"></i><span>Sessões de Estudo</span></a>
                         <a href="#" class="nav-item" data-view="tarefas"><i class="fas fa-tasks"></i><span>Tarefas</span></a>
                         <a href="#" class="nav-item" data-view="provas"><i class="fas fa-graduation-cap"></i><span>Provas e Trabalhos</span></a>
@@ -683,6 +684,74 @@
                 </div>
                 <div class="form-actions">
                     <button type="submit" class="btn-primary">Salvar Componente</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <div id="modal-extra-course" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-language"></i> Curso Extra</h2>
+                <span class="close-modal" onclick="this.closest('.modal').style.display='none'">&times;</span>
+            </div>
+            <form id="form-extra-course" class="modal-form">
+                <div class="form-group">
+                    <label>Nome do curso</label>
+                    <input type="text" id="extra-course-nome" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Plataforma</label>
+                        <input type="text" id="extra-course-plataforma" placeholder="Ex: Duolingo, Udemy, Coursera">
+                    </div>
+                    <div class="form-group">
+                        <label>Área</label>
+                        <input type="text" id="extra-course-area" placeholder="Ex: Idiomas, Programação, Produtividade">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select id="extra-course-status" required>
+                            <option value="planejado">Planejado</option>
+                            <option value="em-andamento">Em andamento</option>
+                            <option value="concluido">Concluído</option>
+                            <option value="pausado">Pausado</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Meta total (horas)</label>
+                        <input type="number" id="extra-course-meta-horas" min="0" step="0.5" placeholder="Ex: 40">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Horas já estudadas</label>
+                        <input type="number" id="extra-course-horas-concluidas" min="0" step="0.5" placeholder="Ex: 3.5">
+                    </div>
+                    <div class="form-group">
+                        <label>Percentual concluído (%)</label>
+                        <input type="number" id="extra-course-progresso" min="0" max="100" step="1" placeholder="Ex: 20">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Data de início</label>
+                        <input type="date" id="extra-course-data-inicio">
+                    </div>
+                    <div class="form-group">
+                        <label>Link (opcional)</label>
+                        <input type="url" id="extra-course-link" placeholder="https://...">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Observações</label>
+                    <textarea id="extra-course-observacoes" rows="4" placeholder="Ex: comecei hoje no Duolingo, foco em inglês diário"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">Salvar Curso</button>
                 </div>
             </form>
         </div>
