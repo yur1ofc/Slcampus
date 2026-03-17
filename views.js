@@ -1362,250 +1362,6 @@ class ViewRenderer {
         `;
     }
 
-    renderGradeCurricular() {
-        const curriculum = (this.app.data.curriculum || []).slice().sort((a, b) => {
-            const semA = parseInt(a.semestre || 999, 10);
-            const semB = parseInt(b.semestre || 999, 10);
-            if (semA !== semB) return semA - semB;
-            return (a.nome || '').localeCompare(b.nome || '', 'pt-BR');
-        });
-
-        const totais = curriculum.reduce((acc, item) => {
-            const ch = Number(item.cargaHoraria) || 0;
-            acc.totalHoras += ch;
-            acc.totalComponentes += 1;
-            if (item.status === 'concluida') acc.horasConcluidas += ch;
-            if (item.status === 'cursando') acc.horasCursando += ch;
-            return acc;
-        }, { totalHoras: 0, totalComponentes: 0, horasConcluidas: 0, horasCursando: 0 });
-
-        const horasRestantes = Math.max(0, totais.totalHoras - totais.horasConcluidas);
-        const progresso = totais.totalHoras ? Math.round((totais.horasConcluidas / totais.totalHoras) * 100) : 0;
-
-        const porSemestre = curriculum.reduce((acc, item) => {
-            const chave = item.semestre ? `${item.semestre}º Semestre` : 'Sem semestre definido';
-            if (!acc[chave]) acc[chave] = [];
-            acc[chave].push(item);
-            return acc;
-        }, {});
-
-        const semestresOrdenados = Object.keys(porSemestre).sort((a, b) => {
-            const na = parseInt(a, 10);
-            const nb = parseInt(b, 10);
-            if (Number.isNaN(na) && Number.isNaN(nb)) return a.localeCompare(b, 'pt-BR');
-            if (Number.isNaN(na)) return 1;
-            if (Number.isNaN(nb)) return -1;
-            return na - nb;
-        });
-
-        return `
-            <div class="view-header">
-                <h2><i class="fas fa-sitemap"></i> Grade Curricular</h2>
-                <button class="btn-primary" id="btn-novo-curriculum"><i class="fas fa-plus"></i> Novo Componente</button>
-            </div>
-
-            <div class="dashboard-grid">
-                <div class="card">
-                    <div class="card-header"><h3><i class="fas fa-list-check"></i> Resumo Geral</h3></div>
-                    <div class="card-body">
-                        <div class="stats-row">
-                            <div class="stat-item">
-                                <span class="stat-value">${totais.totalComponentes}</span>
-                                <span class="stat-label">componentes</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-value">${totais.totalHoras}h</span>
-                                <span class="stat-label">horas totais</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-value">${totais.horasConcluidas}h</span>
-                                <span class="stat-label">concluídas</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-value">${horasRestantes}h</span>
-                                <span class="stat-label">restantes</span>
-                            </div>
-                        </div>
-
-                        <div class="progress-container" style="margin-top: 16px;">
-                            <div class="progress-label">
-                                <span>Progresso do curso</span>
-                                <span>${progresso}%</span>
-                            </div>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: ${progresso}%"></div>
-                            </div>
-                        </div>
-
-                        <div class="stats-row" style="margin-top: 16px;">
-                            <div class="stat-item">
-                                <span class="stat-value">${totais.horasCursando}h</span>
-                                <span class="stat-label">em andamento</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-value">${curriculum.filter(i => i.status === 'nao-cursada').length}</span>
-                                <span class="stat-label">não cursadas</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-header"><h3><i class="fas fa-circle-info"></i> Como usar</h3></div>
-                    <div class="card-body">
-                        <p>Cadastre todas as matérias do curso com semestre, carga horária e status.</p>
-                        <p>Quando você concluir uma disciplina, marque como <strong>Concluída</strong> para o progresso atualizar.</p>
-                        <p>Você também pode usar tipos como optativa, extensão e atividade complementar.</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="curriculum-groups">
-                ${semestresOrdenados.map(semestre => `
-                    <div class="card">
-                        <div class="card-header">
-                            <h3>${this.esc(semestre)}</h3>
-                            <span class="badge">${porSemestre[semestre].reduce((acc, item) => acc + (Number(item.cargaHoraria) || 0), 0)}h</span>
-                        </div>
-                        <div class="card-body">
-                            <div class="curriculum-list">
-                                ${porSemestre[semestre].map(item => `
-                                    <div class="curriculum-item">
-                                        <div class="curriculum-main">
-                                            <div class="curriculum-top">
-                                                <h4>${this.esc(item.nome)}</h4>
-                                                <span class="tag ${item.status === 'concluida' ? 'success' : item.status === 'cursando' ? 'warning' : 'secondary'}">${this.esc(item.status.replace('-', ' '))}</span>
-                                            </div>
-                                            <div class="curriculum-meta">
-                                                <span><i class="fas fa-hourglass-half"></i> ${Number(item.cargaHoraria) || 0}h</span>
-                                                <span><i class="fas fa-layer-group"></i> ${this.esc(item.tipo || 'obrigatoria')}</span>
-                                                <span><i class="fas fa-star"></i> ${Number(item.creditos) || 0} créditos</span>
-                                            </div>
-                                            ${item.prerequisitos ? `<p class="text-secondary"><strong>Pré-requisitos:</strong> ${this.esc(item.prerequisitos)}</p>` : ''}
-                                            ${item.observacoes ? `<p class="text-secondary">${this.esc(item.observacoes)}</p>` : ''}
-                                        </div>
-                                        <div class="subject-actions curriculum-actions">
-                                            <button class="btn-secondary btn-editar-curriculum" data-id="${this.esc(item.id)}"><i class="fas fa-edit"></i> Editar</button>
-                                            <button class="btn-danger btn-excluir-curriculum" data-id="${this.esc(item.id)}"><i class="fas fa-trash"></i> Excluir</button>
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    </div>
-                `).join('')}
-                ${!curriculum.length ? `
-                    <div class="card">
-                        <div class="card-body">
-                            <p>Nenhum componente cadastrado ainda. Clique em <strong>Novo Componente</strong> para montar sua grade.</p>
-                        </div>
-                    </div>
-                ` : ''}
-            </div>
-        `;
-    }
-
-    renderCursosExtras() {
-        const cursos = (this.app.data.extraCourses || []).slice().sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
-        const totais = cursos.reduce((acc, curso) => {
-            acc.total += 1;
-            acc.horas += Number(curso.horasConcluidas) || 0;
-            if (curso.status === 'concluido') acc.concluidos += 1;
-            if (curso.status === 'em-andamento') acc.andamento += 1;
-            return acc;
-        }, { total: 0, horas: 0, concluidos: 0, andamento: 0 });
-
-        return `
-            <div class="view-header">
-                <h2><i class="fas fa-language"></i> Cursos Extras</h2>
-                <button class="btn-primary" id="btn-novo-extra-course"><i class="fas fa-plus"></i> Novo Curso</button>
-            </div>
-
-            <div class="dashboard-grid">
-                <div class="card">
-                    <div class="card-header"><h3><i class="fas fa-compass"></i> Resumo</h3></div>
-                    <div class="card-body">
-                        <div class="stats-row">
-                            <div class="stat-item">
-                                <span class="stat-value">${totais.total}</span>
-                                <span class="stat-label">cursos</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-value">${totais.andamento}</span>
-                                <span class="stat-label">em andamento</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-value">${totais.concluidos}</span>
-                                <span class="stat-label">concluídos</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-value">${totais.horas.toFixed(1)}h</span>
-                                <span class="stat-label">registradas</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-header"><h3><i class="fas fa-lightbulb"></i> Exemplo</h3></div>
-                    <div class="card-body">
-                        <p>Você pode registrar cursos como <strong>Duolingo</strong>, Udemy, Coursera, Alura ou qualquer estudo fora da faculdade.</p>
-                        <p>Dá para salvar plataforma, progresso, horas estudadas, link e observações.</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="dashboard-grid">
-                ${cursos.map(curso => {
-                    const progresso = Math.max(0, Math.min(100, Number(curso.progresso) || 0));
-                    return `
-                        <div class="card subject-card">
-                            <div class="card-header">
-                                <h3>${this.esc(curso.nome)}</h3>
-                                <span class="tag ${curso.status === 'concluido' ? 'success' : curso.status === 'em-andamento' ? 'warning' : 'secondary'}">${this.esc((curso.status || 'planejado').replace('-', ' '))}</span>
-                            </div>
-                            <div class="card-body">
-                                <div class="subject-stats">
-                                    <div><i class="fas fa-building"></i> ${this.esc(curso.plataforma || 'Sem plataforma')}</div>
-                                    <div><i class="fas fa-shapes"></i> ${this.esc(curso.area || 'Sem área')}</div>
-                                    <div><i class="fas fa-clock"></i> ${Number(curso.horasConcluidas) || 0}h estudadas</div>
-                                    <div><i class="fas fa-bullseye"></i> Meta ${Number(curso.metaHoras) || 0}h</div>
-                                </div>
-
-                                <div class="progress-container" style="margin-top: 16px;">
-                                    <div class="progress-label">
-                                        <span>Progresso</span>
-                                        <span>${progresso}%</span>
-                                    </div>
-                                    <div class="progress-bar">
-                                        <div class="progress-fill" style="width: ${progresso}%"></div>
-                                    </div>
-                                </div>
-
-                                ${curso.dataInicio ? `<p class="text-secondary" style="margin-top:12px;"><strong>Início:</strong> ${formatarData(curso.dataInicio)}</p>` : ''}
-                                ${curso.observacoes ? `<p class="text-secondary">${this.esc(curso.observacoes)}</p>` : ''}
-
-                                <div class="subject-actions curriculum-actions" style="margin-top:16px;">
-                                    ${curso.link ? `<a href="${this.esc(curso.link)}" target="_blank" rel="noopener noreferrer" class="btn-secondary"><i class="fas fa-arrow-up-right-from-square"></i> Abrir</a>` : ''}
-                                    <button class="btn-secondary btn-editar-extra-course" data-id="${this.esc(curso.id)}"><i class="fas fa-edit"></i> Editar</button>
-                                    <button class="btn-danger btn-excluir-extra-course" data-id="${this.esc(curso.id)}"><i class="fas fa-trash"></i> Excluir</button>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }).join('')}
-                ${!cursos.length ? `
-                    <div class="card">
-                        <div class="card-body">
-                            <p>Nenhum curso extra cadastrado ainda. Você pode registrar coisas como Duolingo, cursos livres e treinamentos online.</p>
-                        </div>
-                    </div>
-                ` : ''}
-            </div>
-        `;
-    }
-
-
     renderAlert(alert) {
         const icon = alert.type === 'warning'
             ? 'fa-exclamation-triangle'
@@ -1800,6 +1556,155 @@ class ViewRenderer {
 
             return { nome, horas, aulas };
         });
+    }
+
+
+    renderGradeCurricular() {
+        const curriculum = (this.app.getNormalizedCurriculum ? this.app.getNormalizedCurriculum() : (this.app.data.curriculum || [])).slice().sort((a, b) => {
+            const semA = parseInt(a.semestre || 999, 10);
+            const semB = parseInt(b.semestre || 999, 10);
+            if (semA !== semB) return semA - semB;
+            return (a.nome || '').localeCompare(b.nome || '', 'pt-BR');
+        });
+
+        const totais = curriculum.reduce((acc, item) => {
+            const ch = Number(item.cargaHoraria) || 0;
+            acc.totalHoras += ch;
+            acc.totalComponentes += 1;
+            if (item.status === 'concluida') acc.horasConcluidas += ch;
+            if (item.status === 'cursando') acc.horasCursando += ch;
+            return acc;
+        }, { totalHoras: 0, totalComponentes: 0, horasConcluidas: 0, horasCursando: 0 });
+
+        const horasRestantes = Math.max(0, totais.totalHoras - totais.horasConcluidas);
+        const progresso = totais.totalHoras ? Math.round((totais.horasConcluidas / totais.totalHoras) * 100) : 0;
+        const porSemestre = curriculum.reduce((acc, item) => {
+            const chave = item.semestre ? `${item.semestre}º Semestre` : 'Sem semestre definido';
+            if (!acc[chave]) acc[chave] = [];
+            acc[chave].push(item);
+            return acc;
+        }, {});
+
+        const semestresOrdenados = Object.keys(porSemestre).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+        const presets = [30, 60, 90];
+        const ufobRef = (this.app.getUfobCurriculumReference ? this.app.getUfobCurriculumReference() : []).slice(0, 16);
+
+        return `
+            <div class="view-header">
+                <h2><i class="fas fa-sitemap"></i> Grade Curricular</h2>
+                <div class="view-actions-inline">
+                    <button class="btn-secondary" id="btn-importar-ufob"><i class="fas fa-wand-magic-sparkles"></i> Sugerir pela UFOB</button>
+                    <button class="btn-primary" id="btn-novo-curriculum"><i class="fas fa-plus"></i> Novo Componente</button>
+                </div>
+            </div>
+
+            <div class="dashboard-grid grade-summary-grid">
+                <div class="card"><div class="card-body"><strong>${totais.totalComponentes}</strong><small>componentes</small></div></div>
+                <div class="card"><div class="card-body"><strong>${totais.totalHoras}h</strong><small>carga total cadastrada</small></div></div>
+                <div class="card"><div class="card-body"><strong>${totais.horasConcluidas}h</strong><small>concluídas</small></div></div>
+                <div class="card"><div class="card-body"><strong>${horasRestantes}h</strong><small>restantes</small></div></div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><h3>Progresso geral</h3><span class="badge">${progresso}%</span></div>
+                <div class="card-body">
+                    <div class="progress-bar"><div class="progress-fill" style="width:${progresso}%"></div></div>
+                    <p class="muted-text">Créditos são opcionais. Para a UFOB, o sistema prioriza a carga horária e sugere valores comuns como 30h, 60h e 90h.</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><h3>Referência rápida UFOB</h3></div>
+                <div class="card-body">
+                    <div class="preset-chip-row">
+                        ${presets.map(ch => `<span class="chip">${ch}h</span>`).join('')}
+                    </div>
+                    <div class="ufob-reference-list">
+                        ${ufobRef.map(item => `<div class="ufob-reference-item"><strong>${this.esc(item.nome)}</strong><small>${this.esc(item.semestre)}º semestre • ${Number(item.cargaHoraria) || 0}h</small></div>`).join('')}
+                    </div>
+                </div>
+            </div>
+
+            ${semestresOrdenados.map(semestre => `
+                <div class="card">
+                    <div class="card-header">
+                        <h3>${this.esc(semestre)}</h3>
+                        <span class="badge">${porSemestre[semestre].reduce((acc, item) => acc + (Number(item.cargaHoraria) || 0), 0)}h</span>
+                    </div>
+                    <div class="card-body curriculum-list">
+                        ${porSemestre[semestre].map(item => `
+                            <div class="curriculum-item">
+                                <div class="curriculum-main">
+                                    <div>
+                                        <strong>${this.esc(item.nome)}</strong>
+                                        <div class="curriculum-meta">
+                                            <span class="tag ${this.esc(item.status)}">${this.esc((item.status || '').replaceAll('-', ' '))}</span>
+                                            <span>${Number(item.cargaHoraria) || 0}h</span>
+                                            <span>${this.esc(item.tipo || 'obrigatoria')}</span>
+                                            ${(Number(item.creditos) || 0) ? `<span>${Number(item.creditos)} créditos</span>` : ''}
+                                        </div>
+                                        ${item.prerequisitosLista?.length ? `<div class="prereq-readonly">Pré-requisitos: ${item.prerequisitosLista.map(req => `<span class="chip">${this.esc(req)}</span>`).join('')}</div>` : ''}
+                                        ${item.observacoes ? `<small>${this.esc(item.observacoes)}</small>` : ''}
+                                    </div>
+                                    <div class="curriculum-actions">
+                                        <button class="btn-icon btn-editar-curriculum" data-id="${this.esc(item.id)}" title="Editar componente"><i class="fas fa-edit"></i></button>
+                                        <button class="btn-icon btn-excluir-curriculum" data-id="${this.esc(item.id)}" title="Excluir componente" style="color: var(--accent-danger);"><i class="fas fa-trash"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('')}
+
+            ${!curriculum.length ? `
+                <div class="card">
+                    <div class="card-body empty-state">
+                        <h3>Nenhum componente cadastrado ainda</h3>
+                        <p>Você pode importar sugestões da UFOB ou cadastrar manualmente. O sistema mantém o que já foi salvo e reorganiza para o novo formato.</p>
+                    </div>
+                </div>
+            ` : ''}
+        `;
+    }
+
+    renderCursosExtras() {
+        const cursos = (this.app.data.extraCourses || []).slice().sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
+        return `
+            <div class="view-header">
+                <h2><i class="fas fa-language"></i> Cursos Extras</h2>
+                <button class="btn-primary" id="btn-novo-extra-course"><i class="fas fa-plus"></i> Novo Curso</button>
+            </div>
+            <div class="dashboard-grid">
+                ${cursos.map(curso => {
+                    const meta = Number(curso.metaHoras) || 0;
+                    const estudadas = Number(curso.horasEstudadas) || 0;
+                    const progresso = Number(curso.progresso) || (meta ? Math.round((estudadas / meta) * 100) : 0);
+                    return `
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>${this.esc(curso.nome)}</h3>
+                                <span class="tag">${this.esc((curso.status || 'planejado').replaceAll('-', ' '))}</span>
+                            </div>
+                            <div class="card-body">
+                                <p><strong>Plataforma:</strong> ${this.esc(curso.plataforma || 'Não informada')}</p>
+                                <p><strong>Área:</strong> ${this.esc(curso.area || 'Não informada')}</p>
+                                <p><strong>Horas:</strong> ${estudadas}h${meta ? ` / ${meta}h` : ''}</p>
+                                <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100, progresso)}%"></div></div>
+                                <p class="muted-text">${Math.min(100, progresso)}% concluído</p>
+                                ${curso.link ? `<p><a href="${this.esc(curso.link)}" target="_blank" rel="noopener noreferrer">Abrir link do curso</a></p>` : ''}
+                                ${curso.observacoes ? `<small>${this.esc(curso.observacoes)}</small>` : ''}
+                                <div class="curriculum-actions">
+                                    <button class="btn-icon btn-editar-extra-course" data-id="${this.esc(curso.id)}" title="Editar curso"><i class="fas fa-edit"></i></button>
+                                    <button class="btn-icon btn-excluir-extra-course" data-id="${this.esc(curso.id)}" title="Excluir curso" style="color: var(--accent-danger);"><i class="fas fa-trash"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+                ${!cursos.length ? `<div class="card"><div class="card-body empty-state"><h3>Nenhum curso extra cadastrado</h3><p>Registre aqui Duolingo, cursos online, treinamentos e estudos fora da faculdade.</p></div></div>` : ''}
+            </div>
+        `;
     }
 
     calcularHorasAulaSemana(aulas) {
