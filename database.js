@@ -14,6 +14,8 @@ const DEFAULT_APP_DATA = () => ({
     dailyLogs: [],
     classDiaries: [],
     reviews: [],
+    curriculum: [],
+    extraCourses: [],
     attendance: {},
     settings: {
         heavyMode: false,
