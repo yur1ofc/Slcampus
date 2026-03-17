@@ -16,6 +16,7 @@ class StudyLifeControl {
             dailyLogs: [],
             classDiaries: [],
             reviews: [],
+            curriculum: [],
             attendance: {},
             settings: {
                 heavyMode: false,
@@ -41,6 +42,7 @@ class StudyLifeControl {
         this.editingExamId = null;
         this.editingGradeId = null;
         this.editingMaterialId = null;
+        this.editingCurriculumId = null;
     }
 
     async init() {
@@ -73,6 +75,7 @@ class StudyLifeControl {
 
         const data = await dbService.loadUserData(user.uid);
         this.data = data || (typeof DEFAULT_APP_DATA === 'function' ? DEFAULT_APP_DATA() : this.data);
+        if (!Array.isArray(this.data.curriculum)) this.data.curriculum = [];
         return this.data;
     }
 
@@ -293,6 +296,8 @@ class StudyLifeControl {
         document.getElementById('form-topico')?.addEventListener('submit', e => this.handleTopicoSubmit(e));
         document.getElementById('form-nota')?.addEventListener('submit', e => this.handleNotaSubmit(e));
         document.getElementById('form-material')?.addEventListener('submit', e => this.handleMaterialSubmit(e));
+        document.getElementById('form-materia')?.addEventListener('submit', e => this.handleMateriaSubmit(e));
+        document.getElementById('form-curriculum')?.addEventListener('submit', e => this.handleCurriculumSubmit(e));
         document.getElementById('form-aula')?.addEventListener('submit', e => this.handleAulaSubmit(e));
         document.getElementById('form-daily-log')?.addEventListener('submit', e => this.handleDailyLogSubmit(e));
         document.getElementById('form-class-diary')?.addEventListener('submit', e => this.handleClassDiarySubmit(e));
@@ -320,6 +325,7 @@ class StudyLifeControl {
         this.editingExamId = null;
         this.editingGradeId = null;
         this.editingMaterialId = null;
+        this.editingCurriculumId = null;
 
         const sessaoBtn = document.querySelector('#form-sessao .btn-primary');
         const topicoBtn = document.querySelector('#form-topico .btn-primary');
@@ -328,6 +334,8 @@ class StudyLifeControl {
         const provaBtn = document.querySelector('#form-prova .btn-primary');
         const notaBtn = document.querySelector('#form-nota .btn-primary');
         const materialBtn = document.querySelector('#form-material .btn-primary');
+        const materiaBtn = document.querySelector('#form-materia .btn-primary');
+        const curriculumBtn = document.querySelector('#form-curriculum .btn-primary');
 
         if (sessaoBtn) sessaoBtn.textContent = 'Agendar Sessão';
         if (topicoBtn) topicoBtn.textContent = 'Adicionar Tópico';
@@ -336,6 +344,8 @@ class StudyLifeControl {
         if (provaBtn) provaBtn.textContent = 'Salvar';
         if (notaBtn) notaBtn.textContent = 'Registrar Nota';
         if (materialBtn) materialBtn.textContent = 'Salvar Material';
+        if (materiaBtn) materiaBtn.textContent = 'Salvar Matéria';
+        if (curriculumBtn) curriculumBtn.textContent = 'Salvar Componente';
     }
 
     applyHeavyMode() {
@@ -402,6 +412,7 @@ class StudyLifeControl {
             case 'foco': html = this.viewRenderer.renderModoFoco(); break;
             case 'configuracoes': html = this.viewRenderer.renderConfiguracoes(); break;
             case 'materias': html = this.viewRenderer.renderMaterias(); break;
+            case 'grade-curricular': html = this.viewRenderer.renderGradeCurricular(); break;
             default: html = this.viewRenderer.renderDashboard();
         }
 
@@ -576,6 +587,18 @@ class StudyLifeControl {
             });
         }
 
+        if (view === 'grade-curricular') {
+            document.getElementById('btn-novo-curriculum')?.addEventListener('click', () => this.openModal('curriculum'));
+
+            document.querySelectorAll('.btn-editar-curriculum').forEach(btn => {
+                btn.addEventListener('click', e => this.editarCurriculum(e.currentTarget.dataset.id));
+            });
+
+            document.querySelectorAll('.btn-excluir-curriculum').forEach(btn => {
+                btn.addEventListener('click', e => this.excluirCurriculum(e.currentTarget.dataset.id));
+            });
+        }
+
         document.getElementById('quick-sessao')?.addEventListener('click', () => this.openModal('sessao'));
         document.getElementById('quick-tarefa')?.addEventListener('click', () => this.openModal('tarefa'));
         document.getElementById('quick-prova')?.addEventListener('click', () => this.openModal('prova'));
@@ -702,7 +725,7 @@ class StudyLifeControl {
     }
 
     openModal(modalType, data = {}) {
-        if (['sessao', 'tarefa', 'prova', 'topico', 'nota', 'material', 'aula'].includes(modalType)) {
+        if (['sessao', 'tarefa', 'prova', 'topico', 'nota', 'material', 'aula', 'curriculum'].includes(modalType)) {
             this.populateSubjectSelects();
         }
 
@@ -789,19 +812,29 @@ class StudyLifeControl {
         }
 
         if (modalType === 'materia') {
-            const nome = data.nome || prompt('Nome da matéria:');
-            if (!nome) return;
+            const btn = document.querySelector('#form-materia .btn-primary');
+            if (btn) btn.textContent = this.editingMateriaId ? 'Atualizar Matéria' : 'Salvar Matéria';
 
-            const dificuldade = parseInt(prompt('Dificuldade (1 a 5):', data.dificuldade || 3), 10) || 3;
-            const peso = parseInt(prompt('Peso da matéria (1 a 5):', data.peso || 3), 10) || 3;
-            const notaDesejada = parseFloat(prompt('Nota desejada (0 a 10):', data.notaDesejada || 7)) || 7;
+            document.getElementById('materia-nome-modal').value = data.nome || '';
+            document.getElementById('materia-dificuldade-modal').value = data.dificuldade || 3;
+            document.getElementById('materia-peso-modal').value = data.peso || 3;
+            document.getElementById('materia-nota-desejada-modal').value = data.notaDesejada || 7;
+            document.getElementById('materia-carga-horaria-modal').value = data.cargaHoraria || '';
+            document.getElementById('materia-professor-modal').value = data.professor || '';
+        }
 
-            if (this.editingMateriaId) {
-                this.salvarMateriaEditada(this.editingMateriaId, { nome, dificuldade, peso, notaDesejada });
-            } else {
-                this.salvarNovaMateria({ nome, dificuldade, peso, notaDesejada });
-            }
-            return;
+        if (modalType === 'curriculum') {
+            const btn = document.querySelector('#form-curriculum .btn-primary');
+            if (btn) btn.textContent = this.editingCurriculumId ? 'Atualizar Componente' : 'Salvar Componente';
+
+            document.getElementById('curriculum-nome').value = data.nome || '';
+            document.getElementById('curriculum-semestre').value = data.semestre || '';
+            document.getElementById('curriculum-carga-horaria').value = data.cargaHoraria || '';
+            document.getElementById('curriculum-status').value = data.status || 'nao-cursada';
+            document.getElementById('curriculum-tipo').value = data.tipo || 'obrigatoria';
+            document.getElementById('curriculum-creditos').value = data.creditos || '';
+            document.getElementById('curriculum-prerequisitos').value = data.prerequisitos || '';
+            document.getElementById('curriculum-observacoes').value = data.observacoes || '';
         }
 
         const modal = document.getElementById(`modal-${modalType}`);
@@ -855,6 +888,110 @@ class StudyLifeControl {
             showToast('Matéria atualizada!');
         }
     }
+
+    async handleMateriaSubmit(e) {
+        e.preventDefault();
+
+        const materiaData = {
+            nome: document.getElementById('materia-nome-modal')?.value?.trim() || '',
+            dificuldade: parseInt(document.getElementById('materia-dificuldade-modal')?.value, 10) || 3,
+            peso: parseInt(document.getElementById('materia-peso-modal')?.value, 10) || 3,
+            notaDesejada: parseFloat(document.getElementById('materia-nota-desejada-modal')?.value) || 7,
+            cargaHoraria: parseInt(document.getElementById('materia-carga-horaria-modal')?.value, 10) || 0,
+            professor: document.getElementById('materia-professor-modal')?.value?.trim() || ''
+        };
+
+        if (!materiaData.nome) {
+            showToast('Informe o nome da matéria', 'warning');
+            return;
+        }
+
+        if (this.editingMateriaId) {
+            await this.salvarMateriaEditada(this.editingMateriaId, materiaData);
+        } else {
+            await this.salvarNovaMateria(materiaData);
+        }
+
+        document.getElementById('modal-materia').style.display = 'none';
+        this.resetModalStates();
+    }
+
+    async handleCurriculumSubmit(e) {
+        e.preventDefault();
+
+        const curriculumData = {
+            nome: document.getElementById('curriculum-nome')?.value?.trim() || '',
+            semestre: document.getElementById('curriculum-semestre')?.value?.trim() || '',
+            cargaHoraria: parseInt(document.getElementById('curriculum-carga-horaria')?.value, 10) || 0,
+            status: document.getElementById('curriculum-status')?.value || 'nao-cursada',
+            tipo: document.getElementById('curriculum-tipo')?.value || 'obrigatoria',
+            creditos: parseFloat(document.getElementById('curriculum-creditos')?.value) || 0,
+            prerequisitos: document.getElementById('curriculum-prerequisitos')?.value?.trim() || '',
+            observacoes: document.getElementById('curriculum-observacoes')?.value?.trim() || ''
+        };
+
+        if (!curriculumData.nome) {
+            showToast('Informe o nome da disciplina/componente', 'warning');
+            return;
+        }
+
+        if (this.editingCurriculumId) {
+            await this.salvarCurriculumEditado(this.editingCurriculumId, curriculumData);
+        } else {
+            await this.salvarNovoCurriculum(curriculumData);
+        }
+
+        document.getElementById('modal-curriculum').style.display = 'none';
+        this.resetModalStates();
+    }
+
+    async salvarNovoCurriculum(curriculumData) {
+        if (!Array.isArray(this.data.curriculum)) this.data.curriculum = [];
+
+        const existe = this.data.curriculum.some(item => item.nome.toLowerCase() === curriculumData.nome.toLowerCase());
+        if (existe) {
+            showToast('Esse componente já está na grade curricular', 'warning');
+            return;
+        }
+
+        const success = await dbService.addItem('curriculum', {
+            id: generateId(),
+            ...curriculumData
+        });
+
+        if (success) {
+            this.loadView(this.currentView);
+            showToast('Componente curricular adicionado!');
+        }
+    }
+
+    async salvarCurriculumEditado(id, curriculumData) {
+        const success = await dbService.updateItem('curriculum', id, curriculumData);
+        if (success) {
+            this.editingCurriculumId = null;
+            this.loadView(this.currentView);
+            showToast('Componente curricular atualizado!');
+        }
+    }
+
+    editarCurriculum(id) {
+        const item = (this.data.curriculum || []).find(c => c.id === id);
+        if (!item) return;
+
+        this.editingCurriculumId = id;
+        this.openModal('curriculum', item);
+    }
+
+    async excluirCurriculum(id) {
+        if (!confirm('Deseja excluir este componente da grade curricular?')) return;
+
+        const success = await dbService.removeItem('curriculum', id);
+        if (success) {
+            this.loadView(this.currentView);
+            showToast('Componente curricular excluído!');
+        }
+    }
+
 
     editarSessao(id) {
         const sessao = this.data.sessions.find(s => s.id === id);
@@ -1312,6 +1449,7 @@ class StudyLifeControl {
         if (success) {
             document.getElementById('modal-material').style.display = 'none';
             this.editingMaterialId = null;
+        this.editingCurriculumId = null;
             this.resetModalStates();
             this.loadView(this.currentView);
             showToast(isEditing ? 'Material atualizado!' : 'Material adicionado!');
