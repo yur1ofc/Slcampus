@@ -1572,13 +1572,15 @@ class ViewRenderer {
             acc.totalHoras += ch;
             acc.totalComponentes += 1;
             if (item.status === 'concluida') acc.horasConcluidas += ch;
-            if (item.status === 'cursando') acc.horasCursando += ch;
-            if (item.status === 'nao-cursada') acc.horasPendentes += ch;
+            else if (item.status === 'cursando') acc.horasCursando += ch;
+            else acc.horasPendentes += ch;
             return acc;
         }, { totalHoras: 0, totalComponentes: 0, horasConcluidas: 0, horasCursando: 0, horasPendentes: 0 });
 
-        const horasRestantes = Math.max(0, totais.totalHoras - totais.horasConcluidas);
         const progresso = totais.totalHoras ? Math.round((totais.horasConcluidas / totais.totalHoras) * 100) : 0;
+        const progressoCursando = totais.totalHoras ? Math.round((totais.horasCursando / totais.totalHoras) * 100) : 0;
+        const progressoPendente = Math.max(0, 100 - progresso - progressoCursando);
+        const horasRestantes = Math.max(0, totais.totalHoras - totais.horasConcluidas);
         const currentSemester = parseInt(this.app.data?.user?.semester || 0, 10) || 0;
         const porSemestre = curriculum.reduce((acc, item) => {
             const sem = String(item.semestre || '0').trim();
@@ -1587,14 +1589,38 @@ class ViewRenderer {
             acc[chave].push(item);
             return acc;
         }, {});
+
         const semestresOrdenados = Object.keys(porSemestre).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
-        const proxPendentes = curriculum.filter(item => item.status !== 'concluida').slice(0, 4);
+        const numericSemesters = semestresOrdenados.map(label => parseInt(label, 10)).filter(Boolean);
+        const startState = this.app.curriculumViewState?.startSemester || 'all';
+        const countState = this.app.curriculumViewState?.visibleCount || 4;
+
+        let startIndex = 0;
+        if (startState === 'current' && currentSemester) {
+            const idx = numericSemesters.findIndex(n => n === currentSemester);
+            startIndex = idx >= 0 ? idx : 0;
+        } else if (startState !== 'all') {
+            const target = parseInt(startState, 10);
+            const idx = numericSemesters.findIndex(n => n === target);
+            startIndex = idx >= 0 ? idx : 0;
+        }
+
+        const visibleSemesterLabels = startState === 'all'
+            ? (countState === 'all' ? semestresOrdenados : semestresOrdenados.slice(0, Number(countState) || 4))
+            : (countState === 'all' ? semestresOrdenados.slice(startIndex) : semestresOrdenados.slice(startIndex, startIndex + (Number(countState) || 4)));
+
+        const visibleSet = new Set(visibleSemesterLabels);
+        const visibleItems = curriculum.filter(item => visibleSet.has(`${String(item.semestre || '0').trim()}º Semestre`));
+        const blockedCount = curriculum.filter(item => item.status !== 'concluida' && item.prerequisitosLista?.length).length;
+        const withCodeCount = curriculum.filter(item => item.codigo).length;
+        const próximos = curriculum.filter(item => item.status !== 'concluida').slice(0, 5);
+        const semesterOptions = [...new Set(numericSemesters)].map(n => `<option value="${n}" ${String(startState) === String(n) ? 'selected' : ''}>A partir do ${n}º</option>`).join('');
 
         return `
-            <div class="view-header view-header-grade">
+            <div class="view-header view-header-grade view-header-grade-upgraded">
                 <div>
                     <h2><i class="fas fa-sitemap"></i> Grade Curricular</h2>
-                    <p class="muted-text">Organize o curso por semestre, acompanhe o avanço real e cadastre componentes com menos atrito.</p>
+                    <p class="muted-text">Mais limpa para navegar e mais rápida para cadastrar componentes sem ficar espremido na tela.</p>
                 </div>
                 <div class="view-actions-inline">
                     <button class="btn-secondary" id="btn-importar-ufob"><i class="fas fa-wand-magic-sparkles"></i> Completar com sugestão UFOB</button>
@@ -1602,136 +1628,186 @@ class ViewRenderer {
                 </div>
             </div>
 
-            <div class="grade-hero-card card">
-                <div class="card-body grade-hero-body">
-                    <div class="grade-hero-progress">
-                        <div class="progress-ring" style="--progress:${progresso}%;">
-                            <div class="progress-ring-inner">
-                                <strong>${progresso}%</strong>
-                                <span>concluído</span>
+            <div class="grade-shell">
+                <div class="card grade-hero-card grade-hero-card-upgraded">
+                    <div class="card-body grade-hero-body grade-hero-body-upgraded">
+                        <div class="grade-progress-panel">
+                            <div class="grade-progress-head">
+                                <span class="badge badge-soft">${totais.totalComponentes} componentes</span>
+                                ${currentSemester ? `<span class="badge badge-soft">${currentSemester}º semestre atual</span>` : ''}
+                            </div>
+                            <div class="grade-progress-display">
+                                <div class="progress-ring progress-ring-lg" style="--progress:${progresso}%;">
+                                    <div class="progress-ring-inner">
+                                        <strong>${progresso}%</strong>
+                                        <span>concluído</span>
+                                    </div>
+                                </div>
+                                <div class="grade-progress-copy">
+                                    <h3>Sua grade, agora com menos bagunça visual</h3>
+                                    <p class="muted-text">Mostre só o trecho da grade que você quer ver, use código do componente e deixe a sugestão de pré-requisito trabalhar por nome, ordem e padrão da sua grade.</p>
+                                </div>
+                            </div>
+                            <div class="grade-progress-stack">
+                                <div class="grade-progress-stack-fill done" style="width:${progresso}%"></div>
+                                <div class="grade-progress-stack-fill doing" style="width:${progressoCursando}%"></div>
+                                <div class="grade-progress-stack-fill pending" style="width:${progressoPendente}%"></div>
+                            </div>
+                            <div class="grade-progress-legend">
+                                <span><i class="legend-dot done"></i> ${totais.horasConcluidas}h concluídas</span>
+                                <span><i class="legend-dot doing"></i> ${totais.horasCursando}h cursando</span>
+                                <span><i class="legend-dot pending"></i> ${horasRestantes}h restantes</span>
                             </div>
                         </div>
-                    </div>
-                    <div class="grade-hero-copy">
-                        <div class="grade-hero-topline">
-                            <span class="badge badge-soft">${totais.totalComponentes} componentes</span>
-                            ${currentSemester ? `<span class="badge badge-soft">Você está no ${currentSemester}º semestre</span>` : ''}
-                        </div>
-                        <h3>Sua grade está mais inteligente e menos manual</h3>
-                        <p class="muted-text">Cadastre código da disciplina, use carga horária rápida e deixe o assistente sugerir pré-requisitos prováveis no formulário.</p>
-                        <div class="grade-kpi-row">
-                            <div class="grade-kpi-card">
-                                <span>Concluídas</span>
-                                <strong>${totais.horasConcluidas}h</strong>
+
+                        <div class="grade-kpi-grid-upgraded">
+                            <div class="grade-kpi-card highlight">
+                                <span>Visíveis agora</span>
+                                <strong>${visibleItems.length}</strong>
+                                <small>componentes na tela</small>
                             </div>
                             <div class="grade-kpi-card">
-                                <span>Em andamento</span>
-                                <strong>${totais.horasCursando}h</strong>
+                                <span>Com código</span>
+                                <strong>${withCodeCount}</strong>
+                                <small>facilita busca e pré-req</small>
                             </div>
                             <div class="grade-kpi-card">
-                                <span>Restantes</span>
-                                <strong>${horasRestantes}h</strong>
+                                <span>Com pré-requisito</span>
+                                <strong>${blockedCount}</strong>
+                                <small>pedem alguma base antes</small>
                             </div>
                             <div class="grade-kpi-card">
                                 <span>Total cadastrado</span>
                                 <strong>${totais.totalHoras}h</strong>
+                                <small>na sua grade salva</small>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            ${proxPendentes.length ? `
-                <div class="card grade-focus-card">
-                    <div class="card-header">
-                        <h3>Próximos componentes para organizar</h3>
-                        <span class="badge">${proxPendentes.length}</span>
-                    </div>
-                    <div class="card-body grade-focus-list">
-                        ${proxPendentes.map(item => `
-                            <div class="grade-focus-item">
-                                <div>
-                                    <strong>${this.esc(item.nome)}</strong>
-                                    <small>${item.semestre ? `${this.esc(item.semestre)}º semestre` : 'Sem semestre'} • ${Number(item.cargaHoraria) || 0}h</small>
-                                </div>
-                                <span class="tag ${this.esc(item.status)}">${this.esc((item.status || '').replaceAll('-', ' '))}</span>
+                <div class="card grade-toolbar-card">
+                    <div class="card-body grade-toolbar-body">
+                        <div class="grade-toolbar-main">
+                            <div class="form-group compact">
+                                <label>Começar em</label>
+                                <select id="curriculum-semester-start">
+                                    <option value="all" ${startState === 'all' ? 'selected' : ''}>Do início</option>
+                                    ${currentSemester ? `<option value="current" ${startState === 'current' ? 'selected' : ''}>Meu semestre atual</option>` : ''}
+                                    ${semesterOptions}
+                                </select>
                             </div>
-                        `).join('')}
+                            <div class="form-group compact">
+                                <label>Mostrar</label>
+                                <select id="curriculum-semester-count">
+                                    ${['2','3','4','5','6','all'].map(value => `<option value="${value}" ${String(countState) === String(value) ? 'selected' : ''}>${value === 'all' ? 'Todos os semestres' : `${value} semestre(s)`}</option>`).join('')}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="semester-shortcuts">
+                            <button type="button" class="semester-shortcut-pill ${startState === 'all' ? 'active' : ''}" data-semester="all">Tudo</button>
+                            ${numericSemesters.map(n => `<button type="button" class="semester-shortcut-pill ${(String(startState) === String(n) || (startState === 'current' && currentSemester === n)) ? 'active' : ''}" data-semester="${n}">${n}º</button>`).join('')}
+                        </div>
                     </div>
                 </div>
-            ` : ''}
 
-            <div class="semester-grid">
-                ${semestresOrdenados.map(semestre => {
-                    const numeroSemestre = parseInt(semestre, 10) || 0;
-                    const itens = porSemestre[semestre];
-                    const horasSemestre = itens.reduce((acc, item) => acc + (Number(item.cargaHoraria) || 0), 0);
-                    const concluidasSemestre = itens.filter(item => item.status === 'concluida').length;
-                    const progressoSemestre = itens.length ? Math.round((concluidasSemestre / itens.length) * 100) : 0;
-                    return `
-                        <section class="card semester-card ${currentSemester && numeroSemestre === currentSemester ? 'semester-card-active' : ''}">
-                            <div class="card-header semester-card-header">
-                                <div>
-                                    <h3>${this.esc(semestre)}</h3>
-                                    <p>${itens.length} componente(s) • ${horasSemestre}h</p>
+                ${próximos.length ? `
+                    <div class="card grade-focus-card grade-focus-card-upgraded">
+                        <div class="card-header">
+                            <h3>Fila rápida para organizar</h3>
+                            <span class="badge">${próximos.length}</span>
+                        </div>
+                        <div class="card-body grade-focus-list grade-focus-list-scroll">
+                            ${próximos.map(item => `
+                                <div class="grade-focus-item compact">
+                                    <div>
+                                        <strong>${this.esc(item.nome)}</strong>
+                                        <small>${item.semestre ? `${this.esc(item.semestre)}º semestre` : 'Sem semestre'} • ${Number(item.cargaHoraria) || 0}h ${item.codigo ? `• ${this.esc(item.codigo)}` : ''}</small>
+                                    </div>
+                                    <span class="tag ${this.esc(item.status)}">${this.esc((item.status || '').replaceAll('-', ' '))}</span>
                                 </div>
-                                <div class="semester-card-side">
-                                    <span class="badge badge-soft">${progressoSemestre}%</span>
-                                    ${currentSemester && numeroSemestre === currentSemester ? '<span class="tag em-andamento">Seu semestre atual</span>' : ''}
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+
+                <div class="semester-grid semester-grid-upgraded">
+                    ${visibleSemesterLabels.map(semestre => {
+                        const numeroSemestre = parseInt(semestre, 10) || 0;
+                        const itens = porSemestre[semestre] || [];
+                        const horasSemestre = itens.reduce((acc, item) => acc + (Number(item.cargaHoraria) || 0), 0);
+                        const horasConcluidas = itens.filter(item => item.status === 'concluida').reduce((acc, item) => acc + (Number(item.cargaHoraria) || 0), 0);
+                        const progressoSemestre = horasSemestre ? Math.round((horasConcluidas / horasSemestre) * 100) : 0;
+                        return `
+                            <section class="card semester-card semester-card-upgraded ${currentSemester && numeroSemestre === currentSemester ? 'semester-card-active' : ''}">
+                                <div class="card-header semester-card-header upgraded">
+                                    <div>
+                                        <h3>${this.esc(semestre)}</h3>
+                                        <p>${itens.length} componente(s) • ${horasSemestre}h</p>
+                                    </div>
+                                    <div class="semester-card-side">
+                                        <span class="badge badge-soft">${progressoSemestre}%</span>
+                                        ${currentSemester && numeroSemestre === currentSemester ? '<span class="tag em-andamento">Atual</span>' : ''}
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="card-body">
-                                <div class="semester-mini-progress">
-                                    <div class="progress-bar large"><div class="progress-fill" style="width:${progressoSemestre}%"></div></div>
-                                </div>
-                                <div class="curriculum-list curriculum-list-modern">
-                                    ${itens.map(item => `
-                                        <article class="curriculum-item curriculum-item-modern status-${this.esc(item.status)}">
-                                            <div class="curriculum-main">
-                                                <div class="curriculum-title-row">
-                                                    <div>
-                                                        <h4>${this.esc(item.nome)}</h4>
-                                                        <div class="curriculum-inline-meta">
-                                                            ${item.codigo ? `<span class="code-badge">${this.esc(item.codigo)}</span>` : ''}
-                                                            <span>${Number(item.cargaHoraria) || 0}h</span>
-                                                            <span>${this.esc(item.tipo || 'obrigatoria')}</span>
+                                <div class="card-body">
+                                    <div class="semester-mini-progress upgraded"><div class="progress-bar large"><div class="progress-fill" style="width:${progressoSemestre}%"></div></div></div>
+                                    <div class="curriculum-list curriculum-list-modern curriculum-list-modern-spaced">
+                                        ${itens.map(item => `
+                                            <article class="curriculum-item curriculum-item-modern curriculum-item-modern-upgraded status-${this.esc(item.status)}">
+                                                <div class="curriculum-main">
+                                                    <div class="curriculum-title-row curriculum-title-row-upgraded">
+                                                        <div>
+                                                            <h4>${this.esc(item.nome)}</h4>
+                                                            <div class="curriculum-inline-meta wrap">
+                                                                ${item.codigo ? `<span class="code-badge">${this.esc(item.codigo)}</span>` : ''}
+                                                                <span>${Number(item.cargaHoraria) || 0}h</span>
+                                                                <span>${this.esc(item.tipo || 'obrigatoria')}</span>
+                                                                ${Number(item.creditos) ? `<span>${this.esc(item.creditos)} créditos</span>` : ''}
+                                                            </div>
                                                         </div>
+                                                        <span class="tag ${this.esc(item.status)}">${this.esc((item.status || '').replaceAll('-', ' '))}</span>
                                                     </div>
-                                                    <span class="tag ${this.esc(item.status)}">${this.esc((item.status || '').replaceAll('-', ' '))}</span>
+                                                    ${item.prerequisitosLista?.length ? `
+                                                        <div class="prereq-readonly prereq-inline-row upgraded">
+                                                            <span class="prereq-label">Pré-requisitos</span>
+                                                            <div class="prereq-chip-wrap">
+                                                                ${item.prerequisitosLista.map(req => `<span class="chip">${this.esc(req)}</span>`).join('')}
+                                                            </div>
+                                                        </div>
+                                                    ` : '<div class="prereq-readonly prereq-empty">Sem pré-requisitos cadastrados</div>'}
+                                                    ${item.observacoes ? `<small class="curriculum-note">${this.esc(item.observacoes)}</small>` : ''}
                                                 </div>
-
-                                                ${item.prerequisitosLista?.length ? `
-                                                    <div class="prereq-readonly prereq-inline-row">
-                                                        <span class="prereq-label">Pré-requisitos</span>
-                                                        <div class="prereq-chip-wrap">
-                                                            ${item.prerequisitosLista.map(req => `<span class="chip">${this.esc(req)}</span>`).join('')}
-                                                        </div>
-                                                    </div>
-                                                ` : '<div class="prereq-readonly prereq-empty">Sem pré-requisitos cadastrados</div>'}
-
-                                                ${item.observacoes ? `<small class="curriculum-note">${this.esc(item.observacoes)}</small>` : ''}
-                                            </div>
-                                            <div class="curriculum-actions curriculum-actions-inline">
-                                                <button class="btn-icon btn-editar-curriculum" data-id="${this.esc(item.id)}" title="Editar componente"><i class="fas fa-edit"></i></button>
-                                                <button class="btn-icon btn-excluir-curriculum" data-id="${this.esc(item.id)}" title="Excluir componente" style="color: var(--accent-danger);"><i class="fas fa-trash"></i></button>
-                                            </div>
-                                        </article>
-                                    `).join('')}
+                                                <div class="curriculum-actions curriculum-actions-inline">
+                                                    <button class="btn-icon btn-editar-curriculum" data-id="${this.esc(item.id)}" title="Editar componente"><i class="fas fa-edit"></i></button>
+                                                    <button class="btn-icon btn-excluir-curriculum" data-id="${this.esc(item.id)}" title="Excluir componente" style="color: var(--accent-danger);"><i class="fas fa-trash"></i></button>
+                                                </div>
+                                            </article>
+                                        `).join('')}
+                                    </div>
                                 </div>
-                            </div>
-                        </section>
-                    `;
-                }).join('')}
-            </div>
-
-            ${!curriculum.length ? `
-                <div class="card">
-                    <div class="card-body empty-state">
-                        <h3>Nenhum componente cadastrado ainda</h3>
-                        <p>Cadastre manualmente ou use a sugestão da UFOB para puxar uma base inicial e depois só ajustar o que precisar.</p>
-                    </div>
+                            </section>
+                        `;
+                    }).join('')}
                 </div>
-            ` : ''}
+
+                ${!visibleSemesterLabels.length ? `
+                    <div class="card">
+                        <div class="card-body empty-state">
+                            <h3>Nenhum semestre para exibir nesse filtro</h3>
+                            <p>Mude o ponto de início ou a quantidade de semestres mostrados.</p>
+                        </div>
+                    </div>
+                ` : ''}
+
+                ${!curriculum.length ? `
+                    <div class="card">
+                        <div class="card-body empty-state">
+                            <h3>Nenhum componente cadastrado ainda</h3>
+                            <p>Cadastre manualmente ou use a sugestão da UFOB para puxar uma base inicial e depois só ajustar o que precisar.</p>
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
         `;
     }
 
