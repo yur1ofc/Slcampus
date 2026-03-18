@@ -46,6 +46,7 @@ class StudyLifeControl {
         this.editingCurriculumId = null;
         this.editingExtraCourseId = null;
         this.curriculumPrerequisitosSelecionados = [];
+        this.curriculumViewState = { startSemester: 'all', visibleCount: 4 };
     }
 
     async init() {
@@ -608,6 +609,28 @@ class StudyLifeControl {
 
             document.querySelectorAll('.btn-excluir-curriculum').forEach(btn => {
                 btn.addEventListener('click', e => this.excluirCurriculum(e.currentTarget.dataset.id));
+            });
+       
+            document.getElementById('curriculum-semester-start')?.addEventListener('change', async e => {
+                this.curriculumViewState.startSemester = e.target.value;
+                await this.saveCurriculumViewSettings();
+                this.loadView('grade-curricular');
+            });
+
+            document.getElementById('curriculum-semester-count')?.addEventListener('change', async e => {
+                this.curriculumViewState.visibleCount = e.target.value === 'all' ? 'all' : (parseInt(e.target.value, 10) || 4);
+                await this.saveCurriculumViewSettings();
+                this.loadView('grade-curricular');
+            });
+
+            document.querySelectorAll('.semester-shortcut-pill').forEach(btn => {
+                btn.addEventListener('click', async e => {
+                    this.curriculumViewState.startSemester = e.currentTarget.dataset.semester || 'all';
+                    const startSelect = document.getElementById('curriculum-semester-start');
+                    if (startSelect) startSelect.value = this.curriculumViewState.startSemester;
+                    await this.saveCurriculumViewSettings();
+                    this.loadView('grade-curricular');
+                });
             });
         }
 
@@ -2330,6 +2353,310 @@ StudyLifeControl.prototype.importarGradeUfob = async function() {
         this.loadView('grade-curricular');
         showToast(added ? `${added} componente(s) sugerido(s) pela UFOB foram adicionados.` : 'Sua grade já foi reorganizada com as referências da UFOB.');
     }
+};
+
+
+
+StudyLifeControl.prototype.saveCurriculumViewSettings = async function() {
+    if (!this.data.settings) this.data.settings = {};
+    this.data.settings.curriculumView = {
+        startSemester: this.curriculumViewState?.startSemester || 'all',
+        visibleCount: this.curriculumViewState?.visibleCount || 4
+    };
+    try {
+        await dbService.saveData('settings', this.data.settings);
+    } catch (error) {
+        console.warn('Não foi possível salvar preferências da grade curricular.', error);
+    }
+};
+
+StudyLifeControl.prototype.extractCourseLevel = function(value) {
+    const normalized = String(value || '').toUpperCase();
+    const romanMap = { I: 1, II: 2, III: 3, IV: 4, V: 5, VI: 6 };
+    const romanMatch = normalized.match(/\b(VI|IV|V|III|II|I)\b/);
+    if (romanMatch) return romanMap[romanMatch[1]] || 0;
+    const arabicMatch = normalized.match(/\b(\d{1,2})\b/);
+    return arabicMatch ? parseInt(arabicMatch[1], 10) : 0;
+};
+
+StudyLifeControl.prototype.getCurriculumCodeToken = function(value) {
+    return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+};
+
+StudyLifeControl.prototype.getCurriculumPrereqKnowledge = function() {
+    const allItems = [...this.getNormalizedCurriculum(), ...this.getUfobCurriculumReference()].map(item => this.normalizeCurriculumItem(item));
+    const dependencyFrequency = new Map();
+    const usedAsPrereq = new Map();
+
+    allItems.forEach(item => {
+        const targetKey = this.slugifyName(item.nome);
+        (item.prerequisitosLista || []).forEach(req => {
+            const reqKey = this.slugifyName(req);
+            const edgeKey = `${targetKey}__${reqKey}`;
+            dependencyFrequency.set(edgeKey, (dependencyFrequency.get(edgeKey) || 0) + 1);
+            usedAsPrereq.set(reqKey, (usedAsPrereq.get(reqKey) || 0) + 1);
+        });
+    });
+
+    return { dependencyFrequency, usedAsPrereq };
+};
+
+StudyLifeControl.prototype.getCurriculumSuggestionObjects = function(currentName = '', selectedSemester = '') {
+    const currentSlug = this.slugifyName(currentName);
+    const currentCode = this.getCurriculumCodeToken(document.getElementById('curriculum-codigo')?.value || '');
+    const semesterNumber = parseInt(selectedSemester || 0, 10) || 0;
+    const currentLevel = this.extractCourseLevel(currentName || currentCode);
+    const knowledge = this.getCurriculumPrereqKnowledge();
+    const exactReference = this.getUfobCurriculumReference().find(item => this.slugifyName(item.nome) === currentSlug || (currentCode && this.getCurriculumCodeToken(item.codigo) === currentCode));
+
+    const pool = [...this.getNormalizedCurriculum(), ...this.getUfobCurriculumReference()]
+        .map(item => this.normalizeCurriculumItem(item))
+        .filter(item => item.nome && this.slugifyName(item.nome) !== currentSlug);
+
+    const uniquePool = [...new Map(pool.map(item => [this.slugifyName(item.nome), item])).values()];
+
+    const suggestions = uniquePool.map(candidate => {
+        let score = 0;
+        const reasons = [];
+        const candidateSlug = this.slugifyName(candidate.nome);
+        const candidateCode = this.getCurriculumCodeToken(candidate.codigo);
+        const candidateSemester = parseInt(candidate.semestre || 0, 10) || 0;
+        const edgeKey = `${currentSlug}__${candidateSlug}`;
+
+        if (exactReference?.prerequisitos?.some(req => this.slugifyName(req) === candidateSlug)) {
+            score += 120;
+            reasons.push('aparece na referência da UFOB');
+        }
+
+        const learnedWeight = knowledge.dependencyFrequency.get(edgeKey) || 0;
+        if (learnedWeight) {
+            score += 80 + (learnedWeight * 10);
+            reasons.push('já apareceu como pré-requisito nesse padrão');
+        }
+
+        if (semesterNumber && candidateSemester && candidateSemester < semesterNumber) {
+            score += Math.max(0, 50 - ((semesterNumber - candidateSemester - 1) * 6));
+            reasons.push('vem de semestre anterior');
+        }
+
+        const currentTokens = new Set(currentSlug.split(' ').filter(token => token.length > 2));
+        const candidateTokens = candidateSlug.split(' ').filter(token => token.length > 2);
+        const overlap = candidateTokens.filter(token => currentTokens.has(token)).length;
+        if (overlap) {
+            score += overlap * 9;
+            reasons.push('nome parecido');
+        }
+
+        const candidateLevel = this.extractCourseLevel(candidate.nome || candidate.codigo);
+        if (currentLevel && candidateLevel && candidateLevel === currentLevel - 1) {
+            score += 35;
+            reasons.push('sequência I/II/III provável');
+        }
+
+        if (currentCode && candidateCode && currentCode.slice(0, 3) === candidateCode.slice(0, 3)) {
+            score += 14;
+            reasons.push('código próximo');
+        }
+
+        const popularAsPrereq = knowledge.usedAsPrereq.get(candidateSlug) || 0;
+        if (popularAsPrereq) {
+            score += Math.min(18, popularAsPrereq * 3);
+            reasons.push('muito usada como base');
+        }
+
+        return {
+            nome: candidate.nome,
+            codigo: candidate.codigo || '',
+            semestre: candidate.semestre || '',
+            score,
+            reasons: [...new Set(reasons)].slice(0, 2)
+        };
+    }).filter(item => item.score > 0)
+      .sort((a, b) => b.score - a.score || a.nome.localeCompare(b.nome, 'pt-BR'));
+
+    return suggestions;
+};
+
+StudyLifeControl.prototype.getCurriculumSmartSuggestions = function(currentName = '', selectedSemester = '') {
+    return this.getCurriculumSuggestionObjects(currentName, selectedSemester).slice(0, 10).map(item => item.nome);
+};
+
+StudyLifeControl.prototype.renderCurriculumAISuggestions = function(currentName = '', selectedSemester = '') {
+    const container = document.getElementById('curriculum-ai-suggestions');
+    if (!container) return;
+    const suggestions = this.getCurriculumSuggestionObjects(currentName, selectedSemester)
+        .filter(item => !this.curriculumPrerequisitosSelecionados.includes(item.nome))
+        .slice(0, 6);
+    if (!suggestions.length) {
+        container.innerHTML = '<div class="ai-helper-card"><div><strong>Assistente inteligente de pré-requisitos</strong><p>Digite nome, código ou semestre. Eu cruzo seus componentes já cadastrados, a ordem da grade e a base da UFOB para priorizar sugestões úteis.</p></div></div>';
+        return;
+    }
+    container.innerHTML = `
+        <div class="ai-helper-card ai-helper-card-strong">
+            <div class="ai-helper-head">
+                <div>
+                    <strong>Assistente inteligente de pré-requisitos</strong>
+                    <p>Ranking montado com nome, código, semestre anterior, relações já usadas na sua grade e referência da UFOB.</p>
+                </div>
+                <span class="badge badge-soft">Top ${suggestions.length}</span>
+            </div>
+            <div class="ai-suggestion-grid">
+                ${suggestions.map(item => `
+                    <button type="button" class="ai-suggestion-card" data-value="${escapeHtml(item.nome)}">
+                        <div class="ai-suggestion-card-top">
+                            <strong>${escapeHtml(item.nome)}</strong>
+                            <span class="ai-score-badge">${Math.round(item.score)}</span>
+                        </div>
+                        <div class="ai-suggestion-card-meta">
+                            ${item.codigo ? `<span class="code-badge">${escapeHtml(item.codigo)}</span>` : ''}
+                            ${item.semestre ? `<span>${escapeHtml(item.semestre)}º semestre</span>` : ''}
+                        </div>
+                        <small>${escapeHtml(item.reasons.join(' • ') || 'sugestão provável')}</small>
+                    </button>
+                `).join('')}
+            </div>
+        </div>
+    `;
+    container.querySelectorAll('.ai-suggestion-card').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (!this.curriculumPrerequisitosSelecionados.includes(btn.dataset.value)) {
+                this.curriculumPrerequisitosSelecionados.push(btn.dataset.value);
+                this.curriculumPrerequisitosSelecionados = [...new Set(this.curriculumPrerequisitosSelecionados)];
+                this.setupCurriculumModalUI(currentName);
+                document.getElementById('curriculum-prerequisito-busca')?.focus();
+            }
+        });
+    });
+};
+
+StudyLifeControl.prototype.setupCurriculumModalUI = function(currentName = '') {
+    const searchInput = document.getElementById('curriculum-prerequisito-busca');
+    const hiddenInput = document.getElementById('curriculum-prerequisitos');
+    const tagsContainer = document.getElementById('curriculum-prerequisitos-tags');
+    const suggestions = document.getElementById('curriculum-prerequisitos-sugestoes');
+    const semesterInput = document.getElementById('curriculum-semestre');
+    const nameInput = document.getElementById('curriculum-nome');
+    const codeInput = document.getElementById('curriculum-codigo');
+    if (!searchInput || !hiddenInput || !tagsContainer || !suggestions) return;
+
+    const updateHidden = () => {
+        hiddenInput.value = this.curriculumPrerequisitosSelecionados.join(' | ');
+        tagsContainer.innerHTML = this.curriculumPrerequisitosSelecionados.map(req => {
+            const source = [...this.getNormalizedCurriculum(), ...this.getUfobCurriculumReference()].find(item => this.slugifyName(item.nome) === this.slugifyName(req));
+            return `
+                <span class="chip chip-removable">
+                    ${source?.codigo ? `<span class="chip-code">${escapeHtml(source.codigo)}</span>` : ''}
+                    <span>${escapeHtml(req)}</span>
+                    <button type="button" class="chip-remove" data-value="${escapeHtml(req)}">×</button>
+                </span>
+            `;
+        }).join('');
+        tagsContainer.querySelectorAll('.chip-remove').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.curriculumPrerequisitosSelecionados = this.curriculumPrerequisitosSelecionados.filter(item => item !== btn.dataset.value);
+                updateHidden();
+                renderSuggestions();
+                this.renderCurriculumAISuggestions(nameInput?.value || currentName, semesterInput?.value || '');
+            });
+        });
+    };
+
+    const pool = [...new Map([...this.getNormalizedCurriculum(), ...this.getUfobCurriculumReference()]
+        .map(item => this.normalizeCurriculumItem(item))
+        .filter(item => item.nome && this.slugifyName(item.nome) !== this.slugifyName(currentName))
+        .map(item => [this.slugifyName(item.nome), item])).values()];
+
+    const renderSuggestions = () => {
+        const term = this.slugifyName(searchInput.value);
+        const codeTerm = this.getCurriculumCodeToken(searchInput.value);
+        const filtered = pool
+            .filter(item => !this.curriculumPrerequisitosSelecionados.includes(item.nome))
+            .filter(item => {
+                if (!term && !codeTerm) return true;
+                return this.slugifyName(item.nome).includes(term) || this.getCurriculumCodeToken(item.codigo).includes(codeTerm);
+            })
+            .sort((a, b) => {
+                const aStarts = this.getCurriculumCodeToken(a.codigo).startsWith(codeTerm) || this.slugifyName(a.nome).startsWith(term);
+                const bStarts = this.getCurriculumCodeToken(b.codigo).startsWith(codeTerm) || this.slugifyName(b.nome).startsWith(term);
+                if (aStarts !== bStarts) return aStarts ? -1 : 1;
+                return (parseInt(a.semestre || 0, 10) || 99) - (parseInt(b.semestre || 0, 10) || 99);
+            })
+            .slice(0, 18);
+
+        suggestions.innerHTML = filtered.map(item => `
+            <button type="button" class="prereq-option prereq-option-rich" data-value="${escapeHtml(item.nome)}">
+                <div>
+                    <strong>${escapeHtml(item.nome)}</strong>
+                    <small>${item.semestre ? `${escapeHtml(item.semestre)}º semestre` : 'Sem semestre'}</small>
+                </div>
+                ${item.codigo ? `<span class="code-badge">${escapeHtml(item.codigo)}</span>` : ''}
+            </button>
+        `).join('');
+
+        suggestions.querySelectorAll('.prereq-option').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.curriculumPrerequisitosSelecionados.push(btn.dataset.value);
+                this.curriculumPrerequisitosSelecionados = [...new Set(this.curriculumPrerequisitosSelecionados)];
+                searchInput.value = '';
+                updateHidden();
+                renderSuggestions();
+                this.renderCurriculumAISuggestions(nameInput?.value || currentName, semesterInput?.value || '');
+            });
+        });
+    };
+
+    searchInput.oninput = renderSuggestions;
+    searchInput.onclick = renderSuggestions;
+    searchInput.placeholder = 'Pesquise por nome ou código. Ex: Cálculo, CET0155';
+
+    document.getElementById('btn-add-custom-prereq')?.addEventListener('click', () => {
+        const value = searchInput.value.trim();
+        if (!value) return;
+        const existing = pool.find(item => this.slugifyName(item.nome) === this.slugifyName(value) || this.getCurriculumCodeToken(item.codigo) === this.getCurriculumCodeToken(value));
+        const label = existing?.nome || value;
+        if (!this.curriculumPrerequisitosSelecionados.includes(label)) this.curriculumPrerequisitosSelecionados.push(label);
+        searchInput.value = '';
+        updateHidden();
+        renderSuggestions();
+        this.renderCurriculumAISuggestions(nameInput?.value || currentName, semesterInput?.value || '');
+    });
+
+    document.querySelectorAll('.btn-ch-preset').forEach(btn => {
+        btn.onclick = () => {
+            if (btn.dataset.value === '0') {
+                document.getElementById('curriculum-carga-horaria')?.focus();
+                return;
+            }
+            document.getElementById('curriculum-carga-horaria').value = btn.dataset.value;
+        };
+    });
+
+    const autofillFromReference = () => {
+        const typed = this.slugifyName(nameInput?.value || '');
+        const typedCode = this.getCurriculumCodeToken(codeInput?.value || '');
+        const match = this.getUfobCurriculumReference().find(item => this.slugifyName(item.nome) === typed || (typedCode && this.getCurriculumCodeToken(item.codigo) === typedCode));
+        if (match) {
+            if (!document.getElementById('curriculum-carga-horaria').value) document.getElementById('curriculum-carga-horaria').value = match.cargaHoraria;
+            if (!document.getElementById('curriculum-semestre').value) document.getElementById('curriculum-semestre').value = match.semestre;
+            if (!Number(document.getElementById('curriculum-creditos').value)) document.getElementById('curriculum-creditos').value = match.creditos || '';
+            if (!document.getElementById('curriculum-codigo').value && match.codigo) document.getElementById('curriculum-codigo').value = match.codigo;
+            if (!this.curriculumPrerequisitosSelecionados.length && match.prerequisitos?.length) {
+                this.curriculumPrerequisitosSelecionados = [...match.prerequisitos];
+                updateHidden();
+                renderSuggestions();
+            }
+        }
+        this.renderCurriculumAISuggestions(nameInput?.value || currentName, semesterInput?.value || '');
+    };
+
+    nameInput?.addEventListener('blur', autofillFromReference);
+    nameInput?.addEventListener('input', () => this.renderCurriculumAISuggestions(nameInput?.value || currentName, semesterInput?.value || ''));
+    codeInput?.addEventListener('input', () => this.renderCurriculumAISuggestions(nameInput?.value || currentName, semesterInput?.value || ''));
+    semesterInput?.addEventListener('input', () => this.renderCurriculumAISuggestions(nameInput?.value || currentName, semesterInput?.value || ''));
+
+    updateHidden();
+    renderSuggestions();
+    this.renderCurriculumAISuggestions(nameInput?.value || currentName, semesterInput?.value || '');
 };
 
 const originalHandleCurriculumSubmit = StudyLifeControl.prototype.handleCurriculumSubmit;
