@@ -1558,7 +1558,6 @@ class ViewRenderer {
         });
     }
 
-
     renderGradeCurricular() {
         const curriculum = (this.app.getNormalizedCurriculum ? this.app.getNormalizedCurriculum() : (this.app.data.curriculum || [])).slice().sort((a, b) => {
             const semA = parseInt(a.semestre || 999, 10);
@@ -1571,17 +1570,26 @@ class ViewRenderer {
             const ch = Number(item.cargaHoraria) || 0;
             acc.totalHoras += ch;
             acc.totalComponentes += 1;
+
             if (item.status === 'concluida') acc.horasConcluidas += ch;
             else if (item.status === 'cursando') acc.horasCursando += ch;
             else acc.horasPendentes += ch;
+
             return acc;
-        }, { totalHoras: 0, totalComponentes: 0, horasConcluidas: 0, horasCursando: 0, horasPendentes: 0 });
+        }, {
+            totalHoras: 0,
+            totalComponentes: 0,
+            horasConcluidas: 0,
+            horasCursando: 0,
+            horasPendentes: 0
+        });
 
         const progresso = totais.totalHoras ? Math.round((totais.horasConcluidas / totais.totalHoras) * 100) : 0;
         const progressoCursando = totais.totalHoras ? Math.round((totais.horasCursando / totais.totalHoras) * 100) : 0;
         const progressoPendente = Math.max(0, 100 - progresso - progressoCursando);
         const horasRestantes = Math.max(0, totais.totalHoras - totais.horasConcluidas);
         const currentSemester = parseInt(this.app.data?.user?.semester || 0, 10) || 0;
+
         const porSemestre = curriculum.reduce((acc, item) => {
             const sem = String(item.semestre || '0').trim();
             const chave = sem ? `${sem}º Semestre` : 'Sem semestre definido';
@@ -1596,6 +1604,7 @@ class ViewRenderer {
         const countState = this.app.curriculumViewState?.visibleCount || 4;
 
         let startIndex = 0;
+
         if (startState === 'current' && currentSemester) {
             const idx = numericSemesters.findIndex(n => n === currentSemester);
             startIndex = idx >= 0 ? idx : 0;
@@ -1606,36 +1615,51 @@ class ViewRenderer {
         }
 
         const visibleSemesterLabels = startState === 'all'
-            ? (countState === 'all' ? semestresOrdenados : semestresOrdenados.slice(0, Number(countState) || 4))
-            : (countState === 'all' ? semestresOrdenados.slice(startIndex) : semestresOrdenados.slice(startIndex, startIndex + (Number(countState) || 4)));
+            ? (countState === 'all'
+                ? semestresOrdenados
+                : semestresOrdenados.slice(0, Number(countState) || 4))
+            : (countState === 'all'
+                ? semestresOrdenados.slice(startIndex)
+                : semestresOrdenados.slice(startIndex, startIndex + (Number(countState) || 4)));
 
         const visibleSet = new Set(visibleSemesterLabels);
-        const visibleItems = curriculum.filter(item => visibleSet.has(`${String(item.semestre || '0').trim()}º Semestre`));
+        const visibleItems = curriculum.filter(item =>
+            visibleSet.has(`${String(item.semestre || '0').trim()}º Semestre`)
+        );
+
         const blockedCount = curriculum.filter(item => item.status !== 'concluida' && item.prerequisitosLista?.length).length;
         const withCodeCount = curriculum.filter(item => item.codigo).length;
         const próximos = curriculum.filter(item => item.status !== 'concluida').slice(0, 5);
-        const semesterOptions = [...new Set(numericSemesters)].map(n => `<option value="${n}" ${String(startState) === String(n) ? 'selected' : ''}>A partir do ${n}º</option>`).join('');
+
+        const semesterOptions = [...new Set(numericSemesters)]
+            .map(n => `<option value="${n}" ${String(startState) === String(n) ? 'selected' : ''}>A partir do ${n}º</option>`)
+            .join('');
 
         return `
-            <div class="view-header view-header-grade view-header-grade-upgraded">
+            <div class="view-header view-header-grade-upgraded">
                 <div>
                     <h2><i class="fas fa-sitemap"></i> Grade Curricular</h2>
-                    <p class="muted-text">Mais limpa para navegar e mais rápida para cadastrar componentes sem ficar espremido na tela.</p>
                 </div>
                 <div class="view-actions-inline">
-                    <button class="btn-secondary" id="btn-importar-ufob"><i class="fas fa-wand-magic-sparkles"></i> Completar com sugestão UFOB</button>
-                    <button class="btn-primary" id="btn-novo-curriculum"><i class="fas fa-plus"></i> Novo Componente</button>
+                    <button class="btn-secondary" id="btn-importar-ufob">
+                        <i class="fas fa-wand-magic-sparkles"></i> Completar com sugestão UFOB
+                    </button>
+                    <button class="btn-primary" id="btn-novo-curriculum">
+                        <i class="fas fa-plus"></i> Novo Componente
+                    </button>
                 </div>
             </div>
 
             <div class="grade-shell">
-                <div class="card grade-hero-card grade-hero-card-upgraded">
-                    <div class="card-body grade-hero-body grade-hero-body-upgraded">
+                <div class="card grade-hero-card-upgraded">
+                    <div class="card-body grade-hero-body-upgraded">
                         <div class="grade-progress-panel">
                             <div class="grade-progress-head">
                                 <span class="badge badge-soft">${totais.totalComponentes} componentes</span>
                                 ${currentSemester ? `<span class="badge badge-soft">${currentSemester}º semestre atual</span>` : ''}
+                                <span class="badge badge-soft">${totais.totalHoras}h cadastradas</span>
                             </div>
+
                             <div class="grade-progress-display">
                                 <div class="progress-ring progress-ring-lg" style="--progress:${progresso}%;">
                                     <div class="progress-ring-inner">
@@ -1643,16 +1667,19 @@ class ViewRenderer {
                                         <span>concluído</span>
                                     </div>
                                 </div>
+
                                 <div class="grade-progress-copy">
-                                    <h3>Sua grade, agora com menos bagunça visual</h3>
-                                    <p class="muted-text">Mostre só o trecho da grade que você quer ver, use código do componente e deixe a sugestão de pré-requisito trabalhar por nome, ordem e padrão da sua grade.</p>
+                                    <h3>Visão geral da sua caminhada no curso</h3>
+                                    <p>Acompanhe o avanço da grade, filtre só os semestres que quer ver e organize os componentes com muito mais clareza.</p>
                                 </div>
                             </div>
+
                             <div class="grade-progress-stack">
                                 <div class="grade-progress-stack-fill done" style="width:${progresso}%"></div>
                                 <div class="grade-progress-stack-fill doing" style="width:${progressoCursando}%"></div>
                                 <div class="grade-progress-stack-fill pending" style="width:${progressoPendente}%"></div>
                             </div>
+
                             <div class="grade-progress-legend">
                                 <span><i class="legend-dot done"></i> ${totais.horasConcluidas}h concluídas</span>
                                 <span><i class="legend-dot doing"></i> ${totais.horasCursando}h cursando</span>
@@ -1669,17 +1696,17 @@ class ViewRenderer {
                             <div class="grade-kpi-card">
                                 <span>Com código</span>
                                 <strong>${withCodeCount}</strong>
-                                <small>facilita busca e pré-req</small>
+                                <small>busca e organização melhores</small>
                             </div>
                             <div class="grade-kpi-card">
                                 <span>Com pré-requisito</span>
                                 <strong>${blockedCount}</strong>
-                                <small>pedem alguma base antes</small>
+                                <small>dependem de base anterior</small>
                             </div>
                             <div class="grade-kpi-card">
-                                <span>Total cadastrado</span>
-                                <strong>${totais.totalHoras}h</strong>
-                                <small>na sua grade salva</small>
+                                <span>Semestres visíveis</span>
+                                <strong>${visibleSemesterLabels.length}</strong>
+                                <small>recorte atual da grade</small>
                             </div>
                         </div>
                     </div>
@@ -1696,32 +1723,48 @@ class ViewRenderer {
                                     ${semesterOptions}
                                 </select>
                             </div>
+
                             <div class="form-group compact">
                                 <label>Mostrar</label>
                                 <select id="curriculum-semester-count">
-                                    ${['2','3','4','5','6','all'].map(value => `<option value="${value}" ${String(countState) === String(value) ? 'selected' : ''}>${value === 'all' ? 'Todos os semestres' : `${value} semestre(s)`}</option>`).join('')}
+                                    ${['2', '3', '4', '5', '6', 'all'].map(value => `
+                                        <option value="${value}" ${String(countState) === String(value) ? 'selected' : ''}>
+                                            ${value === 'all' ? 'Todos os semestres' : `${value} semestre(s)`}
+                                        </option>
+                                    `).join('')}
                                 </select>
                             </div>
                         </div>
+
                         <div class="semester-shortcuts">
                             <button type="button" class="semester-shortcut-pill ${startState === 'all' ? 'active' : ''}" data-semester="all">Tudo</button>
-                            ${numericSemesters.map(n => `<button type="button" class="semester-shortcut-pill ${(String(startState) === String(n) || (startState === 'current' && currentSemester === n)) ? 'active' : ''}" data-semester="${n}">${n}º</button>`).join('')}
+                            ${numericSemesters.map(n => `
+                                <button
+                                    type="button"
+                                    class="semester-shortcut-pill ${(String(startState) === String(n) || (startState === 'current' && currentSemester === n)) ? 'active' : ''}"
+                                    data-semester="${n}"
+                                >${n}º</button>
+                            `).join('')}
                         </div>
                     </div>
                 </div>
 
                 ${próximos.length ? `
-                    <div class="card grade-focus-card grade-focus-card-upgraded">
+                    <div class="card grade-focus-card-upgraded">
                         <div class="card-header">
-                            <h3>Fila rápida para organizar</h3>
+                            <h3>Próximos para ajustar ou acompanhar</h3>
                             <span class="badge">${próximos.length}</span>
                         </div>
-                        <div class="card-body grade-focus-list grade-focus-list-scroll">
+                        <div class="card-body grade-focus-list-scroll">
                             ${próximos.map(item => `
                                 <div class="grade-focus-item compact">
                                     <div>
                                         <strong>${this.esc(item.nome)}</strong>
-                                        <small>${item.semestre ? `${this.esc(item.semestre)}º semestre` : 'Sem semestre'} • ${Number(item.cargaHoraria) || 0}h ${item.codigo ? `• ${this.esc(item.codigo)}` : ''}</small>
+                                        <small>
+                                            ${item.semestre ? `${this.esc(item.semestre)}º semestre` : 'Sem semestre'}
+                                            • ${Number(item.cargaHoraria) || 0}h
+                                            ${item.codigo ? `• ${this.esc(item.codigo)}` : ''}
+                                        </small>
                                     </div>
                                     <span class="tag ${this.esc(item.status)}">${this.esc((item.status || '').replaceAll('-', ' '))}</span>
                                 </div>
@@ -1730,15 +1773,18 @@ class ViewRenderer {
                     </div>
                 ` : ''}
 
-                <div class="semester-grid semester-grid-upgraded">
+                <div class="semester-grid-upgraded">
                     ${visibleSemesterLabels.map(semestre => {
                         const numeroSemestre = parseInt(semestre, 10) || 0;
                         const itens = porSemestre[semestre] || [];
                         const horasSemestre = itens.reduce((acc, item) => acc + (Number(item.cargaHoraria) || 0), 0);
-                        const horasConcluidas = itens.filter(item => item.status === 'concluida').reduce((acc, item) => acc + (Number(item.cargaHoraria) || 0), 0);
-                        const progressoSemestre = horasSemestre ? Math.round((horasConcluidas / horasSemestre) * 100) : 0;
+                        const horasConcluidasSem = itens
+                            .filter(item => item.status === 'concluida')
+                            .reduce((acc, item) => acc + (Number(item.cargaHoraria) || 0), 0);
+                        const progressoSemestre = horasSemestre ? Math.round((horasConcluidasSem / horasSemestre) * 100) : 0;
+
                         return `
-                            <section class="card semester-card semester-card-upgraded ${currentSemester && numeroSemestre === currentSemester ? 'semester-card-active' : ''}">
+                            <section class="card semester-card-upgraded ${currentSemester && numeroSemestre === currentSemester ? 'semester-card-active' : ''}">
                                 <div class="card-header semester-card-header upgraded">
                                     <div>
                                         <h3>${this.esc(semestre)}</h3>
@@ -1749,13 +1795,19 @@ class ViewRenderer {
                                         ${currentSemester && numeroSemestre === currentSemester ? '<span class="tag em-andamento">Atual</span>' : ''}
                                     </div>
                                 </div>
+
                                 <div class="card-body">
-                                    <div class="semester-mini-progress upgraded"><div class="progress-bar large"><div class="progress-fill" style="width:${progressoSemestre}%"></div></div></div>
-                                    <div class="curriculum-list curriculum-list-modern curriculum-list-modern-spaced">
+                                    <div class="semester-mini-progress upgraded">
+                                        <div class="progress-bar large">
+                                            <div class="progress-fill" style="width:${progressoSemestre}%"></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="curriculum-list-modern-spaced">
                                         ${itens.map(item => `
-                                            <article class="curriculum-item curriculum-item-modern curriculum-item-modern-upgraded status-${this.esc(item.status)}">
+                                            <article class="curriculum-item-modern-upgraded status-${this.esc(item.status)}">
                                                 <div class="curriculum-main">
-                                                    <div class="curriculum-title-row curriculum-title-row-upgraded">
+                                                    <div class="curriculum-title-row-upgraded">
                                                         <div>
                                                             <h4>${this.esc(item.nome)}</h4>
                                                             <div class="curriculum-inline-meta wrap">
@@ -1767,19 +1819,26 @@ class ViewRenderer {
                                                         </div>
                                                         <span class="tag ${this.esc(item.status)}">${this.esc((item.status || '').replaceAll('-', ' '))}</span>
                                                     </div>
+
                                                     ${item.prerequisitosLista?.length ? `
-                                                        <div class="prereq-readonly prereq-inline-row upgraded">
+                                                        <div class="prereq-inline-row upgraded">
                                                             <span class="prereq-label">Pré-requisitos</span>
                                                             <div class="prereq-chip-wrap">
                                                                 ${item.prerequisitosLista.map(req => `<span class="chip">${this.esc(req)}</span>`).join('')}
                                                             </div>
                                                         </div>
-                                                    ` : '<div class="prereq-readonly prereq-empty">Sem pré-requisitos cadastrados</div>'}
+                                                    ` : '<div class="prereq-empty">Sem pré-requisitos cadastrados</div>'}
+
                                                     ${item.observacoes ? `<small class="curriculum-note">${this.esc(item.observacoes)}</small>` : ''}
                                                 </div>
+
                                                 <div class="curriculum-actions curriculum-actions-inline">
-                                                    <button class="btn-icon btn-editar-curriculum" data-id="${this.esc(item.id)}" title="Editar componente"><i class="fas fa-edit"></i></button>
-                                                    <button class="btn-icon btn-excluir-curriculum" data-id="${this.esc(item.id)}" title="Excluir componente" style="color: var(--accent-danger);"><i class="fas fa-trash"></i></button>
+                                                    <button class="btn-icon btn-editar-curriculum" data-id="${this.esc(item.id)}" title="Editar componente">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button class="btn-icon btn-excluir-curriculum" data-id="${this.esc(item.id)}" title="Excluir componente" style="color: var(--accent-danger);">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
                                                 </div>
                                             </article>
                                         `).join('')}
@@ -1803,7 +1862,7 @@ class ViewRenderer {
                     <div class="card">
                         <div class="card-body empty-state">
                             <h3>Nenhum componente cadastrado ainda</h3>
-                            <p>Cadastre manualmente ou use a sugestão da UFOB para puxar uma base inicial e depois só ajustar o que precisar.</p>
+                            <p>Cadastre manualmente ou use a sugestão da UFOB para puxar uma base inicial.</p>
                         </div>
                     </div>
                 ` : ''}
