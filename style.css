@@ -2846,3 +2846,68 @@ input:checked + .toggle-slider:before {
   .semester-card-side { align-items:flex-start; }
   .curriculum-actions-inline { width:100%; justify-content:flex-end; }
 }
+
+/* Grade curricular v4 */
+.view-header-grade-upgraded { margin-bottom: 18px; }
+.grade-shell { display:flex; flex-direction:column; gap:18px; }
+.grade-hero-card-upgraded { overflow:hidden; border:1px solid rgba(148,163,184,.14); }
+.grade-hero-body-upgraded { display:grid; grid-template-columns: minmax(0,1.25fr) minmax(280px,.9fr); gap:20px; align-items:stretch; }
+.grade-progress-panel { display:flex; flex-direction:column; gap:16px; }
+.grade-progress-head { display:flex; gap:8px; flex-wrap:wrap; }
+.progress-ring-lg { width:132px; height:132px; }
+.grade-progress-display { display:flex; gap:18px; align-items:center; flex-wrap:wrap; }
+.grade-progress-copy { flex:1; min-width:220px; }
+.grade-progress-copy h3 { margin:0 0 8px; font-size:1.35rem; }
+.grade-progress-stack { display:flex; width:100%; height:12px; border-radius:999px; overflow:hidden; background:rgba(148,163,184,.1); }
+.grade-progress-stack-fill.done { background:linear-gradient(90deg, rgba(34,197,94,.95), rgba(74,222,128,.95)); }
+.grade-progress-stack-fill.doing { background:linear-gradient(90deg, rgba(59,130,246,.95), rgba(96,165,250,.95)); }
+.grade-progress-stack-fill.pending { background:linear-gradient(90deg, rgba(148,163,184,.55), rgba(100,116,139,.55)); }
+.grade-progress-legend { display:flex; gap:12px; flex-wrap:wrap; color:var(--text-secondary); font-size:.92rem; }
+.legend-dot { width:10px; height:10px; border-radius:999px; display:inline-block; margin-right:6px; }
+.legend-dot.done { background:#22c55e; }
+.legend-dot.doing { background:#3b82f6; }
+.legend-dot.pending { background:#64748b; }
+.grade-kpi-grid-upgraded { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:14px; }
+.grade-kpi-card.highlight { border-color: rgba(59,130,246,.25); background: linear-gradient(180deg, rgba(59,130,246,.11), rgba(59,130,246,.03)); }
+.grade-toolbar-card { border:1px solid rgba(148,163,184,.14); }
+.grade-toolbar-body { display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; align-items:end; }
+.grade-toolbar-main { display:flex; gap:14px; flex-wrap:wrap; }
+.form-group.compact label { margin-bottom:6px; font-size:.84rem; }
+.form-group.compact select { min-width:180px; }
+.semester-shortcuts { display:flex; gap:8px; flex-wrap:wrap; }
+.semester-shortcut-pill { border:1px solid rgba(148,163,184,.18); background:rgba(15,23,42,.35); color:var(--text-secondary); padding:8px 12px; border-radius:999px; cursor:pointer; transition:.2s ease; }
+.semester-shortcut-pill:hover, .semester-shortcut-pill.active { color:var(--text-primary); border-color:rgba(59,130,246,.35); background:rgba(59,130,246,.12); }
+.grade-focus-card-upgraded .grade-focus-list-scroll { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap:12px; }
+.grade-focus-item.compact { padding:12px 14px; border-radius:14px; background:rgba(15,23,42,.3); border:1px solid rgba(148,163,184,.1); }
+.semester-grid-upgraded { grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); }
+.semester-card-header.upgraded { align-items:flex-start; }
+.curriculum-list-modern-spaced { display:flex; flex-direction:column; gap:12px; }
+.curriculum-item-modern-upgraded { padding:18px; border-radius:20px; background:linear-gradient(180deg, rgba(15,23,42,.55), rgba(15,23,42,.35)); }
+.curriculum-title-row-upgraded { align-items:flex-start; gap:12px; }
+.curriculum-inline-meta.wrap { flex-wrap:wrap; }
+.prereq-inline-row.upgraded { background:rgba(2,6,23,.18); border:1px solid rgba(148,163,184,.1); border-radius:14px; padding:10px 12px; }
+.ai-helper-card-strong { border-color:rgba(59,130,246,.22); background:linear-gradient(180deg, rgba(59,130,246,.11), rgba(59,130,246,.04)); }
+.ai-suggestion-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap:10px; }
+.ai-suggestion-card { border:1px solid rgba(59,130,246,.18); background:rgba(255,255,255,.03); color:var(--text-primary); border-radius:16px; padding:12px; text-align:left; cursor:pointer; transition:transform .15s ease, border-color .15s ease, background .15s ease; }
+.ai-suggestion-card:hover { transform:translateY(-1px); border-color:rgba(96,165,250,.4); background:rgba(59,130,246,.08); }
+.ai-suggestion-card-top { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; margin-bottom:8px; }
+.ai-suggestion-card-top strong { display:block; }
+.ai-suggestion-card-meta { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:6px; color:var(--text-secondary); font-size:.85rem; }
+.ai-score-badge { min-width:38px; height:28px; display:inline-flex; align-items:center; justify-content:center; border-radius:999px; background:rgba(59,130,246,.14); color:#93c5fd; font-size:.82rem; font-weight:700; }
+.prereq-option-rich { display:flex; align-items:center; justify-content:space-between; gap:12px; background:rgba(15,23,42,.35); color:var(--text-primary); border:1px solid rgba(148,163,184,.12); }
+.prereq-option-rich div { display:flex; flex-direction:column; gap:2px; text-align:left; }
+.prereq-option-rich small { color:var(--text-secondary); }
+.chip-removable { display:inline-flex; align-items:center; gap:8px; }
+.chip-code { font-size:.78rem; font-weight:700; color:#1d4ed8; background:rgba(255,255,255,.55); padding:3px 7px; border-radius:999px; }
+@media (max-width: 980px) {
+  .grade-hero-body-upgraded { grid-template-columns: 1fr; }
+  .grade-kpi-grid-upgraded { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 768px) {
+  .grade-progress-display { flex-direction:column; align-items:flex-start; }
+  .grade-kpi-grid-upgraded { grid-template-columns: 1fr; }
+  .semester-grid-upgraded { grid-template-columns: 1fr; }
+  .grade-toolbar-body { align-items:stretch; }
+  .grade-toolbar-main { width:100%; }
+  .form-group.compact select { min-width:unset; width:100%; }
+}
