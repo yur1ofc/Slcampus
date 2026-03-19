@@ -1,133 +1,122 @@
-// review-system.js - Gerenciamento de Revisões Automáticas
-
+// review-system.js - Revisão espaçada aprimorada
 class ReviewSystem {
     constructor() {
         this.revisoes = [];
+        this.intervalos = [1, 3, 7, 15, 30];
     }
 
-    // Carregar revisões
     loadReviews() {
         this.revisoes = window.app?.data?.reviews || [];
     }
 
-    // Gerar revisões a partir de um diário de aula
+    _signature(item) {
+        return [item?.materia, item?.topico, item?.data, item?.tipo, item?.aulaId || '', item?.sessaoId || '']
+            .join('|').toLowerCase().trim();
+    }
+
     async gerarRevisoesFromAula(classDiary) {
+        this.loadReviews();
         const hoje = new Date();
-        const dataAula = new Date(classDiary.data);
+        const dataBase = new Date(classDiary.data || hoje);
         const revisoesGeradas = [];
+        const topicoBase = classDiary.conteudoExplicado || classDiary.naoEntendi || 'Conteúdo da aula';
 
-        // Revisão em 24h
-        const revisao24h = new Date(dataAula);
-        revisao24h.setDate(dataAula.getDate() + 1);
-        revisoesGeradas.push({
-            id: generateId(),
-            materia: classDiary.materia,
-            topico: classDiary.conteudoExplicado || 'Conteúdo da aula',
-            data: revisao24h.toISOString().split('T')[0],
-            duracao: 30,
-            tipo: '24h',
-            concluida: false,
-            aulaId: classDiary.id
-        });
-
-        // Revisão em 7 dias
-        const revisao7d = new Date(dataAula);
-        revisao7d.setDate(dataAula.getDate() + 7);
-        revisoesGeradas.push({
-            id: generateId(),
-            materia: classDiary.materia,
-            topico: classDiary.conteudoExplicado || 'Conteúdo da aula',
-            data: revisao7d.toISOString().split('T')[0],
-            duracao: 45,
-            tipo: '7d',
-            concluida: false,
-            aulaId: classDiary.id
-        });
-
-        // Revisão antes da prova (se houver prova próxima)
-        const provasMateria = (window.app?.data?.exams || [])
-            .filter(e => e.materia === classDiary.materia && new Date(e.data) > hoje);
-        
-        if (provasMateria.length > 0) {
-            const provaMaisProxima = provasMateria.sort((a, b) => new Date(a.data) - new Date(b.data))[0];
-            const dataProva = new Date(provaMaisProxima.data);
-            const dataRevisaoPreProva = new Date(dataProva);
-            dataRevisaoPreProva.setDate(dataProva.getDate() - 3);
-
-            if (dataRevisaoPreProva > hoje && 
-                dataRevisaoPreProva.toISOString().split('T')[0] !== revisao24h.toISOString().split('T')[0] &&
-                dataRevisaoPreProva.toISOString().split('T')[0] !== revisao7d.toISOString().split('T')[0]) {
-                revisoesGeradas.push({
-                    id: generateId(),
-                    materia: classDiary.materia,
-                    topico: `Revisão pré-prova: ${classDiary.conteudoExplicado || 'Conteúdo da aula'}`,
-                    data: dataRevisaoPreProva.toISOString().split('T')[0],
-                    duracao: 90,
-                    tipo: 'pre-exam',
-                    concluida: false,
-                    aulaId: classDiary.id,
-                    provaId: provaMaisProxima.id
-                });
+        for (const intervalo of this.intervalos) {
+            const dataRevisao = new Date(dataBase);
+            dataRevisao.setDate(dataBase.getDate() + intervalo);
+            const review = {
+                id: generateId(),
+                materia: classDiary.materia,
+                topico: topicoBase,
+                data: dataRevisao.toISOString().split('T')[0],
+                duracao: intervalo <= 3 ? 25 : intervalo <= 7 ? 35 : 45,
+                tipo: `${intervalo}d`,
+                concluida: false,
+                aulaId: classDiary.id
+            };
+            const exists = this.revisoes.some(item => this._signature(item) === this._signature(review));
+            if (!exists) {
+                await dbService.addItem('reviews', review);
+                revisoesGeradas.push(review);
+                this.revisoes.push(review);
             }
         }
 
-        // Salvar todas as revisões geradas
-        for (const rev of revisoesGeradas) {
-            await dbService.addItem('reviews', rev);
+        const provasMateria = (window.app?.data?.exams || [])
+            .filter(e => e.materia === classDiary.materia && !e.concluida && new Date(e.data) > hoje)
+            .sort((a, b) => new Date(a.data) - new Date(b.data));
+
+        if (provasMateria.length) {
+            const provaMaisProxima = provasMateria[0];
+            const dataProva = new Date(provaMaisProxima.data);
+            const preExam = new Date(dataProva);
+            preExam.setDate(dataProva.getDate() - 2);
+            const review = {
+                id: generateId(),
+                materia: classDiary.materia,
+                topico: `Revisão pré-prova: ${topicoBase}`,
+                data: preExam.toISOString().split('T')[0],
+                duracao: 60,
+                tipo: 'pre-exam',
+                concluida: false,
+                aulaId: classDiary.id,
+                provaId: provaMaisProxima.id
+            };
+            const exists = this.revisoes.some(item => this._signature(item) === this._signature(review));
+            if (!exists && preExam > hoje) {
+                await dbService.addItem('reviews', review);
+                revisoesGeradas.push(review);
+                this.revisoes.push(review);
+            }
         }
 
         this.loadReviews();
         return revisoesGeradas;
     }
 
-    // Obter revisões para uma data específica
+    async gerarRevisoesFromSessao(sessao) {
+        if (!sessao?.materia) return [];
+        return this.gerarRevisoesFromAula({
+            id: sessao.id,
+            materia: sessao.materia,
+            data: sessao.data || new Date().toISOString().split('T')[0],
+            conteudoExplicado: sessao.topico || `${sessao.tipo || 'Sessão'} de estudo`,
+            naoEntendi: '',
+            precisoRevisar: true
+        });
+    }
+
     getRevisoesPorData(data) {
         this.loadReviews();
-        return this.revisoes.filter(r => r.data === data && !r.concluida)
+        return this.revisoes.filter(r => (r.data === data || toDateString(r.data) === toDateString(data)) && !r.concluida)
             .sort((a, b) => {
                 if (a.tipo === 'pre-exam') return -1;
                 if (b.tipo === 'pre-exam') return 1;
-                return 0;
+                return new Date(a.data) - new Date(b.data);
             });
     }
 
-    // Obter revisões pendentes para hoje
     getRevisoesHoje() {
-        const hoje = new Date().toISOString().split('T')[0];
-        return this.getRevisoesPorData(hoje);
+        return this.getRevisoesPorData(new Date().toISOString().split('T')[0]);
     }
 
-    // Marcar revisão como concluída
     async concluirRevisao(revisaoId) {
+        this.loadReviews();
         const revisao = this.revisoes.find(r => r.id === revisaoId);
         if (!revisao) return false;
 
-        if (revisao.aulaId) {
-            const topico = (window.app?.data?.learningMap || []).find(t => 
-                t.materia === revisao.materia && t.nome === revisao.topico
-            );
-
+        if (revisao.materia) {
+            const topico = (window.app?.data?.learningMap || []).find(t => t.materia === revisao.materia && t.nome === revisao.topico);
             if (topico) {
                 const novoStatus = topico.status === 'estudando' ? 'revisando' : 'dominado';
-                await dbService.updateItem('learningMap', topico.id, { 
+                await dbService.updateItem('learningMap', topico.id, {
                     status: novoStatus,
                     ultimaRevisao: new Date().toISOString()
                 });
-            } else {
-                const novoTopico = {
-                    id: generateId(),
-                    materia: revisao.materia,
-                    nome: revisao.topico,
-                    dificuldade: 3,
-                    status: 'revisando',
-                    confianca: 4,
-                    ultimaRevisao: new Date().toISOString()
-                };
-                await dbService.addItem('learningMap', novoTopico);
             }
         }
 
-        const success = await dbService.updateItem('reviews', revisaoId, { concluida: true });
+        const success = await dbService.updateItem('reviews', revisaoId, { concluida: true, updatedAt: new Date().toISOString() });
         if (success) {
             this.loadReviews();
             showToast('Revisão concluída! 🎯');
@@ -135,10 +124,8 @@ class ReviewSystem {
         return success;
     }
 
-    // Reprogramar revisão
     async reprogramarRevisao(revisaoId, novaData) {
-        return await dbService.updateItem('reviews', revisaoId, { data: novaData });
+        return dbService.updateItem('reviews', revisaoId, { data: novaData, updatedAt: new Date().toISOString() });
     }
 }
-
 window.reviewSystem = new ReviewSystem();
