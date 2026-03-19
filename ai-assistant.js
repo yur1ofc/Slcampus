@@ -647,3 +647,191 @@
   window.AIAssistant = AIAssistant;
   window.aiAssistant = new AIAssistant();
 })();
+
+
+// __mentor_upgrade_v4__
+(function () {
+  if (!window.AIAssistant || window.AIAssistant.prototype.__mentorUpgradePatched) return;
+  const proto = window.AIAssistant.prototype;
+
+  proto.getMemorySnapshot = function () {
+    const weak = this._getMatterPriorityList().slice(0, 3).map(item => item.nome);
+    const exams = this.getProximasProvas(10).slice(0, 3).map(item => `${item.materia} (${diffDays(item.data)}d)`);
+    const reviews = this.getRevisoesPendentes().slice(0, 3).map(item => item.materia);
+    return { weak, exams, reviews };
+  };
+
+  proto.generateDailyPlan = function () {
+    const prioridades = this._getMatterPriorityList();
+    if (!prioridades.length) return [];
+    const userHours = Math.max(2, Math.min(8, Number(this.context.user?.horasMaximas) || 4));
+    let remaining = userHours * 60;
+    return prioridades.slice(0, 5).map((item, index) => {
+      const base = item.provaProxima ? 60 : item.revisoesPendentes ? 35 : index === 0 ? 50 : 40;
+      const duracao = Math.max(25, Math.min(base, remaining));
+      remaining -= duracao;
+      return {
+        materia: item.nome,
+        tipo: item.tipoSugestao,
+        duracao,
+        prioridade: item.score >= 80 ? 'danger' : item.score >= 55 ? 'warning' : 'success',
+        motivo: `${item.justificativaCurta}${item.provaProxima ? ` • avaliação em ${diffDays(item.provaProxima.data)} dia(s)` : ''}`
+      };
+    }).filter(item => item.duracao > 0);
+  };
+
+  proto._getMatterPriorityList = function () {
+    const subjects = this.context.subjects || [];
+    const provas = this.getProximasProvas(21);
+    const revisoesHoje = this.getRevisoesPendentes();
+    const tarefas = (this.context.tasks || []).filter(item => !item?.concluida);
+    const topicos = this.context.learningMap || [];
+
+    return subjects.map(subject => {
+      const nome = subject?.nome;
+      const horasTotal = this.getHorasEstudadasMateria(nome);
+      const minutos7d = this.getMinutosEstudadosUltimosDias(nome, 7);
+      const notas = (this.context.grades || []).filter(item => item?.materia === nome);
+      const media = weightedAverage(notas);
+      const provaProxima = provas.find(item => item?.materia === nome);
+      const revisoes = revisoesHoje.filter(item => item?.materia === nome);
+      const tarefasPendentes = tarefas.filter(item => item?.materia === nome);
+      const topicosAtrasados = topicos.filter(item => item?.materia === nome && (item?.status === 'estudando' || item?.status === 'revisando') && daysSince(item?.ultimaRevisao) > 7);
+      const faltas = this.getFaltasMateria(nome);
+      const ultimaAula = this.getUltimaAulaRegistrada(nome);
+      const attendance = (this.context.classDiaries || []).filter(item => item?.materia === nome);
+      const taxaPresenca = attendance.length ? Math.round((attendance.filter(item => item?.presenca === 'present').length / attendance.length) * 100) : 100;
+
+      let score = 0;
+      const motivos = [];
+      const dificuldade = Number(subject?.dificuldade) || 3;
+      score += dificuldade * 5;
+      if (dificuldade >= 4) motivos.push('é uma matéria difícil para você');
+
+      if (provaProxima) {
+        const dias = Math.max(0, diffDays(provaProxima.data));
+        score += Math.max(0, 26 - dias) * 4;
+        motivos.push(`tem avaliação em ${dias} dia(s)`);
+      }
+      if (tarefasPendentes.length) {
+        score += tarefasPendentes.length * 8;
+        motivos.push(`tem ${tarefasPendentes.length} tarefa(s) pendente(s)`);
+      }
+      if (revisoes.length) {
+        score += revisoes.length * 11;
+        motivos.push('tem revisão pendente hoje');
+      }
+      if (topicosAtrasados.length) {
+        score += topicosAtrasados.length * 7;
+        motivos.push('há tópico sem revisão recente');
+      }
+      if (horasTotal < 3) {
+        score += 16;
+        motivos.push('você estudou pouco essa matéria');
+      } else if (horasTotal < 6) {
+        score += 7;
+      }
+      if (minutos7d < 90) {
+        score += 11;
+        motivos.push('o estudo recente está baixo');
+      }
+      if (notas.length) {
+        if (media < 6) {
+          score += 18;
+          motivos.push('a média está baixa');
+        } else if (media < 7) {
+          score += 8;
+          motivos.push('a média ainda não está confortável');
+        }
+      }
+      if (faltas > 0 || taxaPresenca < 80) {
+        score += Math.max(faltas * 4, taxaPresenca < 80 ? 10 : 0);
+        motivos.push(`presença em ${taxaPresenca}% das aulas`);
+      }
+
+      const tipoSugestao = provaProxima ? 'exercicios' : revisoes.length || topicosAtrasados.length ? 'revisao' : 'teoria';
+      const duracaoBase = provaProxima ? 60 : dificuldade >= 4 ? 50 : 40;
+      const metaSemanal = provaProxima ? 'priorize exercícios e correção de erros' : tarefasPendentes.length ? 'feche pendências e avance um conteúdo' : 'ganhe constância com teoria e prática';
+      const justificativaCurta = motivos.length ? motivos.slice(0, 3).join(', ') : 'está equilibrada, mas vale manter constância';
+
+      return {
+        nome,
+        score,
+        justificativaCurta: justificativaCurta.charAt(0).toUpperCase() + justificativaCurta.slice(1),
+        tipoSugestao,
+        duracaoBase,
+        metaSemanal,
+        provaProxima,
+        ultimaAula,
+        revisoesPendentes: revisoes.length,
+        tarefasPendentes: tarefasPendentes.length,
+        attendance: taxaPresenca,
+        media: Number.isFinite(media) ? media : 0,
+        planoRapido: provaProxima ? '15 min de revisão + 35 min de exercícios + 10 min corrigindo erros' : revisoes.length ? '20 min revisando anotações + 25 min de memória ativa' : '25 min teoria prática + 20 min exercícios'
+      };
+    }).sort((a, b) => b.score - a.score);
+  };
+
+  const originalAsk = proto.ask;
+  proto.ask = async function (pergunta) {
+    const texto = String(pergunta || '').trim();
+    const p = texto.toLowerCase();
+    const materia = this._findSubjectInQuestion(texto);
+    const memory = this.getMemorySnapshot();
+
+    if (p.includes('recuperação') || p.includes('recuperacao') || p.includes('anti procrast') || p.includes('procrast')) {
+      const plano = window.app?.getRecoveryPlan?.(3);
+      if (!plano) return 'Ainda não vi sinais fortes de acúmulo. Continue mantendo constância.';
+      return [
+        `Modo recuperação: ${plano.reason}.`,
+        ...plano.days.map((item, index) => `${index + 1}. ${item.date} — foco em ${item.focus}: ${item.action}. Extra: ${item.extra}.`)
+      ].join('\n');
+    }
+
+    if (p.includes('meta') || p.includes('metas')) {
+      const goals = window.app?.getStudyGoalsSnapshot?.();
+      if (!goals) return 'Cadastre mais dados para eu acompanhar suas metas.';
+      return `Metas atuais: ${goals.weeklyHours.toFixed(1)}h/${goals.goals.weeklyHours}h na semana, ${goals.monthlyHours.toFixed(1)}h/${goals.goals.monthlyHours}h no mês, ${goals.weeklyPomodoros}/${goals.goals.weeklyPomodoros} pomodoros e ${goals.weeklyReviewsDone}/${goals.goals.weeklyReviews} revisões.`;
+    }
+
+    if (p.includes('relatório') || p.includes('relatorio') || p.includes('resumo da semana')) {
+      const report = window.app?.getAutoReports?.();
+      if (!report) return 'Ainda faltam dados para um relatório confiável.';
+      return `${report.daily}
+
+${report.weekly}
+
+${report.monthly}`;
+    }
+
+    if (materia && (p.includes('próxima nota') || p.includes('proxima nota') || p.includes('quanto preciso'))) {
+      const perf = window.app?.getSubjectPerformance?.(materia.nome);
+      if (!perf) return `Não encontrei dados suficientes de ${materia.nome}.`;
+      return `Para ${materia.nome}, sua média atual está em ${perf.average.toFixed(1)}. Para buscar a meta desejada, a próxima nota ideal seria perto de ${perf.nextRequiredGrade}. ${perf.recommendation}`;
+    }
+
+    if (materia && (p.includes('como estou') || p.includes('situação') || p.includes('situacao'))) {
+      const perf = window.app?.getSubjectPerformance?.(materia.nome);
+      if (perf) {
+        return [
+          `Raio-x de ${materia.nome}:`,
+          `- média atual: ${perf.average > 0 ? perf.average.toFixed(1) : 'sem notas ainda'}`,
+          `- horas estudadas: ${perf.hours.toFixed(1)}h`,
+          `- presença: ${perf.attendance}%`,
+          `- tarefas pendentes: ${perf.tasksPending}`,
+          `- provas futuras: ${perf.upcomingExamsCount}`,
+          `- risco: ${perf.riskLevel} (${perf.riskReason})`,
+          `- recomendação: ${perf.recommendation}`
+        ].join('\n');
+      }
+    }
+
+    if (p.includes('memória') || p.includes('memoria') || p.includes('lembra do que eu preciso')) {
+      return `O que mais pede atenção agora: ${memory.weak.join(', ') || 'nenhuma matéria crítica'}. Provas próximas: ${memory.exams.join(', ') || 'nenhuma'}. Revisões de hoje: ${memory.reviews.join(', ') || 'nenhuma'}.`;
+    }
+
+    return originalAsk.call(this, pergunta);
+  };
+
+  proto.__mentorUpgradePatched = true;
+})();
