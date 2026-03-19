@@ -2725,3 +2725,270 @@ StudyLifeControl.prototype.excluirExtraCourse = async function(id) {
         showToast('Curso extra excluído!');
     }
 };
+
+
+// __advanced_dashboard_v4__
+(function () {
+    if (!window.StudyLifeControl || window.StudyLifeControl.prototype.__advancedDashboardPatched) return;
+    const proto = window.StudyLifeControl.prototype;
+
+    proto.ensureAdvancedData = function() {
+        this.data.settings = this.data.settings || {};
+        this.data.settings.studyGoals = this.data.settings.studyGoals || {
+            weeklyHours: Number(this.data.user?.horasMaximas || 4) * 5,
+            monthlyHours: Number(this.data.user?.horasMaximas || 4) * 20,
+            weeklyPomodoros: 10,
+            weeklyTasks: 8,
+            weeklyReviews: 6
+        };
+        return this.data.settings.studyGoals;
+    };
+
+    proto.getReviewItemsForDays = function(days = 7) {
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        return (this.data.reviews || []).filter(item => {
+            if (item?.concluida) return false;
+            const date = new Date(item?.data);
+            if (Number.isNaN(date.getTime())) return false;
+            date.setHours(0,0,0,0);
+            const diff = Math.round((date - today) / 86400000);
+            return diff >= 0 && diff <= days;
+        }).sort((a,b) => new Date(a.data) - new Date(b.data));
+    };
+
+    proto.getPomodoroCount = function(days = 7) {
+        const limit = Date.now() - (days * 86400000);
+        return (this.data.sessions || []).filter(s => {
+            const date = new Date(s?.data || 0).getTime();
+            return (s?.concluida || s?.status === 'concluida') && date >= limit && ['foco', 'pomodoro'].includes(String(s?.tipo || '').toLowerCase());
+        }).length;
+    };
+
+    proto.getCompletedTasksCount = function(days = 7) {
+        return (this.data.tasks || []).filter(t => !!t?.concluida).length;
+    };
+
+    proto.getCompletedReviewsCount = function(days = 7) {
+        const limit = Date.now() - (days * 86400000);
+        return (this.data.reviews || []).filter(r => {
+            if (!r?.concluida) return false;
+            const updated = new Date(r?.updatedAt || r?.data || 0).getTime();
+            return updated >= limit;
+        }).length;
+    };
+
+    proto.getStudyGoalsSnapshot = function() {
+        const goals = this.ensureAdvancedData();
+        const now = new Date();
+        const startWeek = new Date(now);
+        startWeek.setHours(0,0,0,0);
+        startWeek.setDate(now.getDate() - now.getDay());
+        const startMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+        const completedSessions = (this.data.sessions || []).filter(s => s?.concluida || s?.status === 'concluida');
+        const weeklyMinutes = completedSessions.filter(s => new Date(s.data) >= startWeek).reduce((a,s) => a + (Number(s?.duracao)||0), 0);
+        const monthlyMinutes = completedSessions.filter(s => new Date(s.data) >= startMonth).reduce((a,s) => a + (Number(s?.duracao)||0), 0);
+
+        const weeklyHours = weeklyMinutes / 60;
+        const monthlyHours = monthlyMinutes / 60;
+        const weeklyPomodoros = this.getPomodoroCount(7);
+        const weeklyTasksDone = this.getCompletedTasksCount(7);
+        const weeklyReviewsDone = this.getCompletedReviewsCount(7);
+
+        return {
+            goals,
+            weeklyHours,
+            monthlyHours,
+            weeklyPomodoros,
+            weeklyTasksDone,
+            weeklyReviewsDone,
+            progress: {
+                weeklyHours: goals.weeklyHours ? Math.min(100, Math.round((weeklyHours / goals.weeklyHours) * 100)) : 0,
+                monthlyHours: goals.monthlyHours ? Math.min(100, Math.round((monthlyHours / goals.monthlyHours) * 100)) : 0,
+                weeklyPomodoros: goals.weeklyPomodoros ? Math.min(100, Math.round((weeklyPomodoros / goals.weeklyPomodoros) * 100)) : 0,
+                weeklyTasks: goals.weeklyTasks ? Math.min(100, Math.round((weeklyTasksDone / goals.weeklyTasks) * 100)) : 0,
+                weeklyReviews: goals.weeklyReviews ? Math.min(100, Math.round((weeklyReviewsDone / goals.weeklyReviews) * 100)) : 0,
+            }
+        };
+    };
+
+    proto.saveStudyGoals = async function(partialGoals = {}) {
+        const goals = { ...this.ensureAdvancedData(), ...partialGoals };
+        this.data.settings.studyGoals = goals;
+        return dbService.saveData('settings', this.data.settings);
+    };
+
+    proto.getSubjectPerformance = function(subjectName) {
+        const subject = (this.data.subjects || []).find(s => s?.nome === subjectName);
+        if (!subject) return null;
+        const tasks = (this.data.tasks || []).filter(t => t?.materia === subjectName && !t?.concluida);
+        const exams = (this.data.exams || []).filter(e => e?.materia === subjectName && !e?.concluida).sort((a,b) => new Date(a.data) - new Date(b.data));
+        const sessions = (this.data.sessions || []).filter(s => s?.materia === subjectName && (s?.concluida || s?.status === 'concluida'));
+        const grades = (this.data.grades || []).filter(g => g?.materia === subjectName);
+        const reviewsPending = (this.data.reviews || []).filter(r => r?.materia === subjectName && !r?.concluida);
+        const diaries = (this.data.classDiaries || []).filter(d => d?.materia === subjectName).sort((a,b) => new Date(b.data) - new Date(a.data));
+        const upcomingExam = exams[0] || null;
+        const average = this.calcularMedia(grades);
+        const hours = sessions.reduce((a,s) => a + (Number(s?.duracao)||0), 0) / 60;
+        const attended = diaries.filter(d => d?.presenca === 'present').length;
+        const attendance = diaries.length ? Math.round((attended / diaries.length) * 100) : 100;
+        const lastStudy = sessions.sort((a,b) => new Date(b.data) - new Date(a.data))[0];
+        const daysWithoutStudy = lastStudy ? diasDesde(lastStudy.data) : null;
+        const risk = this.analyzeAcademicRisk().find(r => r.materia === subjectName) || null;
+
+        let recommendation = 'Manter constância com teoria e exercícios.';
+        if (upcomingExam && diasAte(upcomingExam.data) <= 7) recommendation = `Focar em ${subjectName} agora: revisar conteúdo + resolver questões até ${formatarData(upcomingExam.data)}.`;
+        else if (average > 0 && average < 6) recommendation = 'Prioridade alta: recuperar média com revisão ativa e lista de exercícios.';
+        else if (tasks.length >= 2) recommendation = 'Fechar pendências dessa matéria antes de abrir novos conteúdos.';
+        else if (reviewsPending.length) recommendation = 'Aproveitar revisões pendentes para fixar o conteúdo.';
+
+        return {
+            subject,
+            average,
+            hours,
+            tasksPending: tasks.length,
+            upcomingExam,
+            upcomingExamsCount: exams.length,
+            attendance,
+            absences: Math.max(0, diaries.length - attended),
+            reviewsPending: reviewsPending.length,
+            riskLevel: risk?.nivel || (average > 0 && average < 6 ? 'alto' : upcomingExam && diasAte(upcomingExam.data) <= 7 ? 'medio' : 'baixo'),
+            riskReason: risk?.motivo || (daysWithoutStudy !== null && daysWithoutStudy >= 7 ? `${daysWithoutStudy} dias sem estudar` : 'sem alerta forte agora'),
+            recommendation,
+            daysWithoutStudy,
+            lastDiary: diaries[0] || null,
+            nextRequiredGrade: this.estimateNextRequiredGrade(subjectName, Number(subject?.notaDesejada || 7))
+        };
+    };
+
+    proto.estimateNextRequiredGrade = function(subjectName, target = 7) {
+        const grades = (this.data.grades || []).filter(g => g?.materia === subjectName);
+        if (!grades.length) return Number(target).toFixed(1);
+        const totalWeight = grades.reduce((a,g) => a + (Number(g?.peso)||0), 0);
+        const weighted = grades.reduce((a,g) => a + ((Number(g?.valor)||0) * (Number(g?.peso)||0)), 0);
+        const remaining = Math.max(0, 100 - totalWeight);
+        if (!remaining) return '0.0';
+        const needed = (((Number(target) || 7) * 100) - weighted) / remaining;
+        return Math.max(0, needed).toFixed(1);
+    };
+
+    proto.getHojeInteligenteData = function() {
+        this.ensureAdvancedData();
+        const now = new Date();
+        const today = toDateString(now);
+        const goals = this.getStudyGoalsSnapshot();
+        const urgentTasks = this.getUrgentTasks().slice(0, 5);
+        const reviewsToday = this.getReviewItemsForDays(0);
+        const upcomingExams = this.getUpcomingExams(7).slice(0, 4);
+        const nextClass = window.scheduleManager?.getProximaAula?.() || null;
+        const currentClass = window.scheduleManager?.getAulaAtual?.() || null;
+        const suggestions = window.aiAssistant?.generateDailyPlan?.() || [];
+        const topSuggestion = suggestions[0] || null;
+        const pomodoroMinutes = topSuggestion ? Math.max(25, Math.min(90, Number(topSuggestion.duracao) || 45)) : 45;
+        const risk = this.analyzeAcademicRisk();
+        const overdueTasks = (this.data.tasks || []).filter(t => !t?.concluida && diasAte(t.dataLimite) < 0);
+        const lowStudy = (this.data.sessions || []).filter(s => s?.concluida && diasDesde(s.data) <= 7).reduce((a,s) => a + (Number(s?.duracao)||0), 0) / 60;
+        const focusToday = (this.data.dailyLogs || []).find(log => log?.data === today)?.foco || null;
+        const dailyTargetHours = Math.max(2, Math.min(8, Number(this.data.user?.horasMaximas) || 4));
+        const todayProgress = this.calcularProgressoHoje();
+        const antiProcrastination = (overdueTasks.length >= 2 || (risk.length >= 2 && lowStudy < 4))
+            ? this.getRecoveryPlan(3)
+            : null;
+
+        return {
+            today,
+            nextClass,
+            currentClass,
+            urgentTasks,
+            overdueTasks,
+            reviewsToday,
+            upcomingExams,
+            topSuggestion,
+            pomodoroMinutes,
+            dailyTargetHours,
+            todayProgress,
+            goals,
+            risk,
+            antiProcrastination,
+            focusToday
+        };
+    };
+
+    proto.getRecoveryPlan = function(days = 3) {
+        const priorities = (window.aiAssistant?.generateDailyPlan?.() || []).slice(0, Math.max(2, days));
+        const overdueTasks = (this.data.tasks || []).filter(t => !t?.concluida && diasAte(t.dataLimite) < 0).slice(0, 5);
+        const exams = this.getUpcomingExams(10).slice(0, 4);
+        const daysList = [];
+        for (let i = 0; i < days; i += 1) {
+            const date = new Date();
+            date.setDate(date.getDate() + i);
+            const main = priorities[i % Math.max(1, priorities.length)] || null;
+            daysList.push({
+                date: formatarData(date),
+                focus: main?.materia || 'Organização geral',
+                action: main ? `${main.tipo} por ${main.duracao} min` : '30 min para revisar pendências',
+                extra: overdueTasks[i] ? `Fechar tarefa: ${overdueTasks[i].titulo}` : exams[i] ? `Avançar em ${exams[i].materia}` : 'Separar materiais da próxima aula'
+            });
+        }
+        return {
+            level: overdueTasks.length >= 4 ? 'alto' : 'medio',
+            reason: overdueTasks.length ? `${overdueTasks.length} pendência(s) vencida(s)` : 'sinais de acúmulo em matérias importantes',
+            days: daysList
+        };
+    };
+
+    proto.getAutoReports = function() {
+        const goals = this.getStudyGoalsSnapshot();
+        const bySubject = this.calcularHorasPorMateria();
+        const strongest = bySubject[0]?.materia || 'nenhuma';
+        const weakest = this.data.subjects.map(s => ({ nome: s.nome, horas: bySubject.find(i => i.materia === s.nome)?.horas || 0 }))
+            .sort((a,b) => a.horas - b.horas)[0]?.nome || 'nenhuma';
+        const tasksDone = (this.data.tasks || []).filter(t => t?.concluida).length;
+        const tasksTotal = (this.data.tasks || []).length;
+        const reviewsToday = this.getReviewItemsForDays(0).length;
+        return {
+            daily: `Hoje você concluiu ${Number(this.calcularProgressoHoje().concluido).toFixed(1)}h de estudo e tem ${reviewsToday} revisão(ões) pendente(s).`,
+            weekly: `Essa semana você estudou ${goals.weeklyHours.toFixed(1)}h. A matéria mais forte foi ${strongest} e a mais negligenciada foi ${weakest}. Você concluiu ${tasksDone} de ${tasksTotal} tarefa(s).`,
+            monthly: `No mês atual você acumula ${goals.monthlyHours.toFixed(1)}h estudadas e ${goals.weeklyPomodoros} pomodoro(s) registrados nos últimos 7 dias.`
+        };
+    };
+
+    proto.getAcademicSituationSummary = function() {
+        const performances = (this.data.subjects || []).map(s => this.getSubjectPerformance(s.nome)).filter(Boolean);
+        const safe = performances.filter(p => p.riskLevel === 'baixo');
+        const attention = performances.filter(p => p.riskLevel === 'medio');
+        const risk = performances.filter(p => p.riskLevel === 'alto');
+        const avgAttendance = performances.length ? Math.round(performances.reduce((a,p) => a + p.attendance, 0) / performances.length) : 100;
+        const avgGradeItems = performances.filter(p => p.average > 0);
+        const generalAverage = avgGradeItems.length ? (avgGradeItems.reduce((a,p) => a + p.average, 0) / avgGradeItems.length).toFixed(1) : '0.0';
+        const weekPending = (this.data.tasks || []).filter(t => !t?.concluida && diasAte(t.dataLimite) <= 7).length + this.getReviewItemsForDays(7).length;
+        return { safe, attention, risk, avgAttendance, generalAverage, weekPending, performances };
+    };
+
+    const originalHandleClassDiarySubmit = proto.handleClassDiarySubmit;
+    proto.handleClassDiarySubmit = async function(e) {
+        e.preventDefault();
+        const diaryData = {
+            materia: document.getElementById('class-diary-materia')?.value,
+            data: document.getElementById('class-diary-data')?.value,
+            presenca: document.getElementById('class-diary-presenca')?.value,
+            conteudoExplicado: document.getElementById('class-diary-conteudo')?.value,
+            exerciciosPassados: document.getElementById('class-diary-exercicios')?.value,
+            entendi: document.getElementById('class-diary-entendi')?.value || '',
+            naoEntendi: document.getElementById('class-diary-nao-entendi')?.value || '',
+            duvidaPendente: document.getElementById('class-diary-duvida')?.value || '',
+            linksAnexos: document.getElementById('class-diary-links')?.value || '',
+            trabalhoAnunciado: document.getElementById('class-diary-trabalho')?.value,
+            dificuldade: parseInt(document.getElementById('class-diary-dificuldade')?.value, 10) || 3,
+            precisoRevisar: !!document.getElementById('class-diary-revisar')?.checked,
+            observacoes: document.getElementById('class-diary-observacoes')?.value
+        };
+        await window.classDiaryService?.registrarDiario(diaryData);
+        const modal = document.getElementById('modal-class-diary');
+        if (modal) modal.style.display = 'none';
+        this.loadView(this.currentView);
+    };
+
+    proto.__advancedDashboardPatched = true;
+})();
