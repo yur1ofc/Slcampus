@@ -1303,6 +1303,12 @@ class ViewRenderer {
                     <button class="btn-secondary" id="exportar-dados">
                         <i class="fas fa-download"></i> Exportar dados
                     </button>
+                    <button class="btn-secondary" id="importar-dados">
+                        <i class="fas fa-upload"></i> Importar backup
+                    </button>
+                    <button class="btn-secondary" id="carregar-demo-publica">
+                        <i class="fas fa-flask"></i> Carregar demo
+                    </button>
                     <button class="btn-danger" id="limpar-dados">
                         <i class="fas fa-trash"></i> Limpar todos os dados
                     </button>
@@ -1642,7 +1648,7 @@ class ViewRenderer {
                 </div>
                 <div class="view-actions-inline">
                     <button class="btn-secondary" id="btn-importar-ufob">
-                        <i class="fas fa-wand-magic-sparkles"></i> Completar com sugestão UFOB
+                        <i class="fas fa-wand-magic-sparkles"></i> Importar grade pronta
                     </button>
                     <button class="btn-primary" id="btn-novo-curriculum">
                         <i class="fas fa-plus"></i> Novo Componente
