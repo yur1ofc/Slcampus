@@ -2992,3 +2992,577 @@ StudyLifeControl.prototype.excluirExtraCourse = async function(id) {
 
     proto.__advancedDashboardPatched = true;
 })();
+
+
+const STUDY_LIFE_TEMPLATE_CATALOG = [
+    {
+        id: 'ufob-engenharia-civil',
+        universidade: 'UFOB',
+        curso: 'Engenharia Civil',
+        aliasesUniversidade: ['ufob', 'universidade federal do oeste da bahia'],
+        aliasesCurso: ['engenharia civil', 'eng civil'],
+        getCurriculum() {
+            return UFOB_ENGINEERING_CIVIL_REFERENCE.map(item => ({ ...item, prerequisitosLista: [...(item.prerequisitos || [])] }));
+        }
+    }
+];
+
+StudyLifeControl.prototype.getCourseTemplateCatalog = function() {
+    return STUDY_LIFE_TEMPLATE_CATALOG.map(template => ({
+        ...template,
+        curriculum: typeof template.getCurriculum === 'function'
+            ? template.getCurriculum()
+            : (template.curriculum || []).map(item => ({ ...item, prerequisitosLista: [...(item.prerequisitosLista || item.prerequisitos || [])] }))
+    }));
+};
+
+StudyLifeControl.prototype.getCourseTemplateById = function(templateId) {
+    return this.getCourseTemplateCatalog().find(template => template.id === templateId) || null;
+};
+
+StudyLifeControl.prototype.matchTemplateByProfile = function(universidade = '', curso = '') {
+    const uni = this.slugifyName(universidade);
+    const course = this.slugifyName(curso);
+    if (!uni && !course) return null;
+    return this.getCourseTemplateCatalog().find(template => {
+        const uniTokens = [template.universidade, ...(template.aliasesUniversidade || [])].map(value => this.slugifyName(value));
+        const courseTokens = [template.curso, ...(template.aliasesCurso || [])].map(value => this.slugifyName(value));
+        const uniOk = !uni || uniTokens.some(token => token && (token === uni || uni.includes(token) || token.includes(uni)));
+        const courseOk = !course || courseTokens.some(token => token && (token === course || course.includes(token) || token.includes(course)));
+        return uniOk && courseOk;
+    }) || null;
+};
+
+StudyLifeControl.prototype.buildCurriculumFromTemplate = function(template) {
+    if (!template) return [];
+    return (template.curriculum || []).map(item => this.normalizeCurriculumItem({
+        id: generateId(),
+        status: 'nao-cursada',
+        observacoes: '',
+        ...item,
+        prerequisitosLista: [...(item.prerequisitosLista || item.prerequisitos || [])]
+    }));
+};
+
+StudyLifeControl.prototype.getTemplateCurrentSemesterSubjects = function(template, semester) {
+    if (!template) return [];
+    const targetSemester = String(semester || '').trim();
+    return (template.curriculum || [])
+        .filter(item => String(item.semestre || '').trim() === targetSemester)
+        .map(item => ({
+            id: generateId(),
+            nome: item.nome,
+            dificuldade: this.extractCourseLevel(item.nome) >= 3 ? 4 : 3,
+            peso: item.tipo === 'obrigatoria' ? 4 : 3,
+            notaDesejada: 7
+        }));
+};
+
+StudyLifeControl.prototype.populateSetupSubjects = function(subjects = []) {
+    const container = document.getElementById('materias-container');
+    if (!container) return;
+    container.innerHTML = '';
+    if (!subjects.length) {
+        this.addMateriaField();
+        return;
+    }
+    subjects.forEach(subject => {
+        this.addMateriaField();
+        const item = container.lastElementChild;
+        if (!item) return;
+        const nameInput = item.querySelector('.materia-nome');
+        const diffInput = item.querySelector('.materia-dificuldade');
+        const weightInput = item.querySelector('.materia-peso');
+        const targetInput = item.querySelector('.materia-nota-desejada');
+        if (nameInput) nameInput.value = subject.nome || '';
+        if (diffInput) diffInput.value = subject.dificuldade || 3;
+        if (weightInput) weightInput.value = subject.peso || 3;
+        if (targetInput) targetInput.value = subject.notaDesejada || 7;
+    });
+};
+
+StudyLifeControl.prototype.getCurriculumTemplatePreviewHtml = function(templateId, semester) {
+    const template = this.getCourseTemplateById(templateId);
+    const preview = document.getElementById('setup-template-preview');
+    if (!preview) return;
+    if (!template) {
+        preview.innerHTML = '<div class="setup-import-preview-empty">Escolha uma faculdade e um curso da lista ou use o importador por texto logo abaixo.</div>';
+        return;
+    }
+    const total = template.curriculum.length;
+    const semesterItems = this.getTemplateCurrentSemesterSubjects(template, semester);
+    const totalHoras = template.curriculum.reduce((acc, item) => acc + (Number(item.cargaHoraria) || 0), 0);
+    preview.innerHTML = `
+        <div class="setup-import-preview-card">
+            <div>
+                <strong>${escapeHtml(template.universidade)} • ${escapeHtml(template.curso)}</strong>
+                <p>${total} componentes cadastrados no modelo e ${semesterItems.length} matérias encontradas para o ${escapeHtml(String(semester || '?'))}º semestre.</p>
+            </div>
+            <div class="setup-import-kpis">
+                <span><strong>${totalHoras}h</strong><small>carga total</small></span>
+                <span><strong>${semesterItems.length}</strong><small>matérias do semestre</small></span>
+            </div>
+        </div>
+        <div class="setup-import-subject-tags">
+            ${semesterItems.slice(0, 8).map(item => `<span class="chip">${escapeHtml(item.nome)}</span>`).join('') || '<span class="setup-import-preview-empty">Semestre ainda não selecionado ou sem disciplinas no modelo.</span>'}
+        </div>
+    `;
+};
+
+StudyLifeControl.prototype.renderSetupSmartImporter = function() {
+    const form = document.getElementById('setup-form');
+    if (!form) return;
+
+    let section = document.getElementById('setup-smart-import-section');
+    if (!section) {
+        section = document.createElement('div');
+        section.className = 'form-section setup-smart-import-section';
+        section.id = 'setup-smart-import-section';
+        section.innerHTML = `
+            <h2><i class="fas fa-wand-magic-sparkles"></i> Importação rápida da grade</h2>
+            <p class="setup-import-helper">Escolha um modelo pronto quando existir ou cole a grade copiada do PDF/site da faculdade para acelerar o cadastro.</p>
+            <div class="form-row setup-import-row">
+                <div class="form-group">
+                    <label>Modelo de faculdade</label>
+                    <select id="setup-template-id">
+                        <option value="">Selecionar depois</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>O que fazer</label>
+                    <select id="setup-template-mode">
+                        <option value="merge">Somar ao que eu já preencher</option>
+                        <option value="replace">Substituir a grade curricular por este modelo</option>
+                    </select>
+                </div>
+            </div>
+            <div class="setup-import-actions">
+                <button type="button" class="btn-secondary" id="btn-detectar-template-setup"><i class="fas fa-bullseye"></i> Detectar pelo curso</button>
+                <button type="button" class="btn-primary" id="btn-aplicar-template-setup"><i class="fas fa-layer-group"></i> Preencher matérias do semestre</button>
+            </div>
+            <div id="setup-template-preview" class="setup-template-preview"></div>
+            <div class="setup-import-textbox">
+                <label for="setup-curriculum-text"><strong>Ou cole a grade em texto</strong></label>
+                <textarea id="setup-curriculum-text" rows="6" placeholder="Cole aqui o texto copiado do PDF/site, com semestres e disciplinas. Ex:\n1º semestre\nCálculo I - 60h\nGeometria Analítica - 90h\n\n2º semestre\nFísica I - 60h"></textarea>
+                <div class="setup-import-actions">
+                    <button type="button" class="btn-secondary" id="btn-processar-grade-texto"><i class="fas fa-file-import"></i> Ler texto e montar grade</button>
+                </div>
+                <div id="setup-text-import-feedback" class="setup-import-feedback"></div>
+            </div>
+        `;
+        const targetSection = form.querySelectorAll('.form-section')[1] || form.firstElementChild;
+        targetSection?.insertAdjacentElement('afterend', section);
+    }
+
+    const select = document.getElementById('setup-template-id');
+    if (select && !select.dataset.ready) {
+        const options = this.getCourseTemplateCatalog().map(template => `
+            <option value="${escapeHtml(template.id)}">${escapeHtml(template.universidade)} • ${escapeHtml(template.curso)}</option>
+        `).join('');
+        select.innerHTML = '<option value="">Selecionar depois</option>' + options;
+        select.dataset.ready = '1';
+    }
+
+    const syncPreview = () => {
+        this.pendingSetupTemplateId = document.getElementById('setup-template-id')?.value || '';
+        this.getCurriculumTemplatePreviewHtml(this.pendingSetupTemplateId, document.getElementById('semestre')?.value || '');
+    };
+
+    document.getElementById('setup-template-id')?.addEventListener('change', syncPreview);
+    document.getElementById('semestre')?.addEventListener('change', syncPreview);
+
+    document.getElementById('btn-detectar-template-setup')?.addEventListener('click', () => {
+        const match = this.matchTemplateByProfile(document.getElementById('universidade')?.value, document.getElementById('curso')?.value);
+        if (!match) {
+            showToast('Ainda não achei um modelo pronto para esse curso. Você pode colar a grade em texto.', 'warning');
+            return;
+        }
+        const templateSelect = document.getElementById('setup-template-id');
+        if (templateSelect) templateSelect.value = match.id;
+        this.pendingSetupTemplateId = match.id;
+        syncPreview();
+        showToast(`Modelo encontrado: ${match.universidade} • ${match.curso}`);
+    });
+
+    document.getElementById('btn-aplicar-template-setup')?.addEventListener('click', () => {
+        const templateId = document.getElementById('setup-template-id')?.value || this.pendingSetupTemplateId;
+        const template = this.getCourseTemplateById(templateId);
+        const semester = document.getElementById('semestre')?.value || '';
+        if (!template) {
+            showToast('Selecione um modelo primeiro ou cole a grade em texto.', 'warning');
+            return;
+        }
+        document.getElementById('universidade').value = document.getElementById('universidade').value || template.universidade;
+        document.getElementById('curso').value = document.getElementById('curso').value || template.curso;
+        const semesterSubjects = this.getTemplateCurrentSemesterSubjects(template, semester);
+        if (!semesterSubjects.length) {
+            showToast('Esse modelo não trouxe matérias para o semestre escolhido. Mesmo assim a grade curricular será salva no fim do setup.', 'info');
+        } else {
+            this.populateSetupSubjects(semesterSubjects);
+            showToast(`${semesterSubjects.length} matéria(s) do semestre foram preenchidas.`);
+        }
+        this.pendingSetupTemplateId = template.id;
+        this.pendingSetupImportedCurriculum = this.buildCurriculumFromTemplate(template);
+        syncPreview();
+    });
+
+    document.getElementById('btn-processar-grade-texto')?.addEventListener('click', () => {
+        const raw = document.getElementById('setup-curriculum-text')?.value || '';
+        const parsed = this.parseCurriculumText(raw);
+        const feedback = document.getElementById('setup-text-import-feedback');
+        if (!parsed.length) {
+            if (feedback) feedback.textContent = 'Não consegui identificar disciplinas no texto. Tente colar com semestres e uma disciplina por linha.';
+            showToast('Não consegui entender a grade colada.', 'warning');
+            return;
+        }
+        this.pendingSetupImportedCurriculum = parsed.map(item => this.normalizeCurriculumItem(item));
+        this.pendingSetupTemplateId = 'text-import';
+        const semester = document.getElementById('semestre')?.value || '';
+        const semesterSubjects = parsed
+            .filter(item => String(item.semestre || '') === String(semester || ''))
+            .map(item => ({ id: generateId(), nome: item.nome, dificuldade: 3, peso: item.tipo === 'obrigatoria' ? 4 : 3, notaDesejada: 7 }));
+        if (semesterSubjects.length) this.populateSetupSubjects(semesterSubjects);
+        if (feedback) feedback.textContent = `${parsed.length} componente(s) identificados. ${semesterSubjects.length} matéria(s) do semestre atual foram preenchidas.`;
+        showToast('Grade em texto interpretada com sucesso!');
+    });
+
+    syncPreview();
+};
+
+StudyLifeControl.prototype.parseCurriculumText = function(rawText = '') {
+    const lines = String(rawText || '')
+        .split(/\r?\n/)
+        .map(line => line.replace(/[•▪●◦►]/g, ' ').trim())
+        .filter(Boolean);
+    if (!lines.length) return [];
+
+    let currentSemester = '';
+    const result = [];
+
+    lines.forEach(line => {
+        const semesterMatch = line.match(/(?:^|\b)(\d{1,2})\s*(?:º|o)?\s*sem(?:estre)?\b/i) || line.match(/sem(?:estre)?\s*(\d{1,2})/i);
+        if (semesterMatch) {
+            currentSemester = semesterMatch[1];
+            return;
+        }
+
+        if (/^(obrigat[oó]rias?|optativas?|eletivas?|extens[aã]o|atividades? complementares?)$/i.test(line)) return;
+
+        const cargaMatch = line.match(/(\d{2,3})\s*h\b/i);
+        const codigoMatch = line.match(/\b([A-Z]{2,}\d{0,4})\b/);
+        const tipo = /optativa|eletiva/i.test(line) ? 'optativa' : /extens[aã]o/i.test(line) ? 'extensao' : /atividade complementar/i.test(line) ? 'atividade-complementar' : 'obrigatoria';
+        let nome = line
+            .replace(/^(\d+[\.)-]\s*)/, '')
+            .replace(/\b(\d{2,3})\s*h\b/ig, '')
+            .replace(/\b(CH|CARGA HOR[ÁA]RIA)\b[:\s-]*/ig, '')
+            .replace(/\b([A-Z]{2,}\d{0,4})\b/g, '')
+            .replace(/[-–—|]+/g, ' ')
+            .replace(/\s{2,}/g, ' ')
+            .trim();
+        if (!nome || nome.length < 4) return;
+        result.push(this.normalizeCurriculumItem({
+            id: generateId(),
+            nome,
+            codigo: codigoMatch ? codigoMatch[1] : '',
+            semestre: currentSemester || '',
+            cargaHoraria: cargaMatch ? parseInt(cargaMatch[1], 10) : 0,
+            creditos: 0,
+            tipo,
+            prerequisitosLista: [],
+            status: 'nao-cursada',
+            observacoes: ''
+        }));
+    });
+
+    const unique = new Map();
+    result.forEach(item => {
+        const key = `${this.slugifyName(item.nome)}::${item.semestre}`;
+        if (!unique.has(key)) unique.set(key, item);
+    });
+    return [...unique.values()];
+};
+
+StudyLifeControl.prototype.mergeCurriculumItems = function(baseItems = [], incomingItems = []) {
+    const merged = [...baseItems.map(item => this.normalizeCurriculumItem(item))];
+    const map = new Map(merged.map(item => [this.slugifyName(item.nome), item]));
+    let added = 0;
+    incomingItems.forEach(item => {
+        const normalized = this.normalizeCurriculumItem(item);
+        const key = this.slugifyName(normalized.nome);
+        if (map.has(key)) {
+            const target = map.get(key);
+            target.semestre = target.semestre || normalized.semestre;
+            target.cargaHoraria = Number(target.cargaHoraria) || Number(normalized.cargaHoraria) || 0;
+            target.creditos = Number(target.creditos) || Number(normalized.creditos) || 0;
+            target.codigo = target.codigo || normalized.codigo;
+            target.tipo = target.tipo || normalized.tipo;
+            const prereqs = [...new Set([...(target.prerequisitosLista || []), ...(normalized.prerequisitosLista || [])])];
+            target.prerequisitosLista = prereqs;
+            target.prerequisitos = prereqs.join(' | ');
+        } else {
+            merged.push(normalized);
+            map.set(key, normalized);
+            added += 1;
+        }
+    });
+    return { merged, added };
+};
+
+StudyLifeControl.prototype.applyCurriculumImport = async function(items = [], mode = 'merge') {
+    const incoming = (items || []).map(item => this.normalizeCurriculumItem(item));
+    if (!incoming.length) {
+        showToast('Nada para importar na grade curricular.', 'warning');
+        return false;
+    }
+    this.normalizeCurriculumInMemory();
+    const nextCurriculum = mode === 'replace'
+        ? incoming
+        : this.mergeCurriculumItems(this.data.curriculum || [], incoming).merged;
+    this.data.curriculum = nextCurriculum;
+    const success = await dbService.saveData('curriculum', this.data.curriculum);
+    if (success) this.loadView('grade-curricular');
+    return success;
+};
+
+StudyLifeControl.prototype.showCurriculumImportWizard = function() {
+    const existing = document.getElementById('curriculum-import-overlay');
+    existing?.remove();
+    const overlay = document.createElement('div');
+    overlay.id = 'curriculum-import-overlay';
+    overlay.className = 'slc-overlay';
+    const options = this.getCourseTemplateCatalog().map(template => `<option value="${escapeHtml(template.id)}">${escapeHtml(template.universidade)} • ${escapeHtml(template.curso)}</option>`).join('');
+    overlay.innerHTML = `
+        <div class="slc-overlay-card">
+            <div class="slc-overlay-header">
+                <div>
+                    <h3><i class="fas fa-file-import"></i> Importar grade curricular</h3>
+                    <p>Escolha um modelo pronto ou cole o texto copiado do PDF/site da faculdade.</p>
+                </div>
+                <button type="button" class="icon-btn" id="close-curriculum-import">×</button>
+            </div>
+            <div class="slc-overlay-body">
+                <div class="form-group">
+                    <label>Modelo pronto</label>
+                    <select id="curriculum-import-template">
+                        <option value="">Selecionar modelo</option>
+                        ${options}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Modo de importação</label>
+                    <select id="curriculum-import-mode">
+                        <option value="merge">Somar ao que já existe</option>
+                        <option value="replace">Substituir grade atual</option>
+                    </select>
+                </div>
+                <div class="slc-overlay-actions">
+                    <button type="button" class="btn-secondary" id="btn-curriculum-detect-profile"><i class="fas fa-bullseye"></i> Detectar pelo meu perfil</button>
+                    <button type="button" class="btn-primary" id="btn-curriculum-import-template"><i class="fas fa-layer-group"></i> Importar modelo</button>
+                </div>
+                <div class="form-group">
+                    <label>Importação por texto</label>
+                    <textarea id="curriculum-import-text" rows="8" placeholder="Cole aqui a matriz curricular copiada do PDF/site."></textarea>
+                </div>
+                <div class="slc-overlay-actions">
+                    <button type="button" class="btn-secondary" id="btn-curriculum-import-text"><i class="fas fa-wand-magic-sparkles"></i> Ler texto e importar</button>
+                </div>
+                <div id="curriculum-import-feedback" class="setup-import-feedback"></div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const close = () => overlay.remove();
+    overlay.querySelector('#close-curriculum-import')?.addEventListener('click', close);
+    overlay.addEventListener('click', e => {
+        if (e.target === overlay) close();
+    });
+
+    overlay.querySelector('#btn-curriculum-detect-profile')?.addEventListener('click', () => {
+        const match = this.matchTemplateByProfile(this.data.user?.universidade, this.data.user?.curso);
+        if (!match) {
+            showToast('Ainda não existe modelo pronto para esse perfil. Use o campo de texto.', 'warning');
+            return;
+        }
+        overlay.querySelector('#curriculum-import-template').value = match.id;
+        showToast(`Modelo detectado: ${match.universidade} • ${match.curso}`);
+    });
+
+    overlay.querySelector('#btn-curriculum-import-template')?.addEventListener('click', async () => {
+        const template = this.getCourseTemplateById(overlay.querySelector('#curriculum-import-template')?.value || '');
+        const mode = overlay.querySelector('#curriculum-import-mode')?.value || 'merge';
+        if (!template) {
+            showToast('Selecione um modelo antes de importar.', 'warning');
+            return;
+        }
+        const success = await this.applyCurriculumImport(this.buildCurriculumFromTemplate(template), mode);
+        if (success) {
+            if (!this.data.settings) this.data.settings = {};
+            this.data.settings.lastCurriculumTemplate = template.id;
+            await dbService.saveData('settings', this.data.settings);
+            showToast('Grade importada com sucesso!');
+            close();
+        }
+    });
+
+    overlay.querySelector('#btn-curriculum-import-text')?.addEventListener('click', async () => {
+        const raw = overlay.querySelector('#curriculum-import-text')?.value || '';
+        const parsed = this.parseCurriculumText(raw);
+        const feedback = overlay.querySelector('#curriculum-import-feedback');
+        if (!parsed.length) {
+            if (feedback) feedback.textContent = 'Não consegui entender a estrutura da grade colada.';
+            showToast('Não consegui entender o texto da grade.', 'warning');
+            return;
+        }
+        const mode = overlay.querySelector('#curriculum-import-mode')?.value || 'merge';
+        const success = await this.applyCurriculumImport(parsed, mode);
+        if (success) {
+            if (feedback) feedback.textContent = `${parsed.length} componente(s) importados pela leitura do texto.`;
+            showToast('Grade importada a partir do texto!');
+            close();
+        }
+    });
+};
+
+StudyLifeControl.prototype.ensureBackupImportInput = function() {
+    let input = document.getElementById('backup-import-input');
+    if (input) return input;
+    input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json,.json';
+    input.id = 'backup-import-input';
+    input.style.display = 'none';
+    input.addEventListener('change', async e => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        await this.importarDadosDeArquivo(file);
+        input.value = '';
+    });
+    document.body.appendChild(input);
+    return input;
+};
+
+StudyLifeControl.prototype.importarDadosDeArquivo = async function(file) {
+    const raw = await file.text();
+    let parsed;
+    try {
+        parsed = JSON.parse(raw);
+    } catch (error) {
+        showToast('Arquivo JSON inválido.', 'error');
+        return false;
+    }
+    const nextData = { ...DEFAULT_APP_DATA(), ...parsed, settings: { ...DEFAULT_APP_DATA().settings, ...(parsed.settings || {}) } };
+    this.data = nextData;
+    this.normalizeCurriculumInMemory();
+    const success = await dbService.saveAllData(this.data);
+    if (success) {
+        this.updateSidebarInfo();
+        this.loadView(this.currentView || 'dashboard');
+        showToast('Backup importado com sucesso!');
+    }
+    return success;
+};
+
+StudyLifeControl.prototype.criarDadosDemo = function() {
+    const demo = DEFAULT_APP_DATA();
+    demo.user = {
+        nome: 'Aluno Demo',
+        curso: 'Engenharia Civil',
+        universidade: 'UFOB',
+        semestre: '1',
+        turnoPrincipal: 'noite',
+        diasPreferidos: ['seg', 'ter', 'qua', 'qui', 'sex'],
+        horasMaximas: 4,
+        horarioSono: '23:30 - 07:00',
+        tempoDeslocamento: 25,
+        tipoRotina: 'so-estuda',
+        nivelDisciplina: 'medio',
+        dificuldadeAtual: 'organizacao',
+        createdAt: new Date().toISOString(),
+        streak: 5,
+        lastStudyDate: toDateString(new Date())
+    };
+    demo.subjects = [
+        { id: generateId(), nome: 'Cálculo Diferencial I', dificuldade: 5, peso: 5, notaDesejada: 8 },
+        { id: generateId(), nome: 'Geometria Analítica', dificuldade: 4, peso: 4, notaDesejada: 7.5 },
+        { id: generateId(), nome: 'Introdução ao Desenho Técnico', dificuldade: 3, peso: 4, notaDesejada: 7 }
+    ];
+    const hoje = new Date();
+    const amanha = new Date(hoje); amanha.setDate(hoje.getDate() + 1);
+    const daqui3 = new Date(hoje); daqui3.setDate(hoje.getDate() + 3);
+    demo.tasks = [
+        { id: generateId(), titulo: 'Lista 1 de limites', materia: 'Cálculo Diferencial I', prioridade: 'alta', dataLimite: toDateString(amanha), estimativa: 90, concluida: false },
+        { id: generateId(), titulo: 'Resumo de vetores', materia: 'Geometria Analítica', prioridade: 'media', dataLimite: toDateString(daqui3), estimativa: 60, concluida: false }
+    ];
+    demo.exams = [
+        { id: generateId(), titulo: 'Prova 1', materia: 'Cálculo Diferencial I', tipo: 'prova', data: toDateString(daqui3), peso: 30, importancia: 'alta' }
+    ];
+    demo.sessions = [
+        { id: generateId(), materia: 'Cálculo Diferencial I', tipo: 'exercicios', duracao: 50, data: toDateString(hoje), topico: 'Limites', concluida: true },
+        { id: generateId(), materia: 'Geometria Analítica', tipo: 'teoria', duracao: 45, data: toDateString(amanha), topico: 'Vetores', concluida: false }
+    ];
+    demo.curriculum = this.buildCurriculumFromTemplate(this.getCourseTemplateById('ufob-engenharia-civil'));
+    demo.materials = [
+        { id: generateId(), titulo: 'Playlist de Limites', materia: 'Cálculo Diferencial I', tipo: 'vídeo', conteudo: 'https://youtube.com/', criadoEm: new Date().toISOString() }
+    ];
+    demo.settings.lastCurriculumTemplate = 'ufob-engenharia-civil';
+    return demo;
+};
+
+StudyLifeControl.prototype.carregarDemoPublica = async function() {
+    if (!confirm('Isso vai substituir os dados atuais pela demonstração. Continuar?')) return false;
+    this.data = this.criarDadosDemo();
+    const success = await dbService.saveAllData(this.data);
+    if (success) {
+        document.getElementById('setup-screen')?.style.setProperty('display', 'none');
+        document.getElementById('main-dashboard')?.style.setProperty('display', 'block');
+        this.updateSidebarInfo();
+        this.loadView('dashboard');
+        showToast('Demo carregada!');
+    }
+    return success;
+};
+
+(() => {
+    const originalRenderSetupForm = StudyLifeControl.prototype.renderSetupForm;
+    StudyLifeControl.prototype.renderSetupForm = function(...args) {
+        const response = originalRenderSetupForm ? originalRenderSetupForm.apply(this, args) : undefined;
+        this.renderSetupSmartImporter();
+        return response;
+    };
+
+    const originalHandleSetupSubmit = StudyLifeControl.prototype.handleSetupSubmit;
+    StudyLifeControl.prototype.handleSetupSubmit = async function(e) {
+        const selectedTemplateId = document.getElementById('setup-template-id')?.value || this.pendingSetupTemplateId || '';
+        const importMode = document.getElementById('setup-template-mode')?.value || 'merge';
+        if (!this.data.settings) this.data.settings = {};
+        if (selectedTemplateId && selectedTemplateId !== 'text-import') {
+            this.data.settings.lastCurriculumTemplate = selectedTemplateId;
+            const template = this.getCourseTemplateById(selectedTemplateId);
+            if (template) {
+                const imported = this.buildCurriculumFromTemplate(template);
+                this.data.curriculum = importMode === 'replace'
+                    ? imported
+                    : this.mergeCurriculumItems(this.data.curriculum || [], imported).merged;
+            }
+        } else if (Array.isArray(this.pendingSetupImportedCurriculum) && this.pendingSetupImportedCurriculum.length) {
+            this.data.curriculum = importMode === 'replace'
+                ? this.pendingSetupImportedCurriculum.map(item => this.normalizeCurriculumItem(item))
+                : this.mergeCurriculumItems(this.data.curriculum || [], this.pendingSetupImportedCurriculum).merged;
+        }
+        return originalHandleSetupSubmit.call(this, e);
+    };
+
+    const originalSetupViewEvents = StudyLifeControl.prototype.setupViewEvents;
+    StudyLifeControl.prototype.setupViewEvents = function(view, ...rest) {
+        const result = originalSetupViewEvents ? originalSetupViewEvents.call(this, view, ...rest) : undefined;
+        if (view === 'grade-curricular') {
+            document.getElementById('btn-importar-ufob')?.addEventListener('click', () => this.showCurriculumImportWizard());
+        }
+        if (view === 'configuracoes') {
+            document.getElementById('importar-dados')?.addEventListener('click', () => this.ensureBackupImportInput().click());
+            document.getElementById('carregar-demo-publica')?.addEventListener('click', () => this.carregarDemoPublica());
+        }
+        return result;
+    };
+})();
