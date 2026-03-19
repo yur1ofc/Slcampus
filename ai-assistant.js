@@ -652,6 +652,56 @@
 // __mentor_upgrade_v4__
 (function () {
   if (!window.AIAssistant || window.AIAssistant.prototype.__mentorUpgradePatched) return;
+
+  const safeToDate = (value) => {
+    if (!value) return null;
+    const date = value instanceof Date ? value : new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  };
+
+  const getTodayDateOnly = () => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  };
+
+  const diffDays = (value) => {
+    if (typeof window.diasAte === 'function') {
+      try {
+        return window.diasAte(value);
+      } catch (_) {}
+    }
+    const date = safeToDate(value);
+    if (!date) return Infinity;
+    const only = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    return Math.round((only - getTodayDateOnly()) / 86400000);
+  };
+
+  const daysSince = (value) => {
+    if (!value) return Infinity;
+    const date = safeToDate(value);
+    if (!date) return Infinity;
+    return Math.floor((Date.now() - date.getTime()) / 86400000);
+  };
+
+  const weightedAverage = (items = []) => {
+    if (typeof window.calcularMediaPonderada === 'function') {
+      try {
+        return window.calcularMediaPonderada(items);
+      } catch (_) {}
+    }
+    const valid = items
+      .map(item => ({
+        nota: Number(item?.nota ?? item?.notaObtida ?? item?.valor),
+        peso: Number(item?.peso ?? 1)
+      }))
+      .filter(item => Number.isFinite(item.nota) && Number.isFinite(item.peso) && item.peso > 0);
+
+    if (!valid.length) return 0;
+    const totalPeso = valid.reduce((acc, item) => acc + item.peso, 0);
+    const total = valid.reduce((acc, item) => acc + (item.nota * item.peso), 0);
+    return totalPeso ? total / totalPeso : 0;
+  };
+
   const proto = window.AIAssistant.prototype;
 
   proto.getMemorySnapshot = function () {
