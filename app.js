@@ -249,10 +249,7 @@ class StudyLifeControl {
             const success = await dbService.saveAllData(this.data);
 
             if (success) {
-                document.getElementById('setup-screen')?.style.setProperty('display', 'none');
-                document.getElementById('main-dashboard')?.style.setProperty('display', 'block');
-                this.updateSidebarInfo();
-                this.loadView('dashboard');
+                await this.ensurePostSetupReady();
                 showToast('Configuração concluída!');
             }
         } catch (error) {
@@ -3514,15 +3511,33 @@ StudyLifeControl.prototype.carregarDemoPublica = async function() {
     this.data = this.criarDadosDemo();
     const success = await dbService.saveAllData(this.data);
     if (success) {
-        document.getElementById('setup-screen')?.style.setProperty('display', 'none');
-        document.getElementById('main-dashboard')?.style.setProperty('display', 'block');
-        this.updateSidebarInfo();
-        this.loadView('dashboard');
+        await this.ensurePostSetupReady();
         showToast('Demo carregada!');
     }
     return success;
 };
 
+
+StudyLifeControl.prototype.ensurePostSetupReady = async function() {
+    document.getElementById('setup-screen')?.style.setProperty('display', 'none');
+    document.getElementById('main-dashboard')?.style.setProperty('display', 'block');
+
+    await this.loadData();
+
+    if (!this.viewRenderer && typeof ViewRenderer !== 'undefined') {
+        this.viewRenderer = new ViewRenderer(this);
+    }
+
+    if (!this.initialized) {
+        this.setupEventListeners();
+        this.applyHeavyMode?.();
+        this.initialized = true;
+    }
+
+    this.updateSidebarInfo();
+    this.loadView('dashboard');
+    document.dispatchEvent(new Event('app-ready'));
+};
 (() => {
     const originalRenderSetupForm = StudyLifeControl.prototype.renderSetupForm;
     StudyLifeControl.prototype.renderSetupForm = function(...args) {
