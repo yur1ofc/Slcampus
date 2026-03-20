@@ -1,116 +1,99 @@
-// auth.js - fluxo de autenticação mais defensivo para novos usuários
+// auth.js - autenticação e roteamento inicial
 let currentUser = null;
 
-async function handleAuthenticatedUser(user) {
-  const loginScreen = document.getElementById('login-screen');
-  const setupScreen = document.getElementById('setup-screen');
-  const mainDashboard = document.getElementById('main-dashboard');
+function getEl(id) {
+  return document.getElementById(id);
+}
 
+function setDisplay(id, value) {
+  const el = getEl(id);
+  if (el) el.style.display = value;
+}
+
+async function handleSignedInUser(user) {
   currentUser = user;
-  if (loginScreen) loginScreen.style.display = 'none';
+  setDisplay('login-screen', 'none');
 
   if (!window.app) {
     console.error('window.app ainda não existe');
-    if (setupScreen) setupScreen.style.display = 'flex';
-    if (mainDashboard) mainDashboard.style.display = 'none';
+    window.showToast?.('App ainda não inicializado. Recarregue a página.', 'error');
     return;
   }
 
-  let data = null;
-  try {
-    data = await window.dbService.loadUserData(user.uid);
-  } catch (error) {
-    console.error('Erro ao carregar dados do usuário:', error);
-  }
-
+  const data = await window.dbService.loadUserData(user.uid);
   const hasUserProfile = !!(data && data.user && (data.user.nome || data.user.curso || data.user.universidade));
 
   if (!hasUserProfile) {
-    if (setupScreen) setupScreen.style.display = 'flex';
-    if (mainDashboard) mainDashboard.style.display = 'none';
+    setDisplay('setup-screen', 'flex');
+    setDisplay('main-dashboard', 'none');
 
-    if (window.app && typeof window.app.renderSetupForm === 'function') {
-      try {
-        window.app.data = data || window.app.data || {};
-        if (!window.app.data.user) {
-          window.app.data.user = {
-            nome: user.displayName || '',
-            curso: '',
-            universidade: '',
-            semestre: ''
-          };
-        } else if (!window.app.data.user.nome && user.displayName) {
-          window.app.data.user.nome = user.displayName;
-        }
-        window.app.renderSetupForm();
-        document.dispatchEvent(new Event('app-ready'));
-      } catch (error) {
-        console.error('Erro ao renderizar setup inicial:', error);
-      }
+    if (typeof window.app.renderSetupForm === 'function') {
+      window.app.renderSetupForm();
     }
+    document.dispatchEvent(new Event('app-ready'));
     return;
   }
 
-  if (setupScreen) setupScreen.style.display = 'none';
-  if (mainDashboard) mainDashboard.style.display = 'block';
+  setDisplay('setup-screen', 'none');
+  setDisplay('main-dashboard', 'block');
   await window.app.init();
 }
 
-auth.onAuthStateChanged(async (user) => {
-  const loginScreen = document.getElementById('login-screen');
-  const setupScreen = document.getElementById('setup-screen');
-  const mainDashboard = document.getElementById('main-dashboard');
+function handleSignedOutUser() {
+  currentUser = null;
+  setDisplay('login-screen', 'flex');
+  setDisplay('setup-screen', 'none');
+  setDisplay('main-dashboard', 'none');
+}
 
+auth.onAuthStateChanged(async (user) => {
   try {
-    if (window.showLoading) window.showLoading();
+    window.showLoading?.();
 
     if (user) {
-      await handleAuthenticatedUser(user);
+      await handleSignedInUser(user);
     } else {
-      currentUser = null;
-      if (loginScreen) loginScreen.style.display = 'flex';
-      if (setupScreen) setupScreen.style.display = 'none';
-      if (mainDashboard) mainDashboard.style.display = 'none';
+      handleSignedOutUser();
     }
   } catch (error) {
     console.error('Erro na autenticação/inicialização:', error);
-    if (window.showToast) {
-      window.showToast('Erro ao inicializar aplicação. Recarregue a página.', 'error');
-    }
+    window.showToast?.('Erro ao inicializar aplicação. Recarregue a página.', 'error');
   } finally {
-    if (window.hideLoading) window.hideLoading();
+    window.hideLoading?.();
   }
 });
 
 async function loginWithGoogle() {
   try {
-    if (window.showLoading) window.showLoading();
+    window.showLoading?.();
     await auth.signInWithPopup(googleProvider);
   } catch (error) {
     console.error('Erro no login:', error);
-    if (window.showToast) {
-      window.showToast('Erro ao fazer login: ' + error.message, 'error');
-    }
+    const message = error && error.message ? error.message : 'Falha ao entrar com Google';
+    window.showToast?.('Erro ao fazer login: ' + message, 'error');
   } finally {
-    if (window.hideLoading) window.hideLoading();
+    window.hideLoading?.();
   }
 }
 
 async function logout() {
   try {
     await auth.signOut();
-    if (window.showToast) window.showToast('Desconectado com sucesso', 'success');
+    window.showToast?.('Desconectado com sucesso', 'success');
   } catch (error) {
     console.error('Erro no logout:', error);
-    if (window.showToast) {
-      window.showToast('Erro ao sair: ' + error.message, 'error');
-    }
+    const message = error && error.message ? error.message : 'Falha ao sair';
+    window.showToast?.('Erro ao sair: ' + message, 'error');
   }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('login-google')?.addEventListener('click', loginWithGoogle);
-  document.getElementById('logout-btn')?.addEventListener('click', logout);
+  getEl('login-google')?.addEventListener('click', loginWithGoogle);
+  getEl('logout-btn')?.addEventListener('click', logout);
 });
 
-window.authService = { getCurrentUser: () => currentUser };
+window.authService = {
+  getCurrentUser: () => currentUser,
+  loginWithGoogle,
+  logout
+};
