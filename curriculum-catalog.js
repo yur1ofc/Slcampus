@@ -86,10 +86,7 @@
       .replace(/[\u0300-\u036f]/g, '')
       .toLowerCase()
       .replace(/\b(i|ii|iii|iv|v|vi|vii|viii|ix|x)\b/g, function (m) {
-        return ({
-          i: '1', ii: '2', iii: '3', iv: '4', v: '5',
-          vi: '6', vii: '7', viii: '8', ix: '9', x: '10'
-        }[m] || m);
+        return ({ i:'1', ii:'2', iii:'3', iv:'4', v:'5', vi:'6', vii:'7', viii:'8', ix:'9', x:'10' }[m] || m);
       })
       .replace(/[^a-z0-9]+/g, ' ')
       .replace(/\s+/g, ' ')
@@ -100,74 +97,67 @@
     return slugify(faculdade) + '__' + slugify(curso);
   }
 
-  function ensureArray(v) {
-    return Array.isArray(v) ? v : [];
-  }
-
-  function uid() {
-    return (window.generateId ? window.generateId() : 'id_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9));
-  }
-
-  function ensureObject(v) {
-    return v && typeof v === 'object' ? v : {};
-  }
+  function ensureArray(v) { return Array.isArray(v) ? v : []; }
+  function ensureObject(v) { return v && typeof v === 'object' ? v : {}; }
+  function uid() { return window.generateId ? window.generateId() : 'id_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9); }
 
   function ensureUserDataCompatibility(app) {
     if (!app) return;
     app.data = ensureObject(app.data);
     app.data.user = ensureObject(app.data.user);
 
-    const defaults = {
-      universidade: '',
-      curso: '',
-      semestre: '',
-      matrizVersion: ''
-    };
-
-    Object.keys(defaults).forEach(function (key) {
-      if (app.data.user[key] == null) app.data.user[key] = defaults[key];
+    const userDefaults = { universidade: '', curso: '', semestre: '', matrizVersion: '' };
+    Object.keys(userDefaults).forEach(function (key) {
+      if (app.data.user[key] == null) app.data.user[key] = userDefaults[key];
     });
 
-    const arrays = [
-      'curriculum',
-      'subjects',
-      'tasks',
-      'exams',
-      'sessions',
-      'grades',
-      'reviews',
-      'classDiaries',
-      'dailyLogs',
-      'materials',
-      'attendance'
-    ];
-
-    arrays.forEach(function (key) {
-      if (!Array.isArray(app.data[key])) app.data[key] = [];
-    });
+    ['curriculum','subjects','sessions','tasks','exams','materials','grades','habits','learningMap','classSchedule','dailyLogs','classDiaries','reviews','extraCourses']
+      .forEach(function (key) {
+        if (!Array.isArray(app.data[key])) app.data[key] = [];
+      });
 
     app.data.curriculum = dedupeCurriculum(app.data.curriculum);
   }
 
-  function dedupeCurriculum(items) {
-    const seen = new Map();
-    const result = [];
+  function preferStatus(a, b) {
+    const rank = { concluida: 3, cursando: 2, 'nao-cursada': 1, 'nao cursada': 1, pendente: 1 };
+    const sa = String(a || 'nao-cursada').toLowerCase();
+    const sb = String(b || 'nao-cursada').toLowerCase();
+    return (rank[sb] || 0) > (rank[sa] || 0) ? b : a;
+  }
 
-    ensureArray(items).forEach(function (item) {
-      if (!item || !item.nome) return;
-      const normalized = normalizeCurriculumItem(item);
-      const key = normalizeName(normalized.nome) + '__' + String(normalized.codigo || '').trim().toUpperCase();
+  function normalizeCurriculumItem(item) {
+    item = ensureObject(item);
+    const prereqText = ensureArray(item.prerequisitosLista).length
+      ? item.prerequisitosLista
+      : String(item.prerequisitos || '').split(/[;,]/).map(function (s) { return s.trim(); }).filter(Boolean);
 
-      if (seen.has(key)) {
-        const idx = seen.get(key);
-        result[idx] = mergeCurriculumItem(result[idx], normalized);
-      } else {
-        seen.set(key, result.length);
-        result.push(normalized);
-      }
-    });
+    return {
+      id: item.id || uid(),
+      nome: String(item.nome || item.title || '').trim(),
+      codigo: String(item.codigo || '').trim().toUpperCase(),
+      semestre: String(item.semestre || item.periodo || '').trim(),
+      cargaHoraria: Number(item.cargaHoraria || item.ch || 0) || 0,
+      creditos: Number(item.creditos || 0) || 0,
+      tipo: item.tipo || 'obrigatoria',
+      status: item.status || 'nao-cursada',
+      prerequisitosLista: Array.from(new Set(prereqText.map(function (s) { return s.trim(); }).filter(Boolean))),
+      origemTemplate: item.origemTemplate || null,
+      editadoPeloUsuario: !!item.editadoPeloUsuario,
+      observacoes: item.observacoes || ''
+    };
+  }
 
-    return result;
+  function sanitizeCatalogSubject(item) {
+    const normalized = normalizeCurriculumItem(item);
+    normalized.status = 'nao-cursada';
+    normalized.editadoPeloUsuario = false;
+    normalized.origemTemplate = normalized.origemTemplate || 'community';
+    return normalized;
+  }
+
+  function sanitizeCatalogSubjects(items) {
+    return dedupeCurriculum(ensureArray(items).map(sanitizeCatalogSubject));
   }
 
   function mergeCurriculumItem(base, extra) {
@@ -189,43 +179,28 @@
     };
   }
 
-  function preferStatus(a, b) {
-    const rank = { concluida: 3, cursando: 2, 'nao-cursada': 1, 'nao cursada': 1, pendente: 1 };
-    const sa = String(a || 'nao-cursada').toLowerCase();
-    const sb = String(b || 'nao-cursada').toLowerCase();
-    return (rank[sb] || 0) > (rank[sa] || 0) ? b : a;
-  }
-
-  function normalizeCurriculumItem(item) {
-    item = ensureObject(item);
-
-    const prereqText = ensureArray(item.prerequisitosLista).length
-      ? item.prerequisitosLista
-      : String(item.prerequisitos || '')
-          .split(/[;,]/)
-          .map(function (s) { return s.trim(); })
-          .filter(Boolean);
-
-    return {
-      id: item.id || uid(),
-      nome: String(item.nome || item.title || '').trim(),
-      codigo: String(item.codigo || '').trim().toUpperCase(),
-      semestre: String(item.semestre || item.periodo || '').trim(),
-      cargaHoraria: Number(item.cargaHoraria || item.ch || 0) || 0,
-      creditos: Number(item.creditos || 0) || 0,
-      tipo: item.tipo || 'obrigatoria',
-      status: item.status || 'nao-cursada',
-      prerequisitosLista: Array.from(new Set(prereqText.map(function (s) { return s.trim(); }).filter(Boolean))),
-      origemTemplate: item.origemTemplate || null,
-      editadoPeloUsuario: !!item.editadoPeloUsuario,
-      observacoes: item.observacoes || ''
-    };
+  function dedupeCurriculum(items) {
+    const seen = new Map();
+    const result = [];
+    ensureArray(items).forEach(function (item) {
+      if (!item || !item.nome) return;
+      const normalized = normalizeCurriculumItem(item);
+      const key = normalizeName(normalized.nome) + '__' + String(normalized.codigo || '').trim().toUpperCase();
+      if (seen.has(key)) {
+        const idx = seen.get(key);
+        result[idx] = mergeCurriculumItem(result[idx], normalized);
+      } else {
+        seen.set(key, result.length);
+        result.push(normalized);
+      }
+    });
+    return result;
   }
 
   function mergeIntoUserCurriculum(app, incoming, sourceLabel) {
     ensureUserDataCompatibility(app);
 
-    const normalizedIncoming = dedupeCurriculum(ensureArray(incoming).map(function (item) {
+    const normalizedIncoming = sanitizeCatalogSubjects(ensureArray(incoming).map(function (item) {
       return { ...item, origemTemplate: sourceLabel || item.origemTemplate || null };
     }));
 
@@ -240,58 +215,46 @@
     normalizedIncoming.forEach(function (item) {
       const key = normalizeName(item.nome) + '__' + String(item.codigo || '').trim().toUpperCase();
       if (map.has(key)) {
-        map.set(key, mergeCurriculumItem(map.get(key), item));
+        const merged = mergeCurriculumItem(map.get(key), item);
+        if (!map.get(key).status || map.get(key).status === 'nao-cursada') {
+          merged.status = 'nao-cursada';
+        } else {
+          merged.status = map.get(key).status;
+        }
+        map.set(key, merged);
       } else {
-        map.set(key, normalizeCurriculumItem(item));
+        map.set(key, sanitizeCatalogSubject(item));
       }
     });
 
     app.data.curriculum = Array.from(map.values());
-
     if (typeof app.normalizeCurriculumInMemory === 'function') {
       app.normalizeCurriculumInMemory();
     } else {
       app.data.curriculum = dedupeCurriculum(app.data.curriculum);
     }
-
     return app.data.curriculum;
   }
 
   function toSubject(curriculumItem) {
-    return {
-      id: uid(),
-      nome: curriculumItem.nome,
-      dificuldade: 3,
-      peso: 3,
-      notaDesejada: 7
-    };
+    return { id: uid(), nome: curriculumItem.nome, dificuldade: 3, peso: 3, notaDesejada: 7 };
   }
 
   function maybePopulateSubjectsFromSemester(app) {
     ensureUserDataCompatibility(app);
-
-    const semester = String(app.data && app.data.user && app.data.user.semestre || '').trim();
+    const semester = String(app.data.user.semestre || '').trim();
     if (!semester) return;
-
     const current = ensureArray(app.data.subjects);
     const existingNames = new Set(current.map(function (s) { return normalizeName(s.nome); }));
-
     const additions = ensureArray(app.data.curriculum)
       .filter(function (c) { return String(c.semestre || '').trim() === semester; })
       .filter(function (c) { return !existingNames.has(normalizeName(c.nome)); })
       .map(toSubject);
-
-    if (additions.length) {
-      app.data.subjects = current.concat(additions);
-    }
+    if (additions.length) app.data.subjects = current.concat(additions);
   }
 
   function parseTextToCurriculum(text, defaultSemester) {
-    const lines = String(text || '')
-      .split(/\n+/)
-      .map(function (line) { return line.trim(); })
-      .filter(Boolean);
-
+    const lines = String(text || '').split(/\n+/).map(function (line) { return line.trim(); }).filter(Boolean);
     const items = [];
     let currentSemester = String(defaultSemester || '').trim();
 
@@ -301,7 +264,6 @@
         currentSemester = semMatch[1];
         return;
       }
-
       if (/^(matriz|grade|curso|faculdade|universidade|disciplina[s]?|componentes?)\b/i.test(line)) return;
 
       const cargaMatch = line.match(/(\d{2,3})\s*h\b/i);
@@ -321,7 +283,7 @@
 
       if (!cleaned || cleaned.length < 3) return;
 
-      items.push(normalizeCurriculumItem({
+      items.push(sanitizeCatalogSubject({
         nome: cleaned,
         codigo: codeMatch ? codeMatch[1] : '',
         semestre: currentSemester || '',
@@ -340,7 +302,6 @@
     if (!items.length) {
       return '<div class="catalog-warning">Nada útil foi encontrado no texto. Tente colar linha por linha, de preferência com nome da disciplina e carga horária.</div>';
     }
-
     return `
       <h4>Prévia da importação (${items.length} componentes)</h4>
       <div class="catalog-preview-list">
@@ -360,7 +321,6 @@
 
   function ensureModal() {
     if (document.getElementById('catalog-community-modal')) return;
-
     const overlay = document.createElement('div');
     overlay.id = 'catalog-community-modal';
     overlay.className = 'catalog-modal-overlay';
@@ -384,7 +344,6 @@
               <input id="catalog-curso" type="text" placeholder="Ex: Engenharia Civil">
             </div>
           </div>
-
           <div class="catalog-grid" style="margin-top:14px">
             <div class="catalog-field">
               <label for="catalog-semestre-base">Semestre atual do aluno</label>
@@ -402,7 +361,6 @@
               </select>
             </div>
           </div>
-
           <div id="catalog-paste-area" class="catalog-field" style="margin-top:14px;display:none">
             <label for="catalog-paste-text">Cole aqui o texto do PDF/site/fluxograma</label>
             <textarea id="catalog-paste-text" placeholder="Exemplo:
@@ -411,11 +369,9 @@ Cálculo I - 60h
 Física I - 60h
 Geometria Analítica - 60h"></textarea>
           </div>
-
           <div class="catalog-preview" id="catalog-preview">
             <div class="catalog-small">Selecione uma ação e gere a prévia.</div>
           </div>
-
           <div class="catalog-footer">
             <div class="catalog-small" id="catalog-feedback">O sistema une sua grade pessoal com o catálogo comunitário sem apagar o que você já organizou.</div>
             <div style="display:flex;gap:10px;flex-wrap:wrap">
@@ -426,34 +382,23 @@ Geometria Analítica - 60h"></textarea>
         </div>
       </div>
     `;
-
     document.body.appendChild(overlay);
-
-    overlay.addEventListener('click', function (e) {
-      if (e.target === overlay) hideModal();
-    });
-
-    const closeBtn = document.getElementById('catalog-modal-close');
-    const modeSelect = document.getElementById('catalog-action-mode');
-
-    if (closeBtn) closeBtn.addEventListener('click', hideModal);
-    if (modeSelect) modeSelect.addEventListener('change', updateModeUI);
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) hideModal(); });
+    document.getElementById('catalog-modal-close').addEventListener('click', hideModal);
+    document.getElementById('catalog-action-mode').addEventListener('change', updateModeUI);
   }
 
   function showModal(prefill) {
     ensureModal();
     const overlay = document.getElementById('catalog-community-modal');
     const app = window.app;
-
     document.getElementById('catalog-faculdade').value = (prefill && prefill.faculdade) || (app && app.data && app.data.user && app.data.user.universidade) || '';
     document.getElementById('catalog-curso').value = (prefill && prefill.curso) || (app && app.data && app.data.user && app.data.user.curso) || '';
     document.getElementById('catalog-semestre-base').value = (prefill && prefill.semestre) || (app && app.data && app.data.user && app.data.user.semestre) || '';
     document.getElementById('catalog-action-mode').value = (prefill && prefill.mode) || 'load';
     document.getElementById('catalog-paste-text').value = '';
-
     updateModeUI();
     document.getElementById('catalog-preview').innerHTML = '<div class="catalog-small">Clique em "Gerar prévia" para ver o que será importado ou compartilhado.</div>';
-
     overlay.style.display = 'flex';
   }
 
@@ -469,37 +414,26 @@ Geometria Analítica - 60h"></textarea>
   }
 
   function currentCatalogTemplate(faculdade, curso) {
-    const key = catalogKey(faculdade, curso);
-    return COMMUNITY_BOOTSTRAP[key] || null;
+    return COMMUNITY_BOOTSTRAP[catalogKey(faculdade, curso)] || null;
   }
 
-  function getDbInstance() {
-    return window.db || (typeof db !== 'undefined' ? db : null);
-  }
-
-  function getAuthInstance() {
-    return window.auth || (typeof auth !== 'undefined' ? auth : null);
-  }
+  function getDbInstance() { return window.db || (typeof db !== 'undefined' ? db : null); }
+  function getAuthInstance() { return window.auth || (typeof auth !== 'undefined' ? auth : null); }
 
   function attachDbExtensions() {
     if (!window.dbService || window.dbService.__communityCatalogPatched) return;
-
     const dbService = window.dbService;
 
     dbService.getCommunityCatalog = async function (faculdade, curso) {
       const key = catalogKey(faculdade, curso);
       const bootstrap = currentCatalogTemplate(faculdade, curso);
       const dbRef = getDbInstance();
-
       try {
         if (!dbRef) return bootstrap;
         const snap = await dbRef.collection('community_catalogs').doc(key).get();
-
         if (!snap.exists) return bootstrap;
-
         const data = snap.data() || {};
-        const subjects = ensureArray(data.subjects).map(normalizeCurriculumItem);
-
+        const subjects = sanitizeCatalogSubjects(data.subjects || []);
         return {
           key: key,
           faculdade: data.faculdade || faculdade,
@@ -507,7 +441,7 @@ Geometria Analítica - 60h"></textarea>
           confidence: Number(data.confidence || 0),
           version: data.version || '',
           source: 'firestore',
-          subjects: dedupeCurriculum(bootstrap ? bootstrap.subjects.concat(subjects) : subjects),
+          subjects: sanitizeCatalogSubjects(bootstrap ? bootstrap.subjects.concat(subjects) : subjects),
           stats: data.stats || {}
         };
       } catch (error) {
@@ -518,59 +452,49 @@ Geometria Analítica - 60h"></textarea>
 
     dbService.saveCommunityCatalog = async function (faculdade, curso, subjects, meta) {
       const key = catalogKey(faculdade, curso);
-      const normalizedSubjects = dedupeCurriculum(subjects);
+      const normalizedSubjects = sanitizeCatalogSubjects(subjects);
       const payload = {
         key: key,
         faculdade: faculdade,
         curso: curso,
         subjects: normalizedSubjects,
         updatedAt: new Date().toISOString(),
-        version: meta && meta.version || '',
-        confidence: Number(meta && meta.confidence || 0.55),
-        stats: {
-          usersCount: Number(meta && meta.usersCount || 1),
-          componentsCount: normalizedSubjects.length
-        }
+        version: (meta && meta.version) || '',
+        confidence: Number((meta && meta.confidence) || 0.55),
+        stats: { usersCount: Number((meta && meta.usersCount) || 1), componentsCount: normalizedSubjects.length }
       };
-
       const dbRef = getDbInstance();
       if (!dbRef) return payload;
-
       try {
         await dbRef.collection('community_catalogs').doc(key).set(payload, { merge: true });
       } catch (error) {
         console.error('Erro ao salvar catálogo comunitário:', error);
       }
-
       return payload;
     };
 
     dbService.submitCommunityContribution = async function (faculdade, curso, subjects, extra) {
       const authRef = getAuthInstance();
       const user = authRef ? authRef.currentUser : null;
-
       const payload = {
         faculdade: faculdade,
         curso: curso,
         key: catalogKey(faculdade, curso),
-        subjects: dedupeCurriculum(subjects),
+        subjects: sanitizeCatalogSubjects(subjects),
         submittedAt: new Date().toISOString(),
         sourceUserId: user ? user.uid : null,
-        version: extra && extra.version || '',
-        semester: extra && extra.semester || '',
-        mode: extra && extra.mode || 'manual',
+        version: (extra && extra.version) || '',
+        semester: (extra && extra.semester) || '',
+        mode: (extra && extra.mode) || 'manual',
         count: ensureArray(subjects).length
       };
-
       const dbRef = getDbInstance();
       if (!dbRef) return payload;
-
       try {
         await dbRef.collection('community_catalog_submissions').add(payload);
       } catch (error) {
         console.error('Erro ao enviar contribuição:', error);
       }
-
       return payload;
     };
 
@@ -592,17 +516,14 @@ Geometria Analítica - 60h"></textarea>
     }
 
     let items = [];
-
     if (mode === 'load') {
       const catalog = await window.dbService.getCommunityCatalog(faculdade, curso);
-      items = dedupeCurriculum(catalog && catalog.subjects || []);
-
+      items = sanitizeCatalogSubjects((catalog && catalog.subjects) || []);
       if (!items.length) {
         preview.innerHTML = '<div class="catalog-warning">Ainda não existe uma grade comunitária forte para esse curso. Você pode colar um texto da matriz ou compartilhar sua grade atual para começar a base.</div>';
         feedback.textContent = 'Sem catálogo encontrado. Você ainda pode criar a primeira versão comunitária.';
         return { mode: mode, items: [] };
       }
-
       preview.innerHTML = buildPreviewHtml(items) + `<div class="catalog-success">Catálogo encontrado para ${escapeHtml(curso)} em ${escapeHtml(faculdade)}.</div>`;
       feedback.textContent = items.length + ' componentes prontos para entrar na sua grade pessoal.';
       return { mode: mode, items: items, faculdade: faculdade, curso: curso, semester: semester };
@@ -612,18 +533,14 @@ Geometria Analítica - 60h"></textarea>
       const text = document.getElementById('catalog-paste-text').value;
       items = parseTextToCurriculum(text, semester);
       preview.innerHTML = buildPreviewHtml(items);
-      feedback.textContent = items.length
-        ? 'Encontrados ' + items.length + ' componentes a partir do texto colado.'
-        : 'Nenhum componente identificado ainda.';
+      feedback.textContent = items.length ? 'Encontrados ' + items.length + ' componentes a partir do texto colado.' : 'Nenhum componente identificado ainda.';
       return { mode: mode, items: items, faculdade: faculdade, curso: curso, semester: semester };
     }
 
     if (mode === 'share') {
-      items = dedupeCurriculum(app && app.data && app.data.curriculum || []);
+      items = sanitizeCatalogSubjects(app && app.data && app.data.curriculum || []);
       preview.innerHTML = buildPreviewHtml(items) + `<div class="catalog-success">Sua grade atual será enviada como contribuição para ${escapeHtml(curso)} em ${escapeHtml(faculdade)}.</div>`;
-      feedback.textContent = items.length
-        ? items.length + ' componentes da sua grade serão compartilhados como base comunitária.'
-        : 'Sua grade atual ainda está vazia.';
+      feedback.textContent = items.length ? items.length + ' componentes da sua grade serão compartilhados como base comunitária.' : 'Sua grade atual ainda está vazia.';
       return { mode: mode, items: items, faculdade: faculdade, curso: curso, semester: semester };
     }
 
@@ -637,7 +554,6 @@ Geometria Analítica - 60h"></textarea>
         await window.dbService.saveAllData(app.data);
         return;
       }
-
       if (typeof window.dbService.saveData === 'function') {
         const keys = Object.keys(app.data || {});
         for (const key of keys) {
@@ -664,84 +580,66 @@ Geometria Analítica - 60h"></textarea>
 
     if (mode === 'load' || mode === 'paste') {
       if (!items.length) {
-        window.showToast && window.showToast('Nada para importar ainda.', 'warning');
+        if (window.showToast) window.showToast('Nada para importar ainda.', 'warning');
         return;
       }
-
       mergeIntoUserCurriculum(app, items, catalogKey(faculdade, curso));
       maybePopulateSubjectsFromSemester(app);
-
-      if (app.data.user) {
-        app.data.user.universidade = faculdade;
-        app.data.user.curso = curso;
-        if (semester && !app.data.user.semestre) app.data.user.semestre = semester;
-      }
-
+      app.data.user.universidade = faculdade;
+      app.data.user.curso = curso;
+      if (semester && !app.data.user.semestre) app.data.user.semestre = semester;
       await saveAppData(app);
-
-      if (typeof app.loadView === 'function') {
-        app.loadView('grade-curricular');
-      }
-
+      if (typeof app.loadView === 'function') app.loadView('grade-curricular');
       hideModal();
-      window.showToast && window.showToast('Grade importada com ' + items.length + ' componentes.', 'success');
-
-      if (mode === 'paste') {
-        await syncCurrentCurriculumToCommunity({ faculdade: faculdade, curso: curso, mode: 'paste' });
-      }
-
+      if (window.showToast) window.showToast('Grade importada com ' + items.length + ' componentes.', 'success');
+      if (mode === 'paste') await syncCurrentCurriculumToCommunity({ faculdade: faculdade, curso: curso, mode: 'paste' });
       return;
     }
 
     if (mode === 'share') {
       if (!items.length) {
-        window.showToast && window.showToast('Sua grade ainda está vazia.', 'warning');
+        if (window.showToast) window.showToast('Sua grade ainda está vazia.', 'warning');
         return;
       }
-
       await syncCurrentCurriculumToCommunity({ faculdade: faculdade, curso: curso, mode: 'share' });
       hideModal();
     }
   }
 
   async function syncCurrentCurriculumToCommunity(params) {
-    const faculdade = params && params.faculdade || '';
-    const curso = params && params.curso || '';
-    const mode = params && params.mode || 'manual';
-
+    const faculdade = (params && params.faculdade) || '';
+    const curso = (params && params.curso) || '';
+    const mode = (params && params.mode) || 'manual';
     const app = window.app;
     if (!app || !faculdade || !curso || !window.dbService) return;
-
     ensureUserDataCompatibility(app);
 
-    const userCurriculum = dedupeCurriculum(app.data.curriculum || []);
+    const userCurriculum = sanitizeCatalogSubjects(app.data.curriculum || []);
     if (!userCurriculum.length) return;
 
     await window.dbService.submitCommunityContribution(faculdade, curso, userCurriculum, {
-      version: app.data.user && app.data.user.matrizVersion || '',
-      semester: app.data.user && app.data.user.semestre || '',
+      version: app.data.user.matrizVersion || '',
+      semester: app.data.user.semestre || '',
       mode: mode
     });
 
     const existing = await window.dbService.getCommunityCatalog(faculdade, curso);
-    const merged = dedupeCurriculum([].concat(existing && existing.subjects || [], userCurriculum));
+    const merged = sanitizeCatalogSubjects([].concat(existing && existing.subjects || [], userCurriculum));
 
     await window.dbService.saveCommunityCatalog(faculdade, curso, merged, {
-      version: app.data.user && app.data.user.matrizVersion || '',
+      version: app.data.user.matrizVersion || '',
       confidence: existing && existing.subjects && existing.subjects.length ? 0.72 : 0.6,
       usersCount: ((existing && existing.stats && existing.stats.usersCount) || 0) + 1
     });
 
-    window.showToast && window.showToast('Sua grade foi compartilhada para fortalecer o catálogo comunitário.', 'success');
+    if (window.showToast) window.showToast('Sua grade foi compartilhada para fortalecer o catálogo comunitário.', 'success');
   }
 
   function injectSetupShortcuts() {
     const form = document.getElementById('setup-form');
     if (!form || document.getElementById('setup-import-shortcuts')) return;
-
     const basicSection = form.querySelector('.form-section');
     if (!basicSection || !basicSection.parentNode) return;
-
     const box = document.createElement('div');
     box.id = 'setup-import-shortcuts';
     box.className = 'catalog-hero';
@@ -762,38 +660,32 @@ Geometria Analítica - 60h"></textarea>
         <button type="button" class="catalog-btn ghost" id="setup-open-catalog-paste">Colar fluxograma</button>
       </div>
     `;
-
     basicSection.parentNode.insertBefore(box, basicSection.nextSibling);
 
     const btnLoad = document.getElementById('setup-open-catalog-load');
     const btnPaste = document.getElementById('setup-open-catalog-paste');
 
-    if (btnLoad) {
-      btnLoad.addEventListener('click', function () {
-        showModal({
-          faculdade: document.getElementById('universidade') && document.getElementById('universidade').value || '',
-          curso: document.getElementById('curso') && document.getElementById('curso').value || '',
-          semestre: document.getElementById('semestre') && document.getElementById('semestre').value || '',
-          mode: 'load'
-        });
+    if (btnLoad) btnLoad.addEventListener('click', function () {
+      showModal({
+        faculdade: document.getElementById('universidade') && document.getElementById('universidade').value || '',
+        curso: document.getElementById('curso') && document.getElementById('curso').value || '',
+        semestre: document.getElementById('semestre') && document.getElementById('semestre').value || '',
+        mode: 'load'
       });
-    }
+    });
 
-    if (btnPaste) {
-      btnPaste.addEventListener('click', function () {
-        showModal({
-          faculdade: document.getElementById('universidade') && document.getElementById('universidade').value || '',
-          curso: document.getElementById('curso') && document.getElementById('curso').value || '',
-          semestre: document.getElementById('semestre') && document.getElementById('semestre').value || '',
-          mode: 'paste'
-        });
+    if (btnPaste) btnPaste.addEventListener('click', function () {
+      showModal({
+        faculdade: document.getElementById('universidade') && document.getElementById('universidade').value || '',
+        curso: document.getElementById('curso') && document.getElementById('curso').value || '',
+        semestre: document.getElementById('semestre') && document.getElementById('semestre').value || '',
+        mode: 'paste'
       });
-    }
+    });
   }
 
   function patchViewRenderer() {
     if (!window.ViewRenderer || window.ViewRenderer.prototype.__communityCatalogPatched) return;
-
     const proto = window.ViewRenderer.prototype;
     const originalRenderGradeCurricular = proto.renderGradeCurricular;
     const originalRenderConfiguracoes = proto.renderConfiguracoes;
@@ -803,7 +695,6 @@ Geometria Analítica - 60h"></textarea>
         const original = originalRenderGradeCurricular.call(this);
         const faculdade = this.app && this.app.data && this.app.data.user && this.app.data.user.universidade || 'sua faculdade';
         const curso = this.app && this.app.data && this.app.data.user && this.app.data.user.curso || 'seu curso';
-
         const hero = `
           <section class="catalog-hero">
             <div>
@@ -821,7 +712,6 @@ Geometria Analítica - 60h"></textarea>
               <button class="catalog-btn ghost" id="btn-community-paste">Colar texto/PDF</button>
             </div>
           </section>`;
-
         return hero + original;
       };
     }
@@ -847,18 +737,13 @@ Geometria Analítica - 60h"></textarea>
 
   function patchApp() {
     if (!window.StudyLifeControl || window.StudyLifeControl.prototype.__communityCatalogPatched) return;
-
     const proto = window.StudyLifeControl.prototype;
 
     if (typeof proto.init === 'function') {
       const originalInit = proto.init;
       proto.init = async function () {
         const result = await originalInit.apply(this, arguments);
-        try {
-          ensureUserDataCompatibility(this);
-        } catch (error) {
-          console.error('Erro ao garantir compatibilidade dos dados:', error);
-        }
+        try { ensureUserDataCompatibility(this); } catch (error) { console.error('Erro ao garantir compatibilidade dos dados:', error); }
         return result;
       };
     }
@@ -867,28 +752,19 @@ Geometria Analítica - 60h"></textarea>
       const originalHandleSetupSubmit = proto.handleSetupSubmit;
       proto.handleSetupSubmit = async function (e) {
         await originalHandleSetupSubmit.call(this, e);
-
         try {
           ensureUserDataCompatibility(this);
-
           const faculdade = this.data && this.data.user && this.data.user.universidade;
           const curso = this.data && this.data.user && this.data.user.curso;
-
           if (!faculdade || !curso) return;
           if (ensureArray(this.data.curriculum).length) return;
-
           const catalog = await window.dbService.getCommunityCatalog(faculdade, curso);
           if (!catalog || !catalog.subjects || !catalog.subjects.length) return;
-
           mergeIntoUserCurriculum(this, catalog.subjects, catalog.key);
           maybePopulateSubjectsFromSemester(this);
           await saveAppData(this);
-
-          if (this.currentView === 'grade-curricular' || this.currentView === 'dashboard') {
-            this.loadView(this.currentView);
-          }
-
-          window.showToast && window.showToast('Grade pronta importada automaticamente para ' + curso + '.', 'success');
+          if (this.currentView === 'grade-curricular' || this.currentView === 'dashboard') this.loadView(this.currentView);
+          if (window.showToast) window.showToast('Grade pronta importada automaticamente para ' + curso + '.', 'success');
         } catch (error) {
           console.error('Erro ao importar catálogo no setup:', error);
         }
@@ -899,20 +775,14 @@ Geometria Analítica - 60h"></textarea>
       const originalHandleCurriculumSubmit = proto.handleCurriculumSubmit;
       proto.handleCurriculumSubmit = async function (e) {
         await originalHandleCurriculumSubmit.call(this, e);
-
         try {
           ensureUserDataCompatibility(this);
           this.data.curriculum = dedupeCurriculum(this.data.curriculum || []);
-
-          if (typeof window.dbService.saveData === 'function') {
-            await window.dbService.saveData('curriculum', this.data.curriculum);
-          }
-
+          if (typeof window.dbService.saveData === 'function') await window.dbService.saveData('curriculum', this.data.curriculum);
           const faculdade = this.data && this.data.user && this.data.user.universidade;
           const curso = this.data && this.data.user && this.data.user.curso;
-
           if (faculdade && curso && this.data.curriculum && this.data.curriculum.length) {
-            await window.dbService.submitCommunityContribution(faculdade, curso, this.data.curriculum, {
+            await window.dbService.submitCommunityContribution(faculdade, curso, sanitizeCatalogSubjects(this.data.curriculum), {
               mode: 'curriculum_submit',
               semester: this.data.user && this.data.user.semestre || ''
             });
@@ -927,25 +797,20 @@ Geometria Analítica - 60h"></textarea>
       const originalSetupViewEvents = proto.setupViewEvents;
       proto.setupViewEvents = function (view) {
         originalSetupViewEvents.call(this, view);
-
         if (view === 'grade-curricular') {
           const loadBtn = document.getElementById('btn-community-load');
           const pasteBtn = document.getElementById('btn-community-paste');
           const shareBtn = document.getElementById('btn-community-share');
-
           if (loadBtn) loadBtn.addEventListener('click', function () { showModal({ mode: 'load' }); });
           if (pasteBtn) pasteBtn.addEventListener('click', function () { showModal({ mode: 'paste' }); });
           if (shareBtn) shareBtn.addEventListener('click', function () { showModal({ mode: 'share' }); });
         }
-
         if (view === 'configuracoes') {
           const loadBtn = document.getElementById('btn-config-community-load');
           const shareBtn = document.getElementById('btn-config-community-share');
-
           if (loadBtn) loadBtn.addEventListener('click', function () { showModal({ mode: 'load' }); });
           if (shareBtn) shareBtn.addEventListener('click', function () { showModal({ mode: 'share' }); });
         }
-
         injectSetupShortcuts();
       };
     }
@@ -955,15 +820,12 @@ Geometria Analítica - 60h"></textarea>
 
   function bindModalActions() {
     ensureModal();
-
     const previewBtn = document.getElementById('catalog-generate-preview');
     const applyBtn = document.getElementById('catalog-apply-action');
-
     if (previewBtn && !previewBtn.__catalogBound) {
       previewBtn.addEventListener('click', handleGeneratePreview);
       previewBtn.__catalogBound = true;
     }
-
     if (applyBtn && !applyBtn.__catalogBound) {
       applyBtn.addEventListener('click', handleApplyAction);
       applyBtn.__catalogBound = true;
@@ -977,19 +839,11 @@ Geometria Analítica - 60h"></textarea>
     patchApp();
     bindModalActions();
     injectSetupShortcuts();
-
-    if (window.app) {
-      ensureUserDataCompatibility(window.app);
-    }
+    if (window.app) ensureUserDataCompatibility(window.app);
   }
 
-  document.addEventListener('DOMContentLoaded', function () {
-    init();
-  });
-
-  document.addEventListener('app-ready', function () {
-    init();
-  });
+  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('app-ready', init);
 
   window.communityCatalogTools = {
     slugify: slugify,
@@ -998,6 +852,7 @@ Geometria Analítica - 60h"></textarea>
     dedupeCurriculum: dedupeCurriculum,
     showModal: showModal,
     syncCurrentCurriculumToCommunity: syncCurrentCurriculumToCommunity,
-    ensureUserDataCompatibility: ensureUserDataCompatibility
+    ensureUserDataCompatibility: ensureUserDataCompatibility,
+    sanitizeCatalogSubjects: sanitizeCatalogSubjects
   };
 })();
