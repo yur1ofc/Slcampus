@@ -1,4 +1,3 @@
-
 (function () {
   'use strict';
 
@@ -18,6 +17,15 @@
       ]
     }
   };
+
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
 
   function injectStyles() {
     if (document.getElementById('community-catalog-styles')) return;
@@ -77,46 +85,96 @@
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .toLowerCase()
-      .replace(/\b(i|ii|iii|iv|v|vi|vii|viii|ix|x)\b/g, m => ({
-        i:'1',ii:'2',iii:'3',iv:'4',v:'5',vi:'6',vii:'7',viii:'8',ix:'9',x:'10'
-      }[m] || m))
+      .replace(/\b(i|ii|iii|iv|v|vi|vii|viii|ix|x)\b/g, function (m) {
+        return ({
+          i: '1', ii: '2', iii: '3', iv: '4', v: '5',
+          vi: '6', vii: '7', viii: '8', ix: '9', x: '10'
+        }[m] || m);
+      })
       .replace(/[^a-z0-9]+/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
   }
 
   function catalogKey(faculdade, curso) {
-    return `${slugify(faculdade)}__${slugify(curso)}`;
+    return slugify(faculdade) + '__' + slugify(curso);
   }
 
-  function ensureArray(v) { return Array.isArray(v) ? v : []; }
+  function ensureArray(v) {
+    return Array.isArray(v) ? v : [];
+  }
 
   function uid() {
-    return (window.generateId ? window.generateId() : `id_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`);
+    return (window.generateId ? window.generateId() : 'id_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9));
+  }
+
+  function ensureObject(v) {
+    return v && typeof v === 'object' ? v : {};
+  }
+
+  function ensureUserDataCompatibility(app) {
+    if (!app) return;
+    app.data = ensureObject(app.data);
+    app.data.user = ensureObject(app.data.user);
+
+    const defaults = {
+      universidade: '',
+      curso: '',
+      semestre: '',
+      matrizVersion: ''
+    };
+
+    Object.keys(defaults).forEach(function (key) {
+      if (app.data.user[key] == null) app.data.user[key] = defaults[key];
+    });
+
+    const arrays = [
+      'curriculum',
+      'subjects',
+      'tasks',
+      'exams',
+      'sessions',
+      'grades',
+      'reviews',
+      'classDiaries',
+      'dailyLogs',
+      'materials',
+      'attendance'
+    ];
+
+    arrays.forEach(function (key) {
+      if (!Array.isArray(app.data[key])) app.data[key] = [];
+    });
+
+    app.data.curriculum = dedupeCurriculum(app.data.curriculum);
   }
 
   function dedupeCurriculum(items) {
     const seen = new Map();
     const result = [];
-    ensureArray(items).forEach((item) => {
+
+    ensureArray(items).forEach(function (item) {
       if (!item || !item.nome) return;
-      const key = `${normalizeName(item.nome)}__${String(item.codigo || '').trim().toUpperCase()}`;
+      const normalized = normalizeCurriculumItem(item);
+      const key = normalizeName(normalized.nome) + '__' + String(normalized.codigo || '').trim().toUpperCase();
+
       if (seen.has(key)) {
         const idx = seen.get(key);
-        const existing = result[idx];
-        result[idx] = mergeCurriculumItem(existing, item);
+        result[idx] = mergeCurriculumItem(result[idx], normalized);
       } else {
         seen.set(key, result.length);
-        result.push(normalizeCurriculumItem(item));
+        result.push(normalized);
       }
     });
+
     return result;
   }
 
   function mergeCurriculumItem(base, extra) {
     const a = normalizeCurriculumItem(base);
     const b = normalizeCurriculumItem(extra);
-    const prereqs = Array.from(new Set([...(a.prerequisitosLista || []), ...(b.prerequisitosLista || [])].filter(Boolean)));
+    const prereqs = Array.from(new Set([].concat(a.prerequisitosLista || [], b.prerequisitosLista || []).filter(Boolean)));
+
     return {
       ...a,
       ...b,
@@ -132,18 +190,20 @@
   }
 
   function preferStatus(a, b) {
-    const rank = { 'concluida': 3, 'cursando': 2, 'nao-cursada': 1, 'nao cursada': 1, 'pendente': 1 };
+    const rank = { concluida: 3, cursando: 2, 'nao-cursada': 1, 'nao cursada': 1, pendente: 1 };
     const sa = String(a || 'nao-cursada').toLowerCase();
     const sb = String(b || 'nao-cursada').toLowerCase();
     return (rank[sb] || 0) > (rank[sa] || 0) ? b : a;
   }
 
   function normalizeCurriculumItem(item) {
+    item = ensureObject(item);
+
     const prereqText = ensureArray(item.prerequisitosLista).length
       ? item.prerequisitosLista
       : String(item.prerequisitos || '')
           .split(/[;,]/)
-          .map(s => s.trim())
+          .map(function (s) { return s.trim(); })
           .filter(Boolean);
 
     return {
@@ -155,7 +215,7 @@
       creditos: Number(item.creditos || 0) || 0,
       tipo: item.tipo || 'obrigatoria',
       status: item.status || 'nao-cursada',
-      prerequisitosLista: Array.from(new Set(prereqText.map(s => s.trim()).filter(Boolean))),
+      prerequisitosLista: Array.from(new Set(prereqText.map(function (s) { return s.trim(); }).filter(Boolean))),
       origemTemplate: item.origemTemplate || null,
       editadoPeloUsuario: !!item.editadoPeloUsuario,
       observacoes: item.observacoes || ''
@@ -163,29 +223,37 @@
   }
 
   function mergeIntoUserCurriculum(app, incoming, sourceLabel) {
-    const normalizedIncoming = dedupeCurriculum(ensureArray(incoming).map(item => ({
-      ...item,
-      origemTemplate: sourceLabel || item.origemTemplate || null
-    })));
+    ensureUserDataCompatibility(app);
+
+    const normalizedIncoming = dedupeCurriculum(ensureArray(incoming).map(function (item) {
+      return { ...item, origemTemplate: sourceLabel || item.origemTemplate || null };
+    }));
+
     const current = dedupeCurriculum(app.data.curriculum || []);
     const map = new Map();
-    current.forEach(item => {
-      map.set(`${normalizeName(item.nome)}__${String(item.codigo || '').trim().toUpperCase()}`, normalizeCurriculumItem(item));
+
+    current.forEach(function (item) {
+      const key = normalizeName(item.nome) + '__' + String(item.codigo || '').trim().toUpperCase();
+      map.set(key, normalizeCurriculumItem(item));
     });
-    normalizedIncoming.forEach(item => {
-      const key = `${normalizeName(item.nome)}__${String(item.codigo || '').trim().toUpperCase()}`;
+
+    normalizedIncoming.forEach(function (item) {
+      const key = normalizeName(item.nome) + '__' + String(item.codigo || '').trim().toUpperCase();
       if (map.has(key)) {
         map.set(key, mergeCurriculumItem(map.get(key), item));
       } else {
         map.set(key, normalizeCurriculumItem(item));
       }
     });
+
     app.data.curriculum = Array.from(map.values());
+
     if (typeof app.normalizeCurriculumInMemory === 'function') {
       app.normalizeCurriculumInMemory();
     } else {
       app.data.curriculum = dedupeCurriculum(app.data.curriculum);
     }
+
     return app.data.curriculum;
   }
 
@@ -200,14 +268,19 @@
   }
 
   function maybePopulateSubjectsFromSemester(app) {
-    const semester = String(app.data?.user?.semestre || '').trim();
+    ensureUserDataCompatibility(app);
+
+    const semester = String(app.data && app.data.user && app.data.user.semestre || '').trim();
     if (!semester) return;
+
     const current = ensureArray(app.data.subjects);
-    const existingNames = new Set(current.map(s => normalizeName(s.nome)));
+    const existingNames = new Set(current.map(function (s) { return normalizeName(s.nome); }));
+
     const additions = ensureArray(app.data.curriculum)
-      .filter(c => String(c.semestre || '').trim() === semester)
-      .filter(c => !existingNames.has(normalizeName(c.nome)))
+      .filter(function (c) { return String(c.semestre || '').trim() === semester; })
+      .filter(function (c) { return !existingNames.has(normalizeName(c.nome)); })
       .map(toSubject);
+
     if (additions.length) {
       app.data.subjects = current.concat(additions);
     }
@@ -216,23 +289,24 @@
   function parseTextToCurriculum(text, defaultSemester) {
     const lines = String(text || '')
       .split(/\n+/)
-      .map(line => line.trim())
+      .map(function (line) { return line.trim(); })
       .filter(Boolean);
 
     const items = [];
     let currentSemester = String(defaultSemester || '').trim();
 
-    lines.forEach((line) => {
+    lines.forEach(function (line) {
       const semMatch = line.match(/(?:^|\b)(\d{1,2})\s*[ºo]?\s*(?:semestre|periodo|per[ií]odo)\b/i);
       if (semMatch) {
         currentSemester = semMatch[1];
         return;
       }
+
       if (/^(matriz|grade|curso|faculdade|universidade|disciplina[s]?|componentes?)\b/i.test(line)) return;
 
       const cargaMatch = line.match(/(\d{2,3})\s*h\b/i);
       const creditMatch = line.match(/(\d{1,2})\s*cr[eé]dit/i);
-      const codeMatch = line.match(/\b([A-Z]{2,}\d{2,}|\d{5,}|[A-Z]{3,}\-\d{2,})\b/);
+      const codeMatch = line.match(/\b([A-Z]{2,}\d{2,}|\d{5,}|[A-Z]{3,}-\d{2,})\b/);
       const prereqMatch = line.match(/pr[eé]-?requisit(?:o|os)\s*[:\-]\s*(.+)$/i);
 
       let cleaned = line
@@ -240,7 +314,7 @@
         .replace(/\b\d{2,3}\s*h\b/ig, '')
         .replace(/\b\d{1,2}\s*cr[eé]dit(?:o|os)?\b/ig, '')
         .replace(/\bpr[eé]-?requisit(?:o|os)\s*[:\-].+$/ig, '')
-        .replace(/\b([A-Z]{2,}\d{2,}|\d{5,}|[A-Z]{3,}\-\d{2,})\b/g, '')
+        .replace(/\b([A-Z]{2,}\d{2,}|\d{5,}|[A-Z]{3,}-\d{2,})\b/g, '')
         .replace(/^[\-\–\—\•\*]+/, '')
         .replace(/\s{2,}/g, ' ')
         .trim();
@@ -255,7 +329,7 @@
         creditos: creditMatch ? Number(creditMatch[1]) : 0,
         tipo: /optativa/i.test(line) ? 'optativa' : 'obrigatoria',
         status: 'nao-cursada',
-        prerequisitosLista: prereqMatch ? prereqMatch[1].split(/[;,]/).map(s => s.trim()).filter(Boolean) : []
+        prerequisitosLista: prereqMatch ? prereqMatch[1].split(/[;,]/).map(function (s) { return s.trim(); }).filter(Boolean) : []
       }));
     });
 
@@ -266,23 +340,27 @@
     if (!items.length) {
       return '<div class="catalog-warning">Nada útil foi encontrado no texto. Tente colar linha por linha, de preferência com nome da disciplina e carga horária.</div>';
     }
+
     return `
       <h4>Prévia da importação (${items.length} componentes)</h4>
       <div class="catalog-preview-list">
-        ${items.slice(0, 80).map(item => `
-          <div class="catalog-preview-item">
-            <strong>${escapeHtml(item.nome)}</strong><br>
-            <span>${item.semestre ? `${escapeHtml(item.semestre)}º semestre` : 'Sem semestre'}${item.cargaHoraria ? ` • ${item.cargaHoraria}h` : ''}${item.codigo ? ` • ${escapeHtml(item.codigo)}` : ''}</span>
-            ${item.prerequisitosLista?.length ? `<div style="margin-top:6px;font-size:.9rem;color:#475569">Pré: ${escapeHtml(item.prerequisitosLista.join(', '))}</div>` : ''}
-          </div>
-        `).join('')}
+        ${items.slice(0, 80).map(function (item) {
+          return `
+            <div class="catalog-preview-item">
+              <strong>${escapeHtml(item.nome)}</strong><br>
+              <span>${item.semestre ? `${escapeHtml(item.semestre)}º semestre` : 'Sem semestre'}${item.cargaHoraria ? ` • ${item.cargaHoraria}h` : ''}${item.codigo ? ` • ${escapeHtml(item.codigo)}` : ''}</span>
+              ${item.prerequisitosLista && item.prerequisitosLista.length ? `<div style="margin-top:6px;font-size:.9rem;color:#475569">Pré: ${escapeHtml(item.prerequisitosLista.join(', '))}</div>` : ''}
+            </div>
+          `;
+        }).join('')}
       </div>
-      ${items.length > 80 ? `<div class="catalog-small" style="margin-top:10px">Mostrando só os 80 primeiros da prévia.</div>` : ''}
+      ${items.length > 80 ? '<div class="catalog-small" style="margin-top:10px">Mostrando só os 80 primeiros da prévia.</div>' : ''}
     `;
   }
 
   function ensureModal() {
     if (document.getElementById('catalog-community-modal')) return;
+
     const overlay = document.createElement('div');
     overlay.id = 'catalog-community-modal';
     overlay.className = 'catalog-modal-overlay';
@@ -312,7 +390,7 @@
               <label for="catalog-semestre-base">Semestre atual do aluno</label>
               <select id="catalog-semestre-base">
                 <option value="">Sem definir</option>
-                ${Array.from({length: 12}, (_, i) => `<option value="${i+1}">${i+1}º semestre</option>`).join('')}
+                ${Array.from({ length: 12 }, function (_, i) { return `<option value="${i + 1}">${i + 1}º semestre</option>`; }).join('')}
               </select>
             </div>
             <div class="catalog-field">
@@ -348,26 +426,34 @@ Geometria Analítica - 60h"></textarea>
         </div>
       </div>
     `;
+
     document.body.appendChild(overlay);
 
-    overlay.addEventListener('click', (e) => {
+    overlay.addEventListener('click', function (e) {
       if (e.target === overlay) hideModal();
     });
-    document.getElementById('catalog-modal-close').addEventListener('click', hideModal);
-    document.getElementById('catalog-action-mode').addEventListener('change', updateModeUI);
+
+    const closeBtn = document.getElementById('catalog-modal-close');
+    const modeSelect = document.getElementById('catalog-action-mode');
+
+    if (closeBtn) closeBtn.addEventListener('click', hideModal);
+    if (modeSelect) modeSelect.addEventListener('change', updateModeUI);
   }
 
   function showModal(prefill) {
     ensureModal();
     const overlay = document.getElementById('catalog-community-modal');
     const app = window.app;
-    document.getElementById('catalog-faculdade').value = prefill?.faculdade || app?.data?.user?.universidade || '';
-    document.getElementById('catalog-curso').value = prefill?.curso || app?.data?.user?.curso || '';
-    document.getElementById('catalog-semestre-base').value = prefill?.semestre || app?.data?.user?.semestre || '';
-    document.getElementById('catalog-action-mode').value = prefill?.mode || 'load';
+
+    document.getElementById('catalog-faculdade').value = (prefill && prefill.faculdade) || (app && app.data && app.data.user && app.data.user.universidade) || '';
+    document.getElementById('catalog-curso').value = (prefill && prefill.curso) || (app && app.data && app.data.user && app.data.user.curso) || '';
+    document.getElementById('catalog-semestre-base').value = (prefill && prefill.semestre) || (app && app.data && app.data.user && app.data.user.semestre) || '';
+    document.getElementById('catalog-action-mode').value = (prefill && prefill.mode) || 'load';
     document.getElementById('catalog-paste-text').value = '';
+
     updateModeUI();
     document.getElementById('catalog-preview').innerHTML = '<div class="catalog-small">Clique em "Gerar prévia" para ver o que será importado ou compartilhado.</div>';
+
     overlay.style.display = 'flex';
   }
 
@@ -379,7 +465,7 @@ Geometria Analítica - 60h"></textarea>
   function updateModeUI() {
     const mode = document.getElementById('catalog-action-mode').value;
     const paste = document.getElementById('catalog-paste-area');
-    paste.style.display = mode === 'paste' ? 'block' : 'none';
+    if (paste) paste.style.display = mode === 'paste' ? 'block' : 'none';
   }
 
   function currentCatalogTemplate(faculdade, curso) {
@@ -387,21 +473,35 @@ Geometria Analítica - 60h"></textarea>
     return COMMUNITY_BOOTSTRAP[key] || null;
   }
 
+  function getDbInstance() {
+    return window.db || (typeof db !== 'undefined' ? db : null);
+  }
+
+  function getAuthInstance() {
+    return window.auth || (typeof auth !== 'undefined' ? auth : null);
+  }
+
   function attachDbExtensions() {
     if (!window.dbService || window.dbService.__communityCatalogPatched) return;
+
     const dbService = window.dbService;
 
     dbService.getCommunityCatalog = async function (faculdade, curso) {
       const key = catalogKey(faculdade, curso);
       const bootstrap = currentCatalogTemplate(faculdade, curso);
+      const dbRef = getDbInstance();
+
       try {
-        if (typeof db === 'undefined') return bootstrap;
-        const snap = await db.collection('community_catalogs').doc(key).get();
+        if (!dbRef) return bootstrap;
+        const snap = await dbRef.collection('community_catalogs').doc(key).get();
+
         if (!snap.exists) return bootstrap;
+
         const data = snap.data() || {};
         const subjects = ensureArray(data.subjects).map(normalizeCurriculumItem);
+
         return {
-          key,
+          key: key,
           faculdade: data.faculdade || faculdade,
           curso: data.curso || curso,
           confidence: Number(data.confidence || 0),
@@ -420,45 +520,58 @@ Geometria Analítica - 60h"></textarea>
       const key = catalogKey(faculdade, curso);
       const normalizedSubjects = dedupeCurriculum(subjects);
       const payload = {
-        key,
-        faculdade,
-        curso,
+        key: key,
+        faculdade: faculdade,
+        curso: curso,
         subjects: normalizedSubjects,
         updatedAt: new Date().toISOString(),
-        version: meta?.version || '',
-        confidence: Number(meta?.confidence || 0.55),
+        version: meta && meta.version || '',
+        confidence: Number(meta && meta.confidence || 0.55),
         stats: {
-          usersCount: Number(meta?.usersCount || 1),
+          usersCount: Number(meta && meta.usersCount || 1),
           componentsCount: normalizedSubjects.length
         }
       };
-      if (typeof db === 'undefined') return payload;
-      await db.collection('community_catalogs').doc(key).set(payload, { merge: true });
+
+      const dbRef = getDbInstance();
+      if (!dbRef) return payload;
+
+      try {
+        await dbRef.collection('community_catalogs').doc(key).set(payload, { merge: true });
+      } catch (error) {
+        console.error('Erro ao salvar catálogo comunitário:', error);
+      }
+
       return payload;
     };
 
     dbService.submitCommunityContribution = async function (faculdade, curso, subjects, extra) {
-      const user = typeof auth !== 'undefined' ? auth.currentUser : null;
+      const authRef = getAuthInstance();
+      const user = authRef ? authRef.currentUser : null;
+
       const payload = {
-        faculdade,
-        curso,
+        faculdade: faculdade,
+        curso: curso,
         key: catalogKey(faculdade, curso),
         subjects: dedupeCurriculum(subjects),
         submittedAt: new Date().toISOString(),
-        sourceUserId: user?.uid || null,
-        version: extra?.version || '',
-        semester: extra?.semester || '',
-        mode: extra?.mode || 'manual',
+        sourceUserId: user ? user.uid : null,
+        version: extra && extra.version || '',
+        semester: extra && extra.semester || '',
+        mode: extra && extra.mode || 'manual',
         count: ensureArray(subjects).length
       };
+
+      const dbRef = getDbInstance();
+      if (!dbRef) return payload;
+
       try {
-        if (typeof db === 'undefined') return payload;
-        await db.collection('community_catalog_submissions').add(payload);
-        return payload;
+        await dbRef.collection('community_catalog_submissions').add(payload);
       } catch (error) {
         console.error('Erro ao enviar contribuição:', error);
-        return payload;
       }
+
+      return payload;
     };
 
     dbService.__communityCatalogPatched = true;
@@ -479,17 +592,20 @@ Geometria Analítica - 60h"></textarea>
     }
 
     let items = [];
+
     if (mode === 'load') {
       const catalog = await window.dbService.getCommunityCatalog(faculdade, curso);
-      items = dedupeCurriculum(catalog?.subjects || []);
+      items = dedupeCurriculum(catalog && catalog.subjects || []);
+
       if (!items.length) {
         preview.innerHTML = '<div class="catalog-warning">Ainda não existe uma grade comunitária forte para esse curso. Você pode colar um texto da matriz ou compartilhar sua grade atual para começar a base.</div>';
         feedback.textContent = 'Sem catálogo encontrado. Você ainda pode criar a primeira versão comunitária.';
-        return { mode, items: [] };
+        return { mode: mode, items: [] };
       }
+
       preview.innerHTML = buildPreviewHtml(items) + `<div class="catalog-success">Catálogo encontrado para ${escapeHtml(curso)} em ${escapeHtml(faculdade)}.</div>`;
-      feedback.textContent = `${items.length} componentes prontos para entrar na sua grade pessoal.`;
-      return { mode, items, faculdade, curso, semester };
+      feedback.textContent = items.length + ' componentes prontos para entrar na sua grade pessoal.';
+      return { mode: mode, items: items, faculdade: faculdade, curso: curso, semester: semester };
     }
 
     if (mode === 'paste') {
@@ -497,90 +613,135 @@ Geometria Analítica - 60h"></textarea>
       items = parseTextToCurriculum(text, semester);
       preview.innerHTML = buildPreviewHtml(items);
       feedback.textContent = items.length
-        ? `Encontrados ${items.length} componentes a partir do texto colado.`
+        ? 'Encontrados ' + items.length + ' componentes a partir do texto colado.'
         : 'Nenhum componente identificado ainda.';
-      return { mode, items, faculdade, curso, semester };
+      return { mode: mode, items: items, faculdade: faculdade, curso: curso, semester: semester };
     }
 
     if (mode === 'share') {
-      items = dedupeCurriculum(app?.data?.curriculum || []);
+      items = dedupeCurriculum(app && app.data && app.data.curriculum || []);
       preview.innerHTML = buildPreviewHtml(items) + `<div class="catalog-success">Sua grade atual será enviada como contribuição para ${escapeHtml(curso)} em ${escapeHtml(faculdade)}.</div>`;
       feedback.textContent = items.length
-        ? `${items.length} componentes da sua grade serão compartilhados como base comunitária.`
+        ? items.length + ' componentes da sua grade serão compartilhados como base comunitária.'
         : 'Sua grade atual ainda está vazia.';
-      return { mode, items, faculdade, curso, semester };
+      return { mode: mode, items: items, faculdade: faculdade, curso: curso, semester: semester };
     }
 
     return null;
   }
 
+  async function saveAppData(app) {
+    if (!window.dbService || !app) return;
+    try {
+      if (typeof window.dbService.saveAllData === 'function') {
+        await window.dbService.saveAllData(app.data);
+        return;
+      }
+
+      if (typeof window.dbService.saveData === 'function') {
+        const keys = Object.keys(app.data || {});
+        for (const key of keys) {
+          await window.dbService.saveData(key, app.data[key]);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao salvar dados do app:', error);
+    }
+  }
+
   async function handleApplyAction() {
     const data = await handleGeneratePreview();
     const app = window.app;
-    if (!data) return;
-    const { mode, items, faculdade, curso, semester } = data;
+    if (!data || !app) return;
 
-    if (!app) return;
+    const mode = data.mode;
+    const items = data.items;
+    const faculdade = data.faculdade;
+    const curso = data.curso;
+    const semester = data.semester;
+
+    ensureUserDataCompatibility(app);
 
     if (mode === 'load' || mode === 'paste') {
       if (!items.length) {
-        window.showToast?.('Nada para importar ainda.', 'warning');
+        window.showToast && window.showToast('Nada para importar ainda.', 'warning');
         return;
       }
+
       mergeIntoUserCurriculum(app, items, catalogKey(faculdade, curso));
       maybePopulateSubjectsFromSemester(app);
+
       if (app.data.user) {
         app.data.user.universidade = faculdade;
         app.data.user.curso = curso;
         if (semester && !app.data.user.semestre) app.data.user.semestre = semester;
       }
-      await window.dbService.saveAllData(app.data);
-      app.loadView('grade-curricular');
-      hideModal();
-      window.showToast?.(`Grade importada com ${items.length} componentes.`, 'success');
-      if (mode === 'paste') {
-        await syncCurrentCurriculumToCommunity({ faculdade, curso, mode: 'paste' });
+
+      await saveAppData(app);
+
+      if (typeof app.loadView === 'function') {
+        app.loadView('grade-curricular');
       }
+
+      hideModal();
+      window.showToast && window.showToast('Grade importada com ' + items.length + ' componentes.', 'success');
+
+      if (mode === 'paste') {
+        await syncCurrentCurriculumToCommunity({ faculdade: faculdade, curso: curso, mode: 'paste' });
+      }
+
       return;
     }
 
     if (mode === 'share') {
       if (!items.length) {
-        window.showToast?.('Sua grade ainda está vazia.', 'warning');
+        window.showToast && window.showToast('Sua grade ainda está vazia.', 'warning');
         return;
       }
-      await syncCurrentCurriculumToCommunity({ faculdade, curso, mode: 'share' });
+
+      await syncCurrentCurriculumToCommunity({ faculdade: faculdade, curso: curso, mode: 'share' });
       hideModal();
     }
   }
 
-  async function syncCurrentCurriculumToCommunity({ faculdade, curso, mode }) {
+  async function syncCurrentCurriculumToCommunity(params) {
+    const faculdade = params && params.faculdade || '';
+    const curso = params && params.curso || '';
+    const mode = params && params.mode || 'manual';
+
     const app = window.app;
-    if (!app) return;
+    if (!app || !faculdade || !curso || !window.dbService) return;
+
+    ensureUserDataCompatibility(app);
+
     const userCurriculum = dedupeCurriculum(app.data.curriculum || []);
     if (!userCurriculum.length) return;
 
     await window.dbService.submitCommunityContribution(faculdade, curso, userCurriculum, {
-      version: app.data.user?.matrizVersion || '',
-      semester: app.data.user?.semestre || '',
-      mode: mode || 'manual'
+      version: app.data.user && app.data.user.matrizVersion || '',
+      semester: app.data.user && app.data.user.semestre || '',
+      mode: mode
     });
 
     const existing = await window.dbService.getCommunityCatalog(faculdade, curso);
-    const merged = dedupeCurriculum([...(existing?.subjects || []), ...userCurriculum]);
+    const merged = dedupeCurriculum([].concat(existing && existing.subjects || [], userCurriculum));
+
     await window.dbService.saveCommunityCatalog(faculdade, curso, merged, {
-      version: app.data.user?.matrizVersion || '',
-      confidence: existing?.subjects?.length ? 0.72 : 0.6,
-      usersCount: (existing?.stats?.usersCount || 0) + 1
+      version: app.data.user && app.data.user.matrizVersion || '',
+      confidence: existing && existing.subjects && existing.subjects.length ? 0.72 : 0.6,
+      usersCount: ((existing && existing.stats && existing.stats.usersCount) || 0) + 1
     });
-    window.showToast?.('Sua grade foi compartilhada para fortalecer o catálogo comunitário.', 'success');
+
+    window.showToast && window.showToast('Sua grade foi compartilhada para fortalecer o catálogo comunitário.', 'success');
   }
 
   function injectSetupShortcuts() {
     const form = document.getElementById('setup-form');
     if (!form || document.getElementById('setup-import-shortcuts')) return;
+
     const basicSection = form.querySelector('.form-section');
-    if (!basicSection) return;
+    if (!basicSection || !basicSection.parentNode) return;
+
     const box = document.createElement('div');
     box.id = 'setup-import-shortcuts';
     box.className = 'catalog-hero';
@@ -601,138 +762,212 @@ Geometria Analítica - 60h"></textarea>
         <button type="button" class="catalog-btn ghost" id="setup-open-catalog-paste">Colar fluxograma</button>
       </div>
     `;
+
     basicSection.parentNode.insertBefore(box, basicSection.nextSibling);
 
-    document.getElementById('setup-open-catalog-load').addEventListener('click', () => {
-      showModal({
-        faculdade: document.getElementById('universidade')?.value || '',
-        curso: document.getElementById('curso')?.value || '',
-        semestre: document.getElementById('semestre')?.value || '',
-        mode: 'load'
+    const btnLoad = document.getElementById('setup-open-catalog-load');
+    const btnPaste = document.getElementById('setup-open-catalog-paste');
+
+    if (btnLoad) {
+      btnLoad.addEventListener('click', function () {
+        showModal({
+          faculdade: document.getElementById('universidade') && document.getElementById('universidade').value || '',
+          curso: document.getElementById('curso') && document.getElementById('curso').value || '',
+          semestre: document.getElementById('semestre') && document.getElementById('semestre').value || '',
+          mode: 'load'
+        });
       });
-    });
-    document.getElementById('setup-open-catalog-paste').addEventListener('click', () => {
-      showModal({
-        faculdade: document.getElementById('universidade')?.value || '',
-        curso: document.getElementById('curso')?.value || '',
-        semestre: document.getElementById('semestre')?.value || '',
-        mode: 'paste'
+    }
+
+    if (btnPaste) {
+      btnPaste.addEventListener('click', function () {
+        showModal({
+          faculdade: document.getElementById('universidade') && document.getElementById('universidade').value || '',
+          curso: document.getElementById('curso') && document.getElementById('curso').value || '',
+          semestre: document.getElementById('semestre') && document.getElementById('semestre').value || '',
+          mode: 'paste'
+        });
       });
-    });
+    }
   }
 
   function patchViewRenderer() {
     if (!window.ViewRenderer || window.ViewRenderer.prototype.__communityCatalogPatched) return;
+
     const proto = window.ViewRenderer.prototype;
     const originalRenderGradeCurricular = proto.renderGradeCurricular;
-    proto.renderGradeCurricular = function () {
-      const original = originalRenderGradeCurricular.call(this);
-      const faculdade = this.app?.data?.user?.universidade || 'sua faculdade';
-      const curso = this.app?.data?.user?.curso || 'seu curso';
-      const hero = `
-        <section class="catalog-hero">
-          <div>
-            <h3>Catálogo comunitário da grade curricular</h3>
-            <p>O site pode aprender com as grades cadastradas pelos usuários. Assim, quem informar <strong>${escapeHtml(curso)}</strong> em <strong>${escapeHtml(faculdade)}</strong> já encontra boa parte da estrutura pronta.</p>
-            <div class="catalog-badges">
-              <span class="catalog-badge">Importar por faculdade + curso</span>
-              <span class="catalog-badge">Compartilhar sua grade</span>
-              <span class="catalog-badge">Colar texto do fluxograma</span>
-            </div>
-          </div>
-          <div class="catalog-actions">
-            <button class="catalog-btn secondary" id="btn-community-load">Buscar grade pronta</button>
-            <button class="catalog-btn primary" id="btn-community-share">Compartilhar minha grade</button>
-            <button class="catalog-btn ghost" id="btn-community-paste">Colar texto/PDF</button>
-          </div>
-        </section>`;
-      return `${hero}${original}`;
-    };
-
     const originalRenderConfiguracoes = proto.renderConfiguracoes;
-    proto.renderConfiguracoes = function () {
-      const original = originalRenderConfiguracoes.call(this);
-      const extra = `
-        <div class="catalog-preview" style="margin-top:18px">
-          <h4>Catálogo comunitário</h4>
-          <p class="catalog-small">Ajude o sistema a aprender grades curriculares por faculdade e curso. Sua grade pessoal continua sendo sua, mas pode servir como base para os próximos usuários.</p>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
-            <button class="catalog-btn secondary" id="btn-config-community-load">Buscar catálogo</button>
-            <button class="catalog-btn primary" id="btn-config-community-share">Compartilhar grade atual</button>
-          </div>
-        </div>`;
-      return original.replace(/(`?)(\s*)$/, `${extra}$1$2`);
-    };
+
+    if (typeof originalRenderGradeCurricular === 'function') {
+      proto.renderGradeCurricular = function () {
+        const original = originalRenderGradeCurricular.call(this);
+        const faculdade = this.app && this.app.data && this.app.data.user && this.app.data.user.universidade || 'sua faculdade';
+        const curso = this.app && this.app.data && this.app.data.user && this.app.data.user.curso || 'seu curso';
+
+        const hero = `
+          <section class="catalog-hero">
+            <div>
+              <h3>Catálogo comunitário da grade curricular</h3>
+              <p>O site pode aprender com as grades cadastradas pelos usuários. Assim, quem informar <strong>${escapeHtml(curso)}</strong> em <strong>${escapeHtml(faculdade)}</strong> já encontra boa parte da estrutura pronta.</p>
+              <div class="catalog-badges">
+                <span class="catalog-badge">Importar por faculdade + curso</span>
+                <span class="catalog-badge">Compartilhar sua grade</span>
+                <span class="catalog-badge">Colar texto do fluxograma</span>
+              </div>
+            </div>
+            <div class="catalog-actions">
+              <button class="catalog-btn secondary" id="btn-community-load">Buscar grade pronta</button>
+              <button class="catalog-btn primary" id="btn-community-share">Compartilhar minha grade</button>
+              <button class="catalog-btn ghost" id="btn-community-paste">Colar texto/PDF</button>
+            </div>
+          </section>`;
+
+        return hero + original;
+      };
+    }
+
+    if (typeof originalRenderConfiguracoes === 'function') {
+      proto.renderConfiguracoes = function () {
+        const original = originalRenderConfiguracoes.call(this);
+        const extra = `
+          <div class="catalog-preview" style="margin-top:18px">
+            <h4>Catálogo comunitário</h4>
+            <p class="catalog-small">Ajude o sistema a aprender grades curriculares por faculdade e curso. Sua grade pessoal continua sendo sua, mas pode servir como base para os próximos usuários.</p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+              <button class="catalog-btn secondary" id="btn-config-community-load">Buscar catálogo</button>
+              <button class="catalog-btn primary" id="btn-config-community-share">Compartilhar grade atual</button>
+            </div>
+          </div>`;
+        return original + extra;
+      };
+    }
 
     proto.__communityCatalogPatched = true;
   }
 
   function patchApp() {
     if (!window.StudyLifeControl || window.StudyLifeControl.prototype.__communityCatalogPatched) return;
+
     const proto = window.StudyLifeControl.prototype;
 
-    const originalHandleSetupSubmit = proto.handleSetupSubmit;
-    proto.handleSetupSubmit = async function (e) {
-      await originalHandleSetupSubmit.call(this, e);
-      try {
-        const faculdade = this.data?.user?.universidade;
-        const curso = this.data?.user?.curso;
-        if (!faculdade || !curso) return;
-        if (ensureArray(this.data.curriculum).length) return;
-        const catalog = await window.dbService.getCommunityCatalog(faculdade, curso);
-        if (!catalog?.subjects?.length) return;
-        mergeIntoUserCurriculum(this, catalog.subjects, catalog.key);
-        maybePopulateSubjectsFromSemester(this);
-        await window.dbService.saveAllData(this.data);
-        if (this.currentView === 'grade-curricular' || this.currentView === 'dashboard') {
-          this.loadView(this.currentView);
+    if (typeof proto.init === 'function') {
+      const originalInit = proto.init;
+      proto.init = async function () {
+        const result = await originalInit.apply(this, arguments);
+        try {
+          ensureUserDataCompatibility(this);
+        } catch (error) {
+          console.error('Erro ao garantir compatibilidade dos dados:', error);
         }
-        window.showToast?.(`Grade pronta importada automaticamente para ${curso}.`, 'success');
-      } catch (error) {
-        console.error('Erro ao importar catálogo no setup:', error);
-      }
-    };
+        return result;
+      };
+    }
 
-    const originalHandleCurriculumSubmit = proto.handleCurriculumSubmit;
-    proto.handleCurriculumSubmit = async function (e) {
-      await originalHandleCurriculumSubmit.call(this, e);
-      try {
-        this.data.curriculum = dedupeCurriculum(this.data.curriculum || []);
-        await window.dbService.saveData('curriculum', this.data.curriculum);
-        const faculdade = this.data?.user?.universidade;
-        const curso = this.data?.user?.curso;
-        if (faculdade && curso && this.data.curriculum?.length) {
-          await window.dbService.submitCommunityContribution(faculdade, curso, this.data.curriculum, {
-            mode: 'curriculum_submit',
-            semester: this.data.user?.semestre || ''
-          });
+    if (typeof proto.handleSetupSubmit === 'function') {
+      const originalHandleSetupSubmit = proto.handleSetupSubmit;
+      proto.handleSetupSubmit = async function (e) {
+        await originalHandleSetupSubmit.call(this, e);
+
+        try {
+          ensureUserDataCompatibility(this);
+
+          const faculdade = this.data && this.data.user && this.data.user.universidade;
+          const curso = this.data && this.data.user && this.data.user.curso;
+
+          if (!faculdade || !curso) return;
+          if (ensureArray(this.data.curriculum).length) return;
+
+          const catalog = await window.dbService.getCommunityCatalog(faculdade, curso);
+          if (!catalog || !catalog.subjects || !catalog.subjects.length) return;
+
+          mergeIntoUserCurriculum(this, catalog.subjects, catalog.key);
+          maybePopulateSubjectsFromSemester(this);
+          await saveAppData(this);
+
+          if (this.currentView === 'grade-curricular' || this.currentView === 'dashboard') {
+            this.loadView(this.currentView);
+          }
+
+          window.showToast && window.showToast('Grade pronta importada automaticamente para ' + curso + '.', 'success');
+        } catch (error) {
+          console.error('Erro ao importar catálogo no setup:', error);
         }
-      } catch (error) {
-        console.error('Erro ao sincronizar contribuição de currículo:', error);
-      }
-    };
+      };
+    }
 
-    const originalSetupViewEvents = proto.setupViewEvents;
-    proto.setupViewEvents = function (view) {
-      originalSetupViewEvents.call(this, view);
-      if (view === 'grade-curricular') {
-        document.getElementById('btn-community-load')?.addEventListener('click', () => showModal({ mode: 'load' }));
-        document.getElementById('btn-community-paste')?.addEventListener('click', () => showModal({ mode: 'paste' }));
-        document.getElementById('btn-community-share')?.addEventListener('click', () => showModal({ mode: 'share' }));
-      }
-      if (view === 'configuracoes') {
-        document.getElementById('btn-config-community-load')?.addEventListener('click', () => showModal({ mode: 'load' }));
-        document.getElementById('btn-config-community-share')?.addEventListener('click', () => showModal({ mode: 'share' }));
-      }
-    };
+    if (typeof proto.handleCurriculumSubmit === 'function') {
+      const originalHandleCurriculumSubmit = proto.handleCurriculumSubmit;
+      proto.handleCurriculumSubmit = async function (e) {
+        await originalHandleCurriculumSubmit.call(this, e);
+
+        try {
+          ensureUserDataCompatibility(this);
+          this.data.curriculum = dedupeCurriculum(this.data.curriculum || []);
+
+          if (typeof window.dbService.saveData === 'function') {
+            await window.dbService.saveData('curriculum', this.data.curriculum);
+          }
+
+          const faculdade = this.data && this.data.user && this.data.user.universidade;
+          const curso = this.data && this.data.user && this.data.user.curso;
+
+          if (faculdade && curso && this.data.curriculum && this.data.curriculum.length) {
+            await window.dbService.submitCommunityContribution(faculdade, curso, this.data.curriculum, {
+              mode: 'curriculum_submit',
+              semester: this.data.user && this.data.user.semestre || ''
+            });
+          }
+        } catch (error) {
+          console.error('Erro ao sincronizar contribuição de currículo:', error);
+        }
+      };
+    }
+
+    if (typeof proto.setupViewEvents === 'function') {
+      const originalSetupViewEvents = proto.setupViewEvents;
+      proto.setupViewEvents = function (view) {
+        originalSetupViewEvents.call(this, view);
+
+        if (view === 'grade-curricular') {
+          const loadBtn = document.getElementById('btn-community-load');
+          const pasteBtn = document.getElementById('btn-community-paste');
+          const shareBtn = document.getElementById('btn-community-share');
+
+          if (loadBtn) loadBtn.addEventListener('click', function () { showModal({ mode: 'load' }); });
+          if (pasteBtn) pasteBtn.addEventListener('click', function () { showModal({ mode: 'paste' }); });
+          if (shareBtn) shareBtn.addEventListener('click', function () { showModal({ mode: 'share' }); });
+        }
+
+        if (view === 'configuracoes') {
+          const loadBtn = document.getElementById('btn-config-community-load');
+          const shareBtn = document.getElementById('btn-config-community-share');
+
+          if (loadBtn) loadBtn.addEventListener('click', function () { showModal({ mode: 'load' }); });
+          if (shareBtn) shareBtn.addEventListener('click', function () { showModal({ mode: 'share' }); });
+        }
+
+        injectSetupShortcuts();
+      };
+    }
 
     proto.__communityCatalogPatched = true;
   }
 
   function bindModalActions() {
     ensureModal();
-    document.getElementById('catalog-generate-preview').addEventListener('click', handleGeneratePreview);
-    document.getElementById('catalog-apply-action').addEventListener('click', handleApplyAction);
+
+    const previewBtn = document.getElementById('catalog-generate-preview');
+    const applyBtn = document.getElementById('catalog-apply-action');
+
+    if (previewBtn && !previewBtn.__catalogBound) {
+      previewBtn.addEventListener('click', handleGeneratePreview);
+      previewBtn.__catalogBound = true;
+    }
+
+    if (applyBtn && !applyBtn.__catalogBound) {
+      applyBtn.addEventListener('click', handleApplyAction);
+      applyBtn.__catalogBound = true;
+    }
   }
 
   function init() {
@@ -742,24 +977,27 @@ Geometria Analítica - 60h"></textarea>
     patchApp();
     bindModalActions();
     injectSetupShortcuts();
+
+    if (window.app) {
+      ensureUserDataCompatibility(window.app);
+    }
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('DOMContentLoaded', function () {
     init();
-    injectSetupShortcuts();
   });
 
-  document.addEventListener('app-ready', () => {
+  document.addEventListener('app-ready', function () {
     init();
-    injectSetupShortcuts();
   });
 
   window.communityCatalogTools = {
-    slugify,
-    normalizeName,
-    parseTextToCurriculum,
-    dedupeCurriculum,
-    showModal,
-    syncCurrentCurriculumToCommunity
+    slugify: slugify,
+    normalizeName: normalizeName,
+    parseTextToCurriculum: parseTextToCurriculum,
+    dedupeCurriculum: dedupeCurriculum,
+    showModal: showModal,
+    syncCurrentCurriculumToCommunity: syncCurrentCurriculumToCommunity,
+    ensureUserDataCompatibility: ensureUserDataCompatibility
   };
 })();
