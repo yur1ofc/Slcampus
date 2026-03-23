@@ -5,134 +5,53 @@ let authInitialized = false;
 let appInitPromise = null;
 let lastHandledUid = null;
 
-function getEl(id) {
-  return document.getElementById(id);
-}
-
-function setDisplay(id, value) {
-  const el = getEl(id);
-  if (el) el.style.display = value;
-}
-
-function showLoading() {
-  window.showLoading?.();
-}
-
-function hideLoading() {
-  window.hideLoading?.();
-}
-
-function showToast(message, type = 'info') {
-  window.showToast?.(message, type);
-}
-
-function logError(context, error, extra = null) {
-  console.error(`[auth] ${context}:`, error, extra || '');
-}
-
-function logWarn(context, extra = null) {
-  console.warn(`[auth] ${context}`, extra || '');
-}
-
-function isAppAvailable() {
-  return !!window.app;
-}
-
-function isDbServiceAvailable() {
-  return !!window.dbService && typeof window.dbService.loadUserData === 'function';
-}
-
-function resetAppInitState() {
-  appInitPromise = null;
-}
-
-function showLoginScreen() {
-  setDisplay('login-screen', 'flex');
-  setDisplay('setup-screen', 'none');
-  setDisplay('main-dashboard', 'none');
-}
-
-function showSetupScreen() {
-  setDisplay('login-screen', 'none');
-  setDisplay('setup-screen', 'flex');
-  setDisplay('main-dashboard', 'none');
-}
-
-function showDashboardScreen() {
-  setDisplay('login-screen', 'none');
-  setDisplay('setup-screen', 'none');
-  setDisplay('main-dashboard', 'block');
-}
-
-function dispatchAppReady() {
-  document.dispatchEvent(new Event('app-ready'));
-}
+function getEl(id) { return document.getElementById(id); }
+function setDisplay(id, value) { const el = getEl(id); if (el) el.style.display = value; }
+function showLoading() { window.showLoading?.(); }
+function hideLoading() { window.hideLoading?.(); }
+function showToast(message, type = 'info') { window.showToast?.(message, type); }
+function logError(context, error, extra = null) { console.error(`[auth] ${context}:`, error, extra || ''); }
+function logWarn(context, extra = null) { console.warn(`[auth] ${context}`, extra || ''); }
+function isAppAvailable() { return !!window.app; }
+function isDbServiceAvailable() { return !!window.dbService && typeof window.dbService.loadUserData === 'function'; }
+function resetAppInitState() { appInitPromise = null; }
+function showLoginScreen() { setDisplay('login-screen', 'flex'); setDisplay('setup-screen', 'none'); setDisplay('main-dashboard', 'none'); }
+function showSetupScreen() { setDisplay('login-screen', 'none'); setDisplay('setup-screen', 'flex'); setDisplay('main-dashboard', 'none'); }
+function showDashboardScreen() { setDisplay('login-screen', 'none'); setDisplay('setup-screen', 'none'); setDisplay('main-dashboard', 'block'); }
+function dispatchAppReady() { document.dispatchEvent(new Event('app-ready')); }
 
 function hasUserProfile(data) {
-  return !!(
-    data &&
-    data.user &&
-    (
-      String(data.user.nome || '').trim() ||
-      String(data.user.curso || '').trim() ||
-      String(data.user.universidade || '').trim()
-    )
-  );
+  return !!(data && data.user && (String(data.user.nome || '').trim() || String(data.user.curso || '').trim() || String(data.user.universidade || '').trim()));
 }
 
 async function waitForDependencies(maxAttempts = 40, delay = 150) {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    if (isAppAvailable() && isDbServiceAvailable()) {
-      return true;
-    }
-
+    if (isAppAvailable() && isDbServiceAvailable()) return true;
     await new Promise((resolve) => setTimeout(resolve, delay));
   }
-
   return false;
 }
 
 async function ensureAppInitialized() {
-  if (!window.app || typeof window.app.init !== 'function') {
-    throw new Error('App não está disponível para inicialização.');
-  }
-
-  if (appInitPromise) {
-    return appInitPromise;
-  }
-
-  appInitPromise = (async () => {
-    await window.app.init();
-  })();
-
-  try {
-    await appInitPromise;
-  } finally {
-    resetAppInitState();
-  }
+  if (!window.app || typeof window.app.init !== 'function') throw new Error('App não está disponível para inicialização.');
+  if (appInitPromise) return appInitPromise;
+  appInitPromise = (async () => { await window.app.init(); })();
+  try { await appInitPromise; } finally { resetAppInitState(); }
 }
 
 async function renderSetupIfAvailable() {
-  if (window.app && typeof window.app.renderSetupForm === 'function') {
-    await window.app.renderSetupForm();
-  } else {
-    logWarn('renderSetupForm não está disponível no window.app');
-  }
+  if (window.app && typeof window.app.renderSetupForm === 'function') await window.app.renderSetupForm();
+  else logWarn('renderSetupForm não está disponível no window.app');
 }
 
 async function handleSignedInUser(user) {
-  if (!user || !user.uid) {
-    throw new Error('Usuário autenticado inválido.');
-  }
-
+  if (!user || !user.uid) throw new Error('Usuário autenticado inválido.');
   currentUser = user;
   lastHandledUid = user.uid;
-
   showLoginScreen();
   setDisplay('login-screen', 'none');
 
   const dependenciesReady = await waitForDependencies();
-
   if (!dependenciesReady) {
     const error = new Error('Dependências da aplicação não ficaram prontas a tempo.');
     logError('Dependências indisponíveis após login', error);
@@ -149,9 +68,7 @@ async function handleSignedInUser(user) {
     throw error;
   }
 
-  const profileExists = hasUserProfile(data);
-
-  if (!profileExists) {
+  if (!hasUserProfile(data)) {
     showSetupScreen();
     await renderSetupIfAvailable();
     dispatchAppReady();
@@ -159,10 +76,8 @@ async function handleSignedInUser(user) {
   }
 
   showDashboardScreen();
-
-  try {
-    await ensureAppInitialized();
-  } catch (error) {
+  try { await ensureAppInitialized(); }
+  catch (error) {
     logError('Falha ao inicializar app após login', error, { uid: user.uid });
     showToast('Erro ao abrir o painel. Recarregue a página.', 'error');
     throw error;
@@ -179,12 +94,8 @@ function handleSignedOutUser() {
 async function handleAuthStateChange(user) {
   try {
     showLoading();
-
-    if (user) {
-      await handleSignedInUser(user);
-    } else {
-      handleSignedOutUser();
-    }
+    if (user) await handleSignedInUser(user);
+    else handleSignedOutUser();
   } catch (error) {
     logError('Erro na autenticação/inicialização', error);
     showToast('Erro ao inicializar aplicação. Recarregue a página.', 'error');
@@ -197,7 +108,6 @@ async function handleAuthStateChange(user) {
 function getFriendlyAuthErrorMessage(error) {
   const code = error?.code || '';
   const rawMessage = error?.message || '';
-
   const errorMap = {
     'auth/popup-closed-by-user': 'Login cancelado antes da conclusão.',
     'auth/popup-blocked': 'O navegador bloqueou a janela de login. Libere pop-ups e tente novamente.',
@@ -208,7 +118,6 @@ function getFriendlyAuthErrorMessage(error) {
     'auth/operation-not-allowed': 'Método de login não habilitado no Firebase.',
     'auth/internal-error': 'Erro interno de autenticação. Tente novamente.'
   };
-
   return errorMap[code] || rawMessage || 'Falha ao entrar com Google';
 }
 
@@ -218,14 +127,12 @@ async function loginWithGoogle() {
     showToast('Login indisponível no momento. Recarregue a página.', 'error');
     return;
   }
-
   try {
     showLoading();
     await window.auth.signInWithPopup(window.googleProvider);
   } catch (error) {
     logError('Erro no login com Google', error);
-    const message = getFriendlyAuthErrorMessage(error);
-    showToast(`Erro ao fazer login: ${message}`, 'error');
+    showToast(`Erro ao fazer login: ${getFriendlyAuthErrorMessage(error)}`, 'error');
   } finally {
     hideLoading();
   }
@@ -237,15 +144,13 @@ async function logout() {
     showToast('Logout indisponível no momento.', 'error');
     return;
   }
-
   try {
     showLoading();
     await window.auth.signOut();
     showToast('Desconectado com sucesso', 'success');
   } catch (error) {
     logError('Erro no logout', error);
-    const message = error?.message || 'Falha ao sair';
-    showToast(`Erro ao sair: ${message}`, 'error');
+    showToast(`Erro ao sair: ${error?.message || 'Falha ao sair'}`, 'error');
   } finally {
     hideLoading();
   }
@@ -258,27 +163,18 @@ function bindAuthEvents() {
 
 function initAuthListener() {
   if (authInitialized) return;
-
   if (!window.auth || typeof window.auth.onAuthStateChanged !== 'function') {
     logWarn('auth.onAuthStateChanged ainda não está disponível');
     return;
   }
-
   authInitialized = true;
-  window.auth.onAuthStateChanged(async (user) => {
-    await handleAuthStateChange(user);
-  });
+  window.auth.onAuthStateChanged(async (user) => { await handleAuthStateChange(user); });
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
   bindAuthEvents();
-
   const ready = await waitForDependencies(20, 100);
-
-  if (!ready) {
-    logWarn('Dependências principais ainda não estavam prontas no DOMContentLoaded');
-  }
-
+  if (!ready) logWarn('Dependências principais ainda não estavam prontas no DOMContentLoaded');
   initAuthListener();
 });
 
