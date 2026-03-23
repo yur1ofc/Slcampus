@@ -1,4 +1,4 @@
-// database.js - Gerenciamento do Firestore (corrigido e fortalecido)
+// database.js - Gerenciamento do Firestore (hotfix sem conflito global)
 
 const DEFAULT_APP_DATA = () => ({
     user: null,
@@ -124,17 +124,33 @@ function showErrorToast(message) {
     }
 }
 
-function callGlobalShowLoading() {
-    if (typeof window.showLoading === 'function' && window.showLoading !== callGlobalShowLoading) {
-        window.callGlobalShowLoading();
-    }
-}
+const uiShowLoading = () => {
+    try {
+        if (window.utils?.showLoading) {
+            window.utils.showLoading();
+            return;
+        }
 
-function callGlobalHideLoading() {
-    if (typeof window.hideLoading === 'function' && window.hideLoading !== callGlobalHideLoading) {
-        window.callGlobalHideLoading();
+        const loadingScreen = document.getElementById('loading-screen');
+        if (loadingScreen) loadingScreen.style.display = 'flex';
+    } catch (error) {
+        console.warn('[dbService] Falha ao exibir loading:', error);
     }
-}
+};
+
+const uiHideLoading = () => {
+    try {
+        if (window.utils?.hideLoading) {
+            window.utils.hideLoading();
+            return;
+        }
+
+        const loadingScreen = document.getElementById('loading-screen');
+        if (loadingScreen) loadingScreen.style.display = 'none';
+    } catch (error) {
+        console.warn('[dbService] Falha ao ocultar loading:', error);
+    }
+};
 
 function logError(context, error, extra = null) {
     console.error(`[dbService] ${context}:`, error, extra || '');
@@ -183,6 +199,7 @@ const dbService = {
 
             setAppData(data);
             notifySyncStatus(true);
+
             return deepClone(data);
         } catch (error) {
             logError('Erro ao carregar dados', error, { userId });
@@ -200,12 +217,16 @@ const dbService = {
         }
 
         try {
-            callGlobalShowLoading();
+            uiShowLoading();
+
             const sourceData = dataOverride || window.app?.data || DEFAULT_APP_DATA();
             const dataToSave = prepareDataToSave(sourceData);
+
             await getUsersCollection().doc(user.uid).set(dataToSave, { merge: true });
+
             setAppData(dataToSave);
             notifySyncStatus(true);
+
             return true;
         } catch (error) {
             logError('Erro ao salvar todos os dados', error);
@@ -213,7 +234,7 @@ const dbService = {
             showErrorToast('Erro ao salvar dados');
             return false;
         } finally {
-            callGlobalHideLoading();
+            uiHideLoading();
         }
     },
 
@@ -242,9 +263,13 @@ const dbService = {
                         ? normalizeArray(data)
                         : deepClone(data);
 
-            await getUsersCollection().doc(user.uid).set({ [field]: safeValue }, { merge: true });
+            await getUsersCollection().doc(user.uid).set({
+                [field]: safeValue
+            }, { merge: true });
+
             updateAppField(field, safeValue);
             notifySyncStatus(true);
+
             return true;
         } catch (error) {
             logError(`Erro ao salvar campo "${field}"`, error);
@@ -260,15 +285,21 @@ const dbService = {
             showErrorToast('Coleção inválida');
             return false;
         }
+
         if (!item || typeof item !== 'object') {
             logWarn('addItem recebeu item inválido', { collection, item });
             showErrorToast('Item inválido');
             return false;
         }
+
         const currentData = normalizeAppData(window.app?.data || DEFAULT_APP_DATA());
         const updatedCollection = [...currentData[collection], deepClone(item)];
+
         const saved = await this.saveData(collection, updatedCollection);
-        if (saved) updateAppField(collection, updatedCollection);
+        if (saved) {
+            updateAppField(collection, updatedCollection);
+        }
+
         return saved;
     },
 
@@ -278,11 +309,13 @@ const dbService = {
             showErrorToast('Coleção inválida');
             return false;
         }
+
         if (!isValidItemId(id)) {
             logWarn('updateItem recebeu id inválido', { collection, id });
             showErrorToast('ID inválido');
             return false;
         }
+
         if (!updates || typeof updates !== 'object') {
             logWarn('updateItem recebeu updates inválidos', { collection, id, updates });
             showErrorToast('Dados inválidos para atualização');
@@ -292,15 +325,23 @@ const dbService = {
         const currentData = normalizeAppData(window.app?.data || DEFAULT_APP_DATA());
         const currentCollection = normalizeArray(currentData[collection]);
         const index = currentCollection.findIndex((item) => String(item?.id) === String(id));
+
         if (index === -1) {
             logWarn('updateItem não encontrou item', { collection, id });
             return false;
         }
 
         const updatedCollection = [...currentCollection];
-        updatedCollection[index] = { ...updatedCollection[index], ...deepClone(updates) };
+        updatedCollection[index] = {
+            ...updatedCollection[index],
+            ...deepClone(updates)
+        };
+
         const saved = await this.saveData(collection, updatedCollection);
-        if (saved) updateAppField(collection, updatedCollection);
+        if (saved) {
+            updateAppField(collection, updatedCollection);
+        }
+
         return saved;
     },
 
@@ -310,6 +351,7 @@ const dbService = {
             showErrorToast('Coleção inválida');
             return false;
         }
+
         if (!isValidItemId(id)) {
             logWarn('removeItem recebeu id inválido', { collection, id });
             showErrorToast('ID inválido');
@@ -318,15 +360,22 @@ const dbService = {
 
         const currentData = normalizeAppData(window.app?.data || DEFAULT_APP_DATA());
         const currentCollection = normalizeArray(currentData[collection]);
+
         const exists = currentCollection.some((item) => String(item?.id) === String(id));
         if (!exists) {
             logWarn('removeItem não encontrou item', { collection, id });
             return false;
         }
 
-        const updatedCollection = currentCollection.filter((item) => String(item?.id) !== String(id));
+        const updatedCollection = currentCollection.filter(
+            (item) => String(item?.id) !== String(id)
+        );
+
         const saved = await this.saveData(collection, updatedCollection);
-        if (saved) updateAppField(collection, updatedCollection);
+        if (saved) {
+            updateAppField(collection, updatedCollection);
+        }
+
         return saved;
     },
 
@@ -338,11 +387,14 @@ const dbService = {
         }
 
         try {
-            callGlobalShowLoading();
+            uiShowLoading();
+
             const emptyData = prepareDataToSave(DEFAULT_APP_DATA());
             await getUsersCollection().doc(user.uid).set(emptyData, { merge: false });
+
             setAppData(emptyData);
             notifySyncStatus(true);
+
             return true;
         } catch (error) {
             logError('Erro ao limpar dados', error);
@@ -350,8 +402,16 @@ const dbService = {
             showErrorToast('Erro ao limpar dados');
             return false;
         } finally {
-            callGlobalHideLoading();
+            uiHideLoading();
         }
+    },
+
+    getDefaultData() {
+        return deepClone(DEFAULT_APP_DATA());
+    },
+
+    normalizeData(rawData = {}) {
+        return normalizeAppData(rawData);
     }
 };
 
