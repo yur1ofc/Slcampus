@@ -1,27 +1,107 @@
-// auth.js - autenticação e roteamento inicial (corrigido e fortalecido)
+// auth.js - autenticação e roteamento inicial (hotfix sem conflito global)
 
 let currentUser = null;
 let authInitialized = false;
 let appInitPromise = null;
 let lastHandledUid = null;
 
-function getEl(id) { return document.getElementById(id); }
-function setDisplay(id, value) { const el = getEl(id); if (el) el.style.display = value; }
-function callGlobalShowLoading() { if (typeof window.showLoading === 'function' && window.showLoading !== callGlobalShowLoading) window.callGlobalShowLoading(); }
-function callGlobalHideLoading() { if (typeof window.hideLoading === 'function' && window.hideLoading !== callGlobalHideLoading) window.callGlobalHideLoading(); }
-function showToast(message, type = 'info') { window.showToast?.(message, type); }
-function logError(context, error, extra = null) { console.error(`[auth] ${context}:`, error, extra || ''); }
-function logWarn(context, extra = null) { console.warn(`[auth] ${context}`, extra || ''); }
-function isAppAvailable() { return !!window.app; }
-function isDbServiceAvailable() { return !!window.dbService && typeof window.dbService.loadUserData === 'function'; }
-function resetAppInitState() { appInitPromise = null; }
-function showLoginScreen() { setDisplay('login-screen', 'flex'); setDisplay('setup-screen', 'none'); setDisplay('main-dashboard', 'none'); }
-function showSetupScreen() { setDisplay('login-screen', 'none'); setDisplay('setup-screen', 'flex'); setDisplay('main-dashboard', 'none'); }
-function showDashboardScreen() { setDisplay('login-screen', 'none'); setDisplay('setup-screen', 'none'); setDisplay('main-dashboard', 'block'); }
-function dispatchAppReady() { document.dispatchEvent(new Event('app-ready')); }
+function getEl(id) {
+  return document.getElementById(id);
+}
+
+function setDisplay(id, value) {
+  const el = getEl(id);
+  if (el) el.style.display = value;
+}
+
+const uiShowLoading = () => {
+  try {
+    if (window.utils?.showLoading) {
+      window.utils.showLoading();
+      return;
+    }
+
+    const loadingScreen = document.getElementById('loading-screen');
+    if (loadingScreen) loadingScreen.style.display = 'flex';
+  } catch (error) {
+    console.warn('[auth] Falha ao exibir loading:', error);
+  }
+};
+
+const uiHideLoading = () => {
+  try {
+    if (window.utils?.hideLoading) {
+      window.utils.hideLoading();
+      return;
+    }
+
+    const loadingScreen = document.getElementById('loading-screen');
+    if (loadingScreen) loadingScreen.style.display = 'none';
+  } catch (error) {
+    console.warn('[auth] Falha ao ocultar loading:', error);
+  }
+};
+
+const uiShowToast = (message, type = 'info') => {
+  try {
+    window.showToast?.(message, type);
+  } catch (error) {
+    console.warn('[auth] Falha ao mostrar toast:', error);
+  }
+};
+
+function logError(context, error, extra = null) {
+  console.error(`[auth] ${context}:`, error, extra || '');
+}
+
+function logWarn(context, extra = null) {
+  console.warn(`[auth] ${context}`, extra || '');
+}
+
+function isAppAvailable() {
+  return !!window.app;
+}
+
+function isDbServiceAvailable() {
+  return !!window.dbService && typeof window.dbService.loadUserData === 'function';
+}
+
+function resetAppInitState() {
+  appInitPromise = null;
+}
+
+function showLoginScreen() {
+  setDisplay('login-screen', 'flex');
+  setDisplay('setup-screen', 'none');
+  setDisplay('main-dashboard', 'none');
+}
+
+function showSetupScreen() {
+  setDisplay('login-screen', 'none');
+  setDisplay('setup-screen', 'flex');
+  setDisplay('main-dashboard', 'none');
+}
+
+function showDashboardScreen() {
+  setDisplay('login-screen', 'none');
+  setDisplay('setup-screen', 'none');
+  setDisplay('main-dashboard', 'block');
+}
+
+function dispatchAppReady() {
+  document.dispatchEvent(new Event('app-ready'));
+}
 
 function hasUserProfile(data) {
-  return !!(data && data.user && (String(data.user.nome || '').trim() || String(data.user.curso || '').trim() || String(data.user.universidade || '').trim()));
+  return !!(
+    data &&
+    data.user &&
+    (
+      String(data.user.nome || '').trim() ||
+      String(data.user.curso || '').trim() ||
+      String(data.user.universidade || '').trim()
+    )
+  );
 }
 
 async function waitForDependencies(maxAttempts = 40, delay = 150) {
@@ -29,33 +109,55 @@ async function waitForDependencies(maxAttempts = 40, delay = 150) {
     if (isAppAvailable() && isDbServiceAvailable()) return true;
     await new Promise((resolve) => setTimeout(resolve, delay));
   }
+
   return false;
 }
 
 async function ensureAppInitialized() {
-  if (!window.app || typeof window.app.init !== 'function') throw new Error('App não está disponível para inicialização.');
-  if (appInitPromise) return appInitPromise;
-  appInitPromise = (async () => { await window.app.init(); })();
-  try { await appInitPromise; } finally { resetAppInitState(); }
+  if (!window.app || typeof window.app.init !== 'function') {
+    throw new Error('App não está disponível para inicialização.');
+  }
+
+  if (appInitPromise) {
+    return appInitPromise;
+  }
+
+  appInitPromise = (async () => {
+    await window.app.init();
+  })();
+
+  try {
+    await appInitPromise;
+  } finally {
+    resetAppInitState();
+  }
 }
 
 async function renderSetupIfAvailable() {
-  if (window.app && typeof window.app.renderSetupForm === 'function') await window.app.renderSetupForm();
-  else logWarn('renderSetupForm não está disponível no window.app');
+  if (window.app && typeof window.app.renderSetupForm === 'function') {
+    await window.app.renderSetupForm();
+  } else {
+    logWarn('renderSetupForm não está disponível no window.app');
+  }
 }
 
 async function handleSignedInUser(user) {
-  if (!user || !user.uid) throw new Error('Usuário autenticado inválido.');
+  if (!user || !user.uid) {
+    throw new Error('Usuário autenticado inválido.');
+  }
+
   currentUser = user;
   lastHandledUid = user.uid;
+
   showLoginScreen();
   setDisplay('login-screen', 'none');
 
   const dependenciesReady = await waitForDependencies();
+
   if (!dependenciesReady) {
     const error = new Error('Dependências da aplicação não ficaram prontas a tempo.');
     logError('Dependências indisponíveis após login', error);
-    showToast('App ainda não inicializado. Recarregue a página.', 'error');
+    uiShowToast('App ainda não inicializado. Recarregue a página.', 'error');
     return;
   }
 
@@ -64,11 +166,13 @@ async function handleSignedInUser(user) {
     data = await window.dbService.loadUserData(user.uid);
   } catch (error) {
     logError('Falha ao carregar dados do usuário', error, { uid: user.uid });
-    showToast('Erro ao carregar seus dados. Recarregue a página.', 'error');
+    uiShowToast('Erro ao carregar seus dados. Recarregue a página.', 'error');
     throw error;
   }
 
-  if (!hasUserProfile(data)) {
+  const profileExists = hasUserProfile(data);
+
+  if (!profileExists) {
     showSetupScreen();
     await renderSetupIfAvailable();
     dispatchAppReady();
@@ -76,10 +180,12 @@ async function handleSignedInUser(user) {
   }
 
   showDashboardScreen();
-  try { await ensureAppInitialized(); }
-  catch (error) {
+
+  try {
+    await ensureAppInitialized();
+  } catch (error) {
     logError('Falha ao inicializar app após login', error, { uid: user.uid });
-    showToast('Erro ao abrir o painel. Recarregue a página.', 'error');
+    uiShowToast('Erro ao abrir o painel. Recarregue a página.', 'error');
     throw error;
   }
 }
@@ -93,21 +199,26 @@ function handleSignedOutUser() {
 
 async function handleAuthStateChange(user) {
   try {
-    callGlobalShowLoading();
-    if (user) await handleSignedInUser(user);
-    else handleSignedOutUser();
+    uiShowLoading();
+
+    if (user) {
+      await handleSignedInUser(user);
+    } else {
+      handleSignedOutUser();
+    }
   } catch (error) {
     logError('Erro na autenticação/inicialização', error);
-    showToast('Erro ao inicializar aplicação. Recarregue a página.', 'error');
+    uiShowToast('Erro ao inicializar aplicação. Recarregue a página.', 'error');
     handleSignedOutUser();
   } finally {
-    callGlobalHideLoading();
+    uiHideLoading();
   }
 }
 
 function getFriendlyAuthErrorMessage(error) {
   const code = error?.code || '';
   const rawMessage = error?.message || '';
+
   const errorMap = {
     'auth/popup-closed-by-user': 'Login cancelado antes da conclusão.',
     'auth/popup-blocked': 'O navegador bloqueou a janela de login. Libere pop-ups e tente novamente.',
@@ -118,41 +229,46 @@ function getFriendlyAuthErrorMessage(error) {
     'auth/operation-not-allowed': 'Método de login não habilitado no Firebase.',
     'auth/internal-error': 'Erro interno de autenticação. Tente novamente.'
   };
+
   return errorMap[code] || rawMessage || 'Falha ao entrar com Google';
 }
 
 async function loginWithGoogle() {
   if (!window.auth || !window.googleProvider) {
     logWarn('loginWithGoogle chamado sem auth/googleProvider disponíveis');
-    showToast('Login indisponível no momento. Recarregue a página.', 'error');
+    uiShowToast('Login indisponível no momento. Recarregue a página.', 'error');
     return;
   }
+
   try {
-    callGlobalShowLoading();
+    uiShowLoading();
     await window.auth.signInWithPopup(window.googleProvider);
   } catch (error) {
     logError('Erro no login com Google', error);
-    showToast(`Erro ao fazer login: ${getFriendlyAuthErrorMessage(error)}`, 'error');
+    const message = getFriendlyAuthErrorMessage(error);
+    uiShowToast(`Erro ao fazer login: ${message}`, 'error');
   } finally {
-    callGlobalHideLoading();
+    uiHideLoading();
   }
 }
 
 async function logout() {
   if (!window.auth) {
     logWarn('logout chamado sem auth disponível');
-    showToast('Logout indisponível no momento.', 'error');
+    uiShowToast('Logout indisponível no momento.', 'error');
     return;
   }
+
   try {
-    callGlobalShowLoading();
+    uiShowLoading();
     await window.auth.signOut();
-    showToast('Desconectado com sucesso', 'success');
+    uiShowToast('Desconectado com sucesso', 'success');
   } catch (error) {
     logError('Erro no logout', error);
-    showToast(`Erro ao sair: ${error?.message || 'Falha ao sair'}`, 'error');
+    const message = error?.message || 'Falha ao sair';
+    uiShowToast(`Erro ao sair: ${message}`, 'error');
   } finally {
-    callGlobalHideLoading();
+    uiHideLoading();
   }
 }
 
@@ -163,18 +279,27 @@ function bindAuthEvents() {
 
 function initAuthListener() {
   if (authInitialized) return;
+
   if (!window.auth || typeof window.auth.onAuthStateChanged !== 'function') {
     logWarn('auth.onAuthStateChanged ainda não está disponível');
     return;
   }
+
   authInitialized = true;
-  window.auth.onAuthStateChanged(async (user) => { await handleAuthStateChange(user); });
+  window.auth.onAuthStateChanged(async (user) => {
+    await handleAuthStateChange(user);
+  });
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
   bindAuthEvents();
+
   const ready = await waitForDependencies(20, 100);
-  if (!ready) logWarn('Dependências principais ainda não estavam prontas no DOMContentLoaded');
+
+  if (!ready) {
+    logWarn('Dependências principais ainda não estavam prontas no DOMContentLoaded');
+  }
+
   initAuthListener();
 });
 
