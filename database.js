@@ -124,15 +124,15 @@ function showErrorToast(message) {
     }
 }
 
-function showLoading() {
-    if (typeof window.showLoading === 'function') {
-        window.showLoading();
+function callGlobalShowLoading() {
+    if (typeof window.showLoading === 'function' && window.showLoading !== callGlobalShowLoading) {
+        window.callGlobalShowLoading();
     }
 }
 
-function hideLoading() {
-    if (typeof window.hideLoading === 'function') {
-        window.hideLoading();
+function callGlobalHideLoading() {
+    if (typeof window.hideLoading === 'function' && window.hideLoading !== callGlobalHideLoading) {
+        window.callGlobalHideLoading();
     }
 }
 
@@ -200,7 +200,7 @@ const dbService = {
         }
 
         try {
-            showLoading();
+            callGlobalShowLoading();
             const sourceData = dataOverride || window.app?.data || DEFAULT_APP_DATA();
             const dataToSave = prepareDataToSave(sourceData);
             await getUsersCollection().doc(user.uid).set(dataToSave, { merge: true });
@@ -213,7 +213,7 @@ const dbService = {
             showErrorToast('Erro ao salvar dados');
             return false;
         } finally {
-            hideLoading();
+            callGlobalHideLoading();
         }
     },
 
@@ -338,7 +338,7 @@ const dbService = {
         }
 
         try {
-            showLoading();
+            callGlobalShowLoading();
             const emptyData = prepareDataToSave(DEFAULT_APP_DATA());
             await getUsersCollection().doc(user.uid).set(emptyData, { merge: false });
             setAppData(emptyData);
@@ -350,7 +350,7 @@ const dbService = {
             showErrorToast('Erro ao limpar dados');
             return false;
         } finally {
-            hideLoading();
+            callGlobalHideLoading();
         }
     }
 };
