@@ -7,8 +7,8 @@ let lastHandledUid = null;
 
 function getEl(id) { return document.getElementById(id); }
 function setDisplay(id, value) { const el = getEl(id); if (el) el.style.display = value; }
-function showLoading() { window.showLoading?.(); }
-function hideLoading() { window.hideLoading?.(); }
+function callGlobalShowLoading() { if (typeof window.showLoading === 'function' && window.showLoading !== callGlobalShowLoading) window.callGlobalShowLoading(); }
+function callGlobalHideLoading() { if (typeof window.hideLoading === 'function' && window.hideLoading !== callGlobalHideLoading) window.callGlobalHideLoading(); }
 function showToast(message, type = 'info') { window.showToast?.(message, type); }
 function logError(context, error, extra = null) { console.error(`[auth] ${context}:`, error, extra || ''); }
 function logWarn(context, extra = null) { console.warn(`[auth] ${context}`, extra || ''); }
@@ -93,7 +93,7 @@ function handleSignedOutUser() {
 
 async function handleAuthStateChange(user) {
   try {
-    showLoading();
+    callGlobalShowLoading();
     if (user) await handleSignedInUser(user);
     else handleSignedOutUser();
   } catch (error) {
@@ -101,7 +101,7 @@ async function handleAuthStateChange(user) {
     showToast('Erro ao inicializar aplicação. Recarregue a página.', 'error');
     handleSignedOutUser();
   } finally {
-    hideLoading();
+    callGlobalHideLoading();
   }
 }
 
@@ -128,13 +128,13 @@ async function loginWithGoogle() {
     return;
   }
   try {
-    showLoading();
+    callGlobalShowLoading();
     await window.auth.signInWithPopup(window.googleProvider);
   } catch (error) {
     logError('Erro no login com Google', error);
     showToast(`Erro ao fazer login: ${getFriendlyAuthErrorMessage(error)}`, 'error');
   } finally {
-    hideLoading();
+    callGlobalHideLoading();
   }
 }
 
@@ -145,14 +145,14 @@ async function logout() {
     return;
   }
   try {
-    showLoading();
+    callGlobalShowLoading();
     await window.auth.signOut();
     showToast('Desconectado com sucesso', 'success');
   } catch (error) {
     logError('Erro no logout', error);
     showToast(`Erro ao sair: ${error?.message || 'Falha ao sair'}`, 'error');
   } finally {
-    hideLoading();
+    callGlobalHideLoading();
   }
 }
 
