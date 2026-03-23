@@ -34,8 +34,6 @@ class StudyLifeControl {
         this.timerStartedAt = null;
         this.viewRenderer = null;
         this.initialized = false;
-        this.globalEventsBound = false;
-        this.setupFormBound = false;
 
         this.editingSessionId = null;
         this.editingTopicId = null;
@@ -55,20 +53,6 @@ class StudyLifeControl {
         if (this.initialized) return;
 
         await this.loadData();
-
-        this.data.settings = {
-            heavyMode: false,
-            notifications: true,
-            autoPlan: true,
-            ...(this.data.settings || {})
-        };
-
-        if (this.data.settings?.curriculumView) {
-            this.curriculumViewState = {
-                ...this.curriculumViewState,
-                ...this.data.settings.curriculumView
-            };
-        }
 
         this.viewRenderer = new ViewRenderer(this);
         this.setupEventListeners();
@@ -95,12 +79,6 @@ class StudyLifeControl {
 
         const data = await dbService.loadUserData(user.uid);
         this.data = data || (typeof DEFAULT_APP_DATA === 'function' ? DEFAULT_APP_DATA() : this.data);
-        this.data.settings = {
-            heavyMode: false,
-            notifications: true,
-            autoPlan: true,
-            ...(this.data.settings || {})
-        };
         if (!Array.isArray(this.data.curriculum)) this.data.curriculum = [];
         if (!Array.isArray(this.data.extraCourses)) this.data.extraCourses = [];
         this.normalizeCurriculumInMemory();
@@ -210,14 +188,6 @@ class StudyLifeControl {
         showLoading();
 
         try {
-            const nomeUsuario = document.getElementById('nome')?.value?.trim() || '';
-            const cursoUsuario = document.getElementById('curso')?.value?.trim() || '';
-            const universidadeUsuario = document.getElementById('universidade')?.value?.trim() || '';
-            if (!nomeUsuario || !cursoUsuario || !universidadeUsuario) {
-                showToast('Preencha nome, curso e universidade para concluir a configuração.', 'warning');
-                return;
-            }
-
             const subjects = [];
             document.querySelectorAll('.materia-item').forEach(item => {
                 const nome = item.querySelector('.materia-nome')?.value.trim();
@@ -237,9 +207,9 @@ class StudyLifeControl {
             ).map(cb => cb.value);
 
             this.data.user = {
-                nome: nomeUsuario,
-                curso: cursoUsuario,
-                universidade: universidadeUsuario,
+                nome: document.getElementById('nome')?.value?.trim() || '',
+                curso: document.getElementById('curso')?.value?.trim() || '',
+                universidade: document.getElementById('universidade')?.value?.trim() || '',
                 semestre: document.getElementById('semestre')?.value || '',
                 turnoPrincipal: document.getElementById('turno-principal')?.value || 'noite',
                 diasPreferidos,
@@ -291,9 +261,6 @@ class StudyLifeControl {
     }
 
     setupEventListeners() {
-        if (this.globalEventsBound) return;
-        this.globalEventsBound = true;
-
         document.querySelectorAll('.nav-item').forEach(item => {
             item.addEventListener('click', e => {
                 e.preventDefault();
@@ -337,10 +304,7 @@ class StudyLifeControl {
         document.getElementById('form-extra-course')?.addEventListener('submit', e => this.handleExtraCourseSubmit(e));
         document.getElementById('form-aula')?.addEventListener('submit', e => this.handleAulaSubmit(e));
         document.getElementById('form-daily-log')?.addEventListener('submit', e => this.handleDailyLogSubmit(e));
-        if (!this.setupFormBound) {
-            document.getElementById('form-class-diary')?.addEventListener('submit', e => this.handleClassDiarySubmit(e));
-            this.setupFormBound = true;
-        }
+        document.getElementById('form-class-diary')?.addEventListener('submit', e => this.handleClassDiarySubmit(e));
 
         document.getElementById('modo-faculdade-pesada')?.addEventListener('change', async e => {
             this.data.settings.heavyMode = e.target.checked;
