@@ -1,40 +1,29 @@
-Você vai receber um PDF, imagem ou texto de um fluxograma/grade curricular universitária brasileira.
+Leia o arquivo da grade curricular/fluxograma que vou anexar e devolva SOMENTE um JSON válido, sem texto antes ou depois.
 
-Sua tarefa é extrair a grade COMPLETA e devolver APENAS um JSON válido, sem explicações antes ou depois.
-
-REGRAS OBRIGATÓRIAS:
-1. Leia o fluxograma inteiro.
-2. Inclua TODOS os semestres visíveis no documento.
-3. NÃO resuma.
-4. NÃO pare no meio.
-5. NÃO escreva comentários.
-6. NÃO escreva texto fora do JSON.
-7. Se houver dúvida em algum campo, preserve a disciplina e deixe:
-   - "codigo": ""
-   - "creditos": 0
-   - "prerequisitos": []
-8. Se houver internato, estágio, TCC, optativas ou módulos, inclua também.
-9. Mantenha a ordem por semestre.
-10. Responda SOMENTE com um bloco de código JSON.
-
-FORMATO EXATO DE SAÍDA:
-
-```json
+Formato obrigatório:
 {
-  "faculdade": "",
-  "curso": "",
-  "versao": "",
+  "faculdade": "Nome da faculdade",
+  "curso": "Nome do curso",
+  "versao": "Opcional",
   "disciplinas": [
     {
-      "nome": "",
-      "codigo": "",
+      "nome": "Nome da disciplina",
+      "codigo": "Opcional",
       "semestre": 1,
-      "cargaHoraria": 0,
-      "creditos": 0,
-      "prerequisitos": [],
+      "cargaHoraria": 60,
+      "creditos": 4,
+      "prerequisitos": ["Disciplina anterior"],
       "tipo": "obrigatoria"
     }
   ]
 }
 
-me mande em arquivo .json
+Regras:
+- Retorne apenas JSON puro.
+- Use a chave "disciplinas".
+- Em "semestre", use número quando estiver claro.
+- Em "cargaHoraria" e "creditos", use número sem texto.
+- Em "prerequisitos", use lista de nomes das disciplinas.
+- Se algum dado não aparecer, use string vazia ou 0.
+- Não invente disciplinas que não existirem no arquivo.
+- Se houver disciplinas optativas/eletivas, em "tipo" use "optativa".

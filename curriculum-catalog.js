@@ -61,6 +61,19 @@
       .catalog-close{background:#e2e8f0;color:#0f172a}
       .catalog-success{background:#ecfdf5;border:1px solid #86efac;color:#166534;padding:10px 12px;border-radius:12px;margin-top:12px}
       .catalog-warning{background:#fff7ed;border:1px solid #fdba74;color:#9a3412;padding:10px 12px;border-radius:12px;margin-top:12px}
+
+      .setup-community-suggestions{margin-top:14px;border-top:1px solid rgba(255,255,255,.08);padding-top:14px}
+      .setup-community-suggestions-head{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+      .setup-community-suggestions-head strong{font-size:.95rem}
+      .setup-community-suggestions-head span{font-size:.82rem;opacity:.75}
+      .setup-community-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+      .setup-community-card{display:flex;flex-direction:column;gap:6px;text-align:left;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.045);color:#fff;cursor:pointer;transition:.18s ease}
+      .setup-community-card:hover{transform:translateY(-2px);border-color:rgba(99,102,241,.45);background:rgba(99,102,241,.12)}
+      .setup-community-card strong{font-size:.95rem;line-height:1.3}
+      .setup-community-card small{color:rgba(255,255,255,.7);line-height:1.45}
+      .setup-community-card .setup-community-badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+      .setup-community-card .setup-community-badge{padding:4px 8px;border-radius:999px;background:rgba(255,255,255,.08);font-size:.75rem;color:#dbeafe}
+      .setup-community-empty{padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.04);border:1px dashed rgba(255,255,255,.12);color:rgba(255,255,255,.78)}
       @media (max-width: 820px){
         .catalog-hero{grid-template-columns:1fr}
         .catalog-hero .catalog-actions{justify-content:flex-start}
@@ -405,6 +418,87 @@
       }
     };
 
+
+    dbService.listCommunityCatalogs = async function (limitCount, filters) {
+      const limit = Number(limitCount || 12) || 12;
+      const dbRef = getDbInstance();
+      const raw = [];
+      Object.values(COMMUNITY_BOOTSTRAP || {}).forEach(item => raw.push({
+        ...item,
+        source: item.source || 'bootstrap',
+        stats: item.stats || { componentsCount: ensureArray(item.subjects).length, usersCount: 1 },
+        subjects: dedupeCurriculum(item.subjects || []).map(neutralizeForCatalog),
+        updatedAt: item.updatedAt || item.version || '',
+      }));
+      if (dbRef) {
+        try {
+          const snap = await dbRef.collection('community_catalogs').limit(24).get();
+          snap.forEach(doc => {
+            const data = doc.data() || {};
+            raw.push({
+              key: data.key || doc.id,
+              faculdade: data.faculdade || '',
+              curso: data.curso || '',
+              version: data.version || '',
+              confidence: Number(data.confidence || 0),
+              updatedAt: data.updatedAt || '',
+              source: 'firestore',
+              stats: data.stats || { componentsCount: ensureArray(data.subjects).length, usersCount: 1 },
+              subjects: dedupeCurriculum(data.subjects || []).map(neutralizeForCatalog)
+            });
+          });
+        } catch (error) {
+          console.error('Erro ao listar catálogos comunitários:', error);
+        }
+      }
+      const map = new Map();
+      raw.forEach(item => {
+        const key = item.key || catalogKey(item.faculdade, item.curso);
+        if (!item.faculdade || !item.curso) return;
+        if (map.has(key)) {
+          const prev = map.get(key);
+          const mergedSubjects = dedupeCurriculum([...(prev.subjects || []), ...(item.subjects || [])]).map(neutralizeForCatalog);
+          map.set(key, {
+            ...prev,
+            ...item,
+            subjects: mergedSubjects,
+            stats: {
+              componentsCount: Math.max(Number(prev?.stats?.componentsCount || 0), Number(item?.stats?.componentsCount || 0), mergedSubjects.length),
+              usersCount: Math.max(Number(prev?.stats?.usersCount || 0), Number(item?.stats?.usersCount || 0), 1)
+            }
+          });
+        } else {
+          map.set(key, item);
+        }
+      });
+      let items = Array.from(map.values());
+      const faculdadeNorm = normalizeName(filters?.faculdade || '');
+      const cursoNorm = normalizeName(filters?.curso || '');
+      if (faculdadeNorm || cursoNorm) {
+        items = items.map(item => {
+          const uni = normalizeName(item.faculdade);
+          const course = normalizeName(item.curso);
+          let score = 0;
+          if (faculdadeNorm && uni.includes(faculdadeNorm)) score += 3;
+          if (cursoNorm && course.includes(cursoNorm)) score += 4;
+          if (cursoNorm && course.startsWith(cursoNorm)) score += 1;
+          return { ...item, __score: score };
+        });
+      } else {
+        items = items.map(item => ({ ...item, __score: 0 }));
+      }
+      items.sort((a, b) => {
+        const scoreDiff = Number(b.__score || 0) - Number(a.__score || 0);
+        if (scoreDiff) return scoreDiff;
+        const compDiff = Number(b?.stats?.componentsCount || 0) - Number(a?.stats?.componentsCount || 0);
+        if (compDiff) return compDiff;
+        const userDiff = Number(b?.stats?.usersCount || 0) - Number(a?.stats?.usersCount || 0);
+        if (userDiff) return userDiff;
+        return String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''));
+      });
+      return items.slice(0, limit);
+    };
+
     dbService.saveCommunityCatalog = async function (faculdade, curso, subjects, meta) {
       const key = catalogKey(faculdade, curso);
       const normalizedSubjects = dedupeCurriculum(subjects).map(neutralizeForCatalog);
@@ -572,6 +666,55 @@
       usersCount: (existing?.stats?.usersCount || 0) + 1
     });
     window.showToast?.('Sua grade foi compartilhada para fortalecer o catálogo comunitário.', 'success');
+    try { refreshSetupCommunitySuggestions(); } catch (_) {}
+  }
+
+
+  function setupCatalogCardHtml(item) {
+    const components = Number(item?.stats?.componentsCount || ensureArray(item?.subjects).length || 0);
+    const semestres = Array.from(new Set(ensureArray(item?.subjects).map(s => String(s.semestre || '').trim()).filter(Boolean))).length;
+    return `
+      <button type="button" class="setup-community-card" data-load-faculdade="${escapeHtml(item.faculdade)}" data-load-curso="${escapeHtml(item.curso)}">
+        <strong>${escapeHtml(item.curso)}</strong>
+        <small>${escapeHtml(item.faculdade)}</small>
+        <div class="setup-community-badges">
+          <span class="setup-community-badge">${components} componentes</span>
+          <span class="setup-community-badge">${semestres || '?'} semestre(s)</span>
+          <span class="setup-community-badge">${item.source === 'firestore' ? 'comunidade' : 'base inicial'}</span>
+        </div>
+      </button>`;
+  }
+
+  async function refreshSetupCommunitySuggestions() {
+    const host = document.getElementById('setup-community-suggestions');
+    if (!host || !window.dbService?.listCommunityCatalogs) return;
+    const faculdade = document.getElementById('universidade')?.value || '';
+    const curso = document.getElementById('curso')?.value || '';
+    host.innerHTML = '<div class="setup-community-empty">Buscando grades prontas da comunidade...</div>';
+    const items = await window.dbService.listCommunityCatalogs(6, { faculdade, curso });
+    if (!items.length) {
+      host.innerHTML = '<div class="setup-community-empty">Ainda não há grades compartilhadas para sugerir. Você ainda pode usar o botão do ChatGPT / JSON ou colar o fluxograma em texto.</div>';
+      return;
+    }
+    host.innerHTML = `
+      <div class="setup-community-suggestions-head">
+        <div>
+          <strong>Grades prontas da comunidade</strong>
+          <span>${curso || faculdade ? 'Sugestões priorizadas pelo que você digitou acima.' : 'As mais fortes aparecem primeiro.'}</span>
+        </div>
+      </div>
+      <div class="setup-community-grid">
+        ${items.map(setupCatalogCardHtml).join('')}
+      </div>`;
+    host.querySelectorAll('[data-load-faculdade]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const fac = btn.getAttribute('data-load-faculdade') || '';
+        const cur = btn.getAttribute('data-load-curso') || '';
+        const semester = document.getElementById('semestre')?.value || '';
+        showModal({ faculdade: fac, curso: cur, semestre: semester, mode: 'load' });
+        setTimeout(() => document.getElementById('catalog-generate-preview')?.click(), 60);
+      });
+    });
   }
 
   function injectSetupShortcuts() {
@@ -597,6 +740,9 @@
       <div class="catalog-actions">
         <button type="button" class="catalog-btn secondary" id="setup-open-catalog-load">Buscar grade pronta</button>
         <button type="button" class="catalog-btn ghost" id="setup-open-catalog-paste">Usar ChatGPT / colar JSON</button>
+      </div>
+      <div class="setup-community-suggestions" id="setup-community-suggestions">
+        <div class="setup-community-empty">As grades compartilhadas pela comunidade vão aparecer aqui.</div>
       </div>`;
     basicSection.parentNode.insertBefore(box, basicSection.nextSibling);
     document.getElementById('setup-open-catalog-load')?.addEventListener('click', () => showModal({
@@ -617,6 +763,11 @@
         mode: 'paste'
       });
     });
+    ['universidade','curso'].forEach(id => {
+      document.getElementById(id)?.addEventListener('input', () => { refreshSetupCommunitySuggestions(); });
+      document.getElementById(id)?.addEventListener('change', () => { refreshSetupCommunitySuggestions(); });
+    });
+    refreshSetupCommunitySuggestions();
   }
 
   function patchViewRenderer() {
