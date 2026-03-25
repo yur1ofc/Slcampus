@@ -1,0 +1,65 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function validCatalogSchema(docId) {
+      return request.resource.data.key == docId
+        && request.resource.data.faculdade is string
+        && request.resource.data.curso is string
+        && request.resource.data.subjects is list
+        && request.resource.data.updatedAt is string;
+    }
+
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    match /users/{userId}/{document=**} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Catálogo comunitário: leitura para usuários logados.
+    // Mantém colaboração, mas evita chave/docId inválidos e preserva metadados básicos.
+    match /community_catalogs/{docId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && validCatalogSchema(docId)
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      allow update: if isSignedIn()
+        && validCatalogSchema(docId)
+        && resource.data.key == docId
+        && request.resource.data.key == resource.data.key
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedBy == request.auth.uid;
+
+      allow delete: if false;
+    }
+
+    match /community_catalogs/{docId}/{document=**} {
+      allow read: if isSignedIn();
+      allow write, delete: if false;
+    }
+
+    match /community_catalog_submissions/{docId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.sourceUserId == request.auth.uid
+        && request.resource.data.faculdade is string
+        && request.resource.data.curso is string
+        && request.resource.data.subjects is list
+        && request.resource.data.submittedAt is string;
+      allow update, delete: if false;
+    }
+  }
+}

@@ -23,3 +23,7 @@ googleProvider.setCustomParameters({
 window.auth = auth;
 window.db = db;
 window.googleProvider = googleProvider;
+
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch((error) => {
+  console.warn('Não foi possível ativar persistência local de login:', error);
+});

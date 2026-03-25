@@ -408,10 +408,16 @@
     dbService.saveCommunityCatalog = async function (faculdade, curso, subjects, meta) {
       const key = catalogKey(faculdade, curso);
       const normalizedSubjects = dedupeCurriculum(subjects).map(neutralizeForCatalog);
+      const authRef = getAuthInstance();
+      const user = authRef ? authRef.currentUser : null;
+      const now = new Date().toISOString();
       const payload = {
         key, faculdade, curso,
         subjects: normalizedSubjects,
-        updatedAt: new Date().toISOString(),
+        createdAt: meta?.createdAt || now,
+        updatedAt: now,
+        createdBy: meta?.createdBy || user?.uid || null,
+        updatedBy: user?.uid || meta?.updatedBy || null,
         version: meta?.version || '',
         confidence: Number(meta?.confidence || 0.55),
         stats: {
@@ -421,8 +427,16 @@
       };
       const dbRef = getDbInstance();
       if (!dbRef) return payload;
-      try { await dbRef.collection('community_catalogs').doc(key).set(payload, { merge: true }); }
-      catch (error) { console.error('Erro ao salvar catálogo comunitário:', error); }
+      try {
+        const ref = dbRef.collection('community_catalogs').doc(key);
+        const existing = await ref.get().catch(() => null);
+        if (existing?.exists) {
+          const data = existing.data() || {};
+          payload.createdAt = data.createdAt || payload.createdAt;
+          payload.createdBy = data.createdBy || payload.createdBy;
+        }
+        await ref.set(payload, { merge: true });
+      } catch (error) { console.error('Erro ao salvar catálogo comunitário:', error); }
       return payload;
     };
 
@@ -434,6 +448,7 @@
         subjects: dedupeCurriculum(subjects).map(neutralizeForCatalog),
         submittedAt: new Date().toISOString(),
         sourceUserId: user?.uid || null,
+        sourceUserEmail: user?.email || null,
         version: extra?.version || '',
         semester: extra?.semester || '',
         mode: extra?.mode || 'manual',

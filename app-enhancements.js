@@ -1,5 +1,7 @@
 (function () {
   let deferredInstallPrompt = null;
+  let networkBannerTimer = null;
+  let networkWasOffline = !navigator.onLine;
 
   function el(id) {
     return document.getElementById(id);
@@ -10,22 +12,36 @@
     if (target) target.textContent = text;
   }
 
-  function updateNetworkBanner() {
+  function updateNetworkBanner(forceState = null) {
     const banner = el('network-banner');
     const text = el('network-banner-text');
     if (!banner || !text) return;
 
-    if (navigator.onLine) {
-      text.textContent = 'Conexão restabelecida. Tudo pronto para sincronizar.';
+    const isOnline = forceState == null ? navigator.onLine : forceState === 'online';
+
+    if (networkBannerTimer) {
+      clearTimeout(networkBannerTimer);
+      networkBannerTimer = null;
+    }
+
+    if (!isOnline) {
+      networkWasOffline = true;
+      text.textContent = 'Você está offline. O app continua funcionando com dados locais quando possível.';
       banner.hidden = false;
-      setTimeout(() => {
-        if (navigator.onLine) banner.hidden = true;
-      }, 2200);
       return;
     }
 
-    text.textContent = 'Você está offline. O app continua funcionando com dados locais quando possível.';
-    banner.hidden = false;
+    if (networkWasOffline) {
+      text.textContent = 'Conexão restabelecida. Tudo pronto para sincronizar.';
+      banner.hidden = false;
+      networkBannerTimer = setTimeout(() => {
+        if (navigator.onLine) banner.hidden = true;
+      }, 2200);
+      networkWasOffline = false;
+      return;
+    }
+
+    banner.hidden = true;
   }
 
   function setupInstallPrompt() {
@@ -123,9 +139,9 @@
   }
 
   function setupOfflineEvents() {
-    updateNetworkBanner();
-    window.addEventListener('online', updateNetworkBanner);
-    window.addEventListener('offline', updateNetworkBanner);
+    updateNetworkBanner(navigator.onLine ? 'online' : 'offline');
+    window.addEventListener('online', () => updateNetworkBanner('online'));
+    window.addEventListener('offline', () => updateNetworkBanner('offline'));
   }
 
   function improveRefreshButton() {
