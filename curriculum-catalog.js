@@ -596,7 +596,7 @@
       </div>
       <div class="catalog-actions">
         <button type="button" class="catalog-btn secondary" id="setup-open-catalog-load">Buscar grade pronta</button>
-        <button type="button" class="catalog-btn ghost" id="setup-open-catalog-paste">Colar fluxograma</button>
+        <button type="button" class="catalog-btn ghost" id="setup-open-catalog-paste">Usar ChatGPT / colar JSON</button>
       </div>`;
     basicSection.parentNode.insertBefore(box, basicSection.nextSibling);
     document.getElementById('setup-open-catalog-load')?.addEventListener('click', () => showModal({
@@ -605,12 +605,18 @@
       semestre: document.getElementById('semestre')?.value || '',
       mode: 'load'
     }));
-    document.getElementById('setup-open-catalog-paste')?.addEventListener('click', () => showModal({
-      faculdade: document.getElementById('universidade')?.value || '',
-      curso: document.getElementById('curso')?.value || '',
-      semestre: document.getElementById('semestre')?.value || '',
-      mode: 'paste'
-    }));
+    document.getElementById('setup-open-catalog-paste')?.addEventListener('click', () => {
+      if (window.app?.showChatGPTImportHelper) {
+        window.app.showChatGPTImportHelper();
+        return;
+      }
+      showModal({
+        faculdade: document.getElementById('universidade')?.value || '',
+        curso: document.getElementById('curso')?.value || '',
+        semestre: document.getElementById('semestre')?.value || '',
+        mode: 'paste'
+      });
+    });
   }
 
   function patchViewRenderer() {

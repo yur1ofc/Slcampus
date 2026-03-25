@@ -3116,8 +3116,8 @@ StudyLifeControl.prototype.renderSetupSmartImporter = function() {
         section.className = 'form-section setup-smart-import-section';
         section.id = 'setup-smart-import-section';
         section.innerHTML = `
-            <h2><i class="fas fa-wand-magic-sparkles"></i> Importação rápida da grade</h2>
-            <p class="setup-import-helper">Escolha um modelo pronto quando existir ou cole a grade copiada do PDF/site da faculdade para acelerar o cadastro.</p>
+            <h2><i class="fas fa-wand-magic-sparkles"></i> Importação inteligente da grade</h2>
+            <p class="setup-import-helper">Você pode usar um modelo pronto, colar texto do fluxograma ou importar um arquivo <strong>.json</strong> gerado com ajuda do ChatGPT a partir do PDF/imagem da sua faculdade.</p>
             <div class="form-row setup-import-row">
                 <div class="form-group">
                     <label>Modelo de faculdade</label>
@@ -3138,10 +3138,43 @@ StudyLifeControl.prototype.renderSetupSmartImporter = function() {
                 <button type="button" class="btn-primary" id="btn-aplicar-template-setup"><i class="fas fa-layer-group"></i> Preencher matérias do semestre</button>
             </div>
             <div id="setup-template-preview" class="setup-template-preview"></div>
+            <div class="setup-import-assist-grid">
+                <div class="setup-import-chatgpt-card">
+                    <h3><i class="fas fa-robot"></i> Usar ChatGPT para converter PDF/imagem</h3>
+                    <p>Se sua faculdade só disponibiliza a grade em PDF ou imagem, envie o arquivo ao ChatGPT e peça um JSON no formato certo do site.</p>
+                    <div class="setup-import-actions compact">
+                        <button type="button" class="btn-secondary" id="btn-setup-chatgpt-helper"><i class="fas fa-magic"></i> Ver instruções para o ChatGPT</button>
+                        <button type="button" class="btn-secondary" id="btn-setup-copy-chatgpt-prompt"><i class="fas fa-copy"></i> Copiar prompt</button>
+                        <button type="button" class="btn-primary" id="btn-setup-import-json"><i class="fas fa-file-code"></i> Importar JSON do ChatGPT</button>
+                    </div>
+                    <p class="setup-import-microcopy">Fluxo recomendado: anexar PDF/imagem no ChatGPT → gerar JSON → importar aqui.</p>
+                </div>
+                <div class="setup-import-textbox">
+                    <label for="setup-curriculum-json"><strong>JSON da grade</strong></label>
+                    <textarea id="setup-curriculum-json" rows="6" placeholder='Cole aqui o JSON gerado pelo ChatGPT. Ex:
+{
+  "faculdade": "UFOB",
+  "curso": "Engenharia Civil",
+  "disciplinas": [
+    {"nome": "Cálculo I", "semestre": 1, "cargaHoraria": 60, "creditos": 4, "prerequisitos": []}
+  ]
+}'></textarea>
+                    <div class="setup-import-actions compact">
+                        <button type="button" class="btn-secondary" id="btn-processar-grade-json"><i class="fas fa-code"></i> Ler JSON e montar grade</button>
+                    </div>
+                    <div id="setup-json-import-feedback" class="setup-import-feedback"></div>
+                </div>
+            </div>
             <div class="setup-import-textbox">
                 <label for="setup-curriculum-text"><strong>Ou cole a grade em texto</strong></label>
-                <textarea id="setup-curriculum-text" rows="6" placeholder="Cole aqui o texto copiado do PDF/site, com semestres e disciplinas. Ex:\n1º semestre\nCálculo I - 60h\nGeometria Analítica - 90h\n\n2º semestre\nFísica I - 60h"></textarea>
-                <div class="setup-import-actions">
+                <textarea id="setup-curriculum-text" rows="6" placeholder="Cole aqui o texto copiado do PDF/site, com semestres e disciplinas. Ex:
+1º semestre
+Cálculo I - 60h
+Geometria Analítica - 90h
+
+2º semestre
+Física I - 60h"></textarea>
+                <div class="setup-import-actions compact">
                     <button type="button" class="btn-secondary" id="btn-processar-grade-texto"><i class="fas fa-file-import"></i> Ler texto e montar grade</button>
                 </div>
                 <div id="setup-text-import-feedback" class="setup-import-feedback"></div>
@@ -3222,6 +3255,39 @@ StudyLifeControl.prototype.renderSetupSmartImporter = function() {
         if (feedback) feedback.textContent = `${parsed.length} componente(s) identificados. ${semesterSubjects.length} matéria(s) do semestre atual foram preenchidas.`;
         showToast('Grade em texto interpretada com sucesso!');
     });
+
+    document.getElementById('btn-processar-grade-json')?.addEventListener('click', () => {
+        const raw = document.getElementById('setup-curriculum-json')?.value || '';
+        const feedback = document.getElementById('setup-json-import-feedback');
+        try {
+            const parsed = this.parseCurriculumImportJson(raw);
+            if (!parsed.items.length) {
+                if (feedback) feedback.textContent = 'O JSON foi lido, mas não encontrei disciplinas em disciplinas/curriculum/items.';
+                showToast('JSON sem disciplinas válidas.', 'warning');
+                return;
+            }
+            this.applyImportedSetupCurriculum(parsed, 'json-import');
+            if (feedback) feedback.textContent = `${parsed.items.length} componente(s) identificados em ${parsed.meta?.curso || 'seu arquivo'}.`;
+            showToast('JSON importado com sucesso!');
+        } catch (error) {
+            if (feedback) feedback.textContent = error.message || 'JSON inválido.';
+            showToast('Não consegui ler esse JSON.', 'warning');
+        }
+    });
+
+    document.getElementById('btn-setup-chatgpt-helper')?.addEventListener('click', () => this.showChatGPTImportHelper());
+    document.getElementById('btn-setup-copy-chatgpt-prompt')?.addEventListener('click', async () => {
+        const prompt = this.getChatGPTCurriculumPrompt();
+        try {
+            await navigator.clipboard.writeText(prompt);
+            showToast('Prompt copiado. Agora é só colar no ChatGPT junto com o PDF/imagem.', 'success');
+        } catch (error) {
+            console.error(error);
+            this.showChatGPTImportHelper();
+            showToast('Abri as instruções porque não consegui copiar automaticamente.', 'info');
+        }
+    });
+    document.getElementById('btn-setup-import-json')?.addEventListener('click', () => this.ensureSetupImportJsonInput().click());
 
     syncPreview();
 };
@@ -3538,6 +3604,154 @@ StudyLifeControl.prototype.ensurePostSetupReady = async function() {
     this.loadView('dashboard');
     document.dispatchEvent(new Event('app-ready'));
 };
+StudyLifeControl.prototype.applyImportedSetupCurriculum = function(parsed, source = 'json-import') {
+    const items = (parsed?.items || []).map(item => this.normalizeCurriculumItem(item)).filter(item => item?.nome);
+    if (!items.length) return;
+    this.pendingSetupImportedCurriculum = items;
+    this.pendingSetupTemplateId = source;
+    const universidadeInput = document.getElementById('universidade');
+    const cursoInput = document.getElementById('curso');
+    if (universidadeInput && !universidadeInput.value && parsed?.meta?.faculdade) universidadeInput.value = parsed.meta.faculdade;
+    if (cursoInput && !cursoInput.value && parsed?.meta?.curso) cursoInput.value = parsed.meta.curso;
+    const semester = String(document.getElementById('semestre')?.value || '').trim();
+    const semesterSubjects = items.filter(item => String(item.semestre || '').trim() === semester)
+        .map(item => ({ id: generateId(), nome: item.nome, dificuldade: 3, peso: item.tipo === 'obrigatoria' ? 4 : 3, notaDesejada: 7 }));
+    if (semesterSubjects.length) this.populateSetupSubjects(semesterSubjects);
+    const preview = document.getElementById('setup-template-preview');
+    if (preview) {
+        const totalHoras = items.reduce((acc, item) => acc + (Number(item.cargaHoraria) || 0), 0);
+        preview.innerHTML = `
+            <div class="setup-import-preview-card">
+                <div>
+                    <strong>${escapeHtml(parsed?.meta?.faculdade || universidadeInput?.value || 'Faculdade não informada')} • ${escapeHtml(parsed?.meta?.curso || cursoInput?.value || 'Curso não informado')}</strong>
+                    <p>${items.length} componentes identificados via ${source === 'json-import' ? 'JSON do ChatGPT' : 'importação'} e ${semesterSubjects.length} matéria(s) encontradas para o semestre atual.</p>
+                </div>
+                <div class="setup-import-kpis">
+                    <span><strong>${totalHoras}h</strong><small>carga total</small></span>
+                    <span><strong>${semesterSubjects.length}</strong><small>matérias do semestre</small></span>
+                </div>
+            </div>
+            <div class="setup-import-subject-tags">${items.slice(0, 8).map(item => `<span class="chip">${escapeHtml(item.nome)}</span>`).join('')}</div>`;
+    }
+};
+
+StudyLifeControl.prototype.parseCurriculumImportJson = function(raw = '') {
+    let data;
+    try { data = typeof raw === 'string' ? JSON.parse(raw) : raw; }
+    catch (error) { throw new Error('O arquivo não está em JSON válido.'); }
+    if (!data || typeof data !== 'object') throw new Error('JSON inválido.');
+    const sourceItems = Array.isArray(data.disciplinas) ? data.disciplinas : Array.isArray(data.curriculum) ? data.curriculum : Array.isArray(data.items) ? data.items : [];
+    const items = sourceItems.map((item, index) => ({
+        id: generateId(),
+        nome: item.nome || item.name || item.disciplina || item.componente || `Disciplina ${index + 1}`,
+        codigo: item.codigo || item.code || '',
+        semestre: item.semestre || item.semester || item.periodo || '',
+        cargaHoraria: Number(item.cargaHoraria || item.carga_horaria || item.ch || item.hours || 0) || 0,
+        creditos: Number(item.creditos || item.credits || 0) || 0,
+        prerequisitos: Array.isArray(item.prerequisitos) ? item.prerequisitos : Array.isArray(item.prerequisites) ? item.prerequisites : (item.prerequisitos ? [item.prerequisitos] : []),
+        tipo: item.tipo || item.type || 'obrigatoria',
+        status: item.status || 'nao-cursada'
+    }));
+    return { meta: { faculdade: data.faculdade || data.universidade || data.faculty || '', curso: data.curso || data.course || '', versao: data.versao || data.version || '' }, items };
+};
+
+StudyLifeControl.prototype.getChatGPTCurriculumPrompt = function() {
+    return `Leia o arquivo da grade curricular/fluxograma que vou anexar e devolva SOMENTE um JSON válido, sem texto antes ou depois.
+
+Formato obrigatório:
+{
+  "faculdade": "Nome da faculdade",
+  "curso": "Nome do curso",
+  "versao": "Opcional",
+  "disciplinas": [
+    {
+      "nome": "Nome da disciplina",
+      "codigo": "Opcional",
+      "semestre": 1,
+      "cargaHoraria": 60,
+      "creditos": 4,
+      "prerequisitos": ["Disciplina anterior"],
+      "tipo": "obrigatoria"
+    }
+  ]
+}
+
+Regras:
+- Retorne apenas JSON puro.
+- Use a chave "disciplinas".
+- Em "semestre", use número quando estiver claro.
+- Em "cargaHoraria" e "creditos", use número sem texto.
+- Em "prerequisitos", use lista de nomes das disciplinas.
+- Se algum dado não aparecer, use string vazia ou 0.
+- Não invente disciplinas que não existirem no arquivo.
+- Se houver disciplinas optativas/eletivas, em "tipo" use "optativa".`;
+};
+
+StudyLifeControl.prototype.showChatGPTImportHelper = function() {
+    const existing = document.getElementById('setup-chatgpt-import-modal');
+    if (existing) existing.remove();
+    const modal = document.createElement('div');
+    modal.id = 'setup-chatgpt-import-modal';
+    modal.className = 'setup-chatgpt-modal';
+    modal.innerHTML = `
+        <div class="setup-chatgpt-dialog">
+            <button type="button" class="setup-chatgpt-close" aria-label="Fechar">&times;</button>
+            <h3><i class="fas fa-robot"></i> Como usar o ChatGPT para importar sua grade</h3>
+            <ol>
+                <li>Abra o ChatGPT e envie o PDF ou imagem do seu fluxograma.</li>
+                <li>Cole o prompt abaixo e peça para ele responder apenas com JSON.</li>
+                <li>Salve a resposta em um arquivo <strong>.json</strong> ou cole no campo JSON desta tela.</li>
+                <li>Use o botão <strong>Importar JSON do ChatGPT</strong> aqui no site.</li>
+            </ol>
+            <label><strong>Prompt pronto</strong></label>
+            <textarea readonly>${this.getChatGPTCurriculumPrompt()}</textarea>
+            <div class="setup-import-actions compact">
+                <button type="button" class="btn-secondary" id="setup-chatgpt-copy-inline"><i class="fas fa-copy"></i> Copiar prompt</button>
+                <button type="button" class="btn-primary" id="setup-chatgpt-import-inline"><i class="fas fa-file-code"></i> Importar JSON agora</button>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+    const close = () => modal.remove();
+    modal.querySelector('.setup-chatgpt-close')?.addEventListener('click', close);
+    modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+    modal.querySelector('#setup-chatgpt-copy-inline')?.addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(this.getChatGPTCurriculumPrompt()); showToast('Prompt copiado!', 'success'); }
+        catch (error) { showToast('Não consegui copiar automaticamente.', 'warning'); }
+    });
+    modal.querySelector('#setup-chatgpt-import-inline')?.addEventListener('click', () => { close(); this.ensureSetupImportJsonInput().click(); });
+};
+
+StudyLifeControl.prototype.ensureSetupImportJsonInput = function() {
+    let input = document.getElementById('setup-import-json-file');
+    if (input) return input;
+    input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,application/json,text/json';
+    input.id = 'setup-import-json-file';
+    input.style.display = 'none';
+    input.addEventListener('change', async (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        try {
+            const text = await file.text();
+            const parsed = this.parseCurriculumImportJson(text);
+            this.applyImportedSetupCurriculum(parsed, 'json-import');
+            const jsonField = document.getElementById('setup-curriculum-json');
+            if (jsonField) jsonField.value = text;
+            const feedback = document.getElementById('setup-json-import-feedback');
+            if (feedback) feedback.textContent = `${parsed.items.length} componente(s) importados do arquivo ${file.name}.`;
+            showToast('Arquivo JSON importado com sucesso!', 'success');
+        } catch (error) {
+            console.error(error);
+            showToast(error.message || 'Não consegui importar esse arquivo JSON.', 'warning');
+        } finally {
+            event.target.value = '';
+        }
+    });
+    document.body.appendChild(input);
+    return input;
+};
+
 (() => {
     const originalRenderSetupForm = StudyLifeControl.prototype.renderSetupForm;
     StudyLifeControl.prototype.renderSetupForm = function(...args) {
