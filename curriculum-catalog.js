@@ -35,7 +35,7 @@
       .catalog-hero{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin:18px 0;padding:18px;border-radius:18px;background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff}
       .catalog-hero h3{margin:0 0 8px;font-size:1.15rem}
       .catalog-hero p{margin:0;opacity:.9;line-height:1.45}
-      .catalog-hero .catalog-actions{display:flex;flex-wrap:wrap;gap:10px;align-content:flex-start;justify-content:flex-end}
+      .catalog-hero .catalog-actions{display:flex;flex-wrap:wrap;gap:10px;align-content:flex-start;justify-content:flex-end}.catalog-hero .catalog-actions .catalog-btn{white-space:nowrap}
       .catalog-btn{border:none;border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer}
       .catalog-btn.primary{background:#22c55e;color:#06230f}
       .catalog-btn.secondary{background:#fff;color:#0f172a}
@@ -596,7 +596,9 @@
       </div>
       <div class="catalog-actions">
         <button type="button" class="catalog-btn secondary" id="setup-open-catalog-load">Buscar grade pronta</button>
-        <button type="button" class="catalog-btn ghost" id="setup-open-catalog-paste">Usar ChatGPT / colar JSON</button>
+        <button type="button" class="catalog-btn ghost" id="setup-open-catalog-helper">Ver instruções do ChatGPT</button>
+        <button type="button" class="catalog-btn ghost" id="setup-open-catalog-copy-prompt">Copiar prompt</button>
+        <button type="button" class="catalog-btn primary" id="setup-open-catalog-paste">Importar JSON do ChatGPT</button>
       </div>`;
     basicSection.parentNode.insertBefore(box, basicSection.nextSibling);
     document.getElementById('setup-open-catalog-load')?.addEventListener('click', () => showModal({
@@ -605,9 +607,39 @@
       semestre: document.getElementById('semestre')?.value || '',
       mode: 'load'
     }));
-    document.getElementById('setup-open-catalog-paste')?.addEventListener('click', () => {
+    document.getElementById('setup-open-catalog-helper')?.addEventListener('click', () => {
       if (window.app?.showChatGPTImportHelper) {
         window.app.showChatGPTImportHelper();
+        return;
+      }
+      showModal({
+        faculdade: document.getElementById('universidade')?.value || '',
+        curso: document.getElementById('curso')?.value || '',
+        semestre: document.getElementById('semestre')?.value || '',
+        mode: 'paste'
+      });
+    });
+    document.getElementById('setup-open-catalog-copy-prompt')?.addEventListener('click', async () => {
+      if (window.app?.getChatGPTCurriculumPrompt) {
+        try {
+          await navigator.clipboard.writeText(window.app.getChatGPTCurriculumPrompt());
+          window.showToast?.('Prompt copiado. Cole no ChatGPT junto com o PDF ou a imagem da grade.', 'success');
+        } catch (error) {
+          console.error(error);
+          if (window.app?.showChatGPTImportHelper) window.app.showChatGPTImportHelper();
+        }
+        return;
+      }
+      showModal({
+        faculdade: document.getElementById('universidade')?.value || '',
+        curso: document.getElementById('curso')?.value || '',
+        semestre: document.getElementById('semestre')?.value || '',
+        mode: 'paste'
+      });
+    });
+    document.getElementById('setup-open-catalog-paste')?.addEventListener('click', () => {
+      if (window.app?.ensureSetupImportJsonInput) {
+        window.app.ensureSetupImportJsonInput().click();
         return;
       }
       showModal({
