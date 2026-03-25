@@ -3185,11 +3185,24 @@ Física I - 60h"></textarea>
     }
 
     const select = document.getElementById('setup-template-id');
-    if (select && !select.dataset.ready) {
-        const options = this.getCourseTemplateCatalog().map(template => `
-            <option value="${escapeHtml(template.id)}">${escapeHtml(template.universidade)} • ${escapeHtml(template.curso)}</option>
+    if (select) {
+        const baseOptions = this.getCourseTemplateCatalog().map(template => ({
+            value: template.id,
+            label: `${template.universidade} • ${template.curso}`
+        }));
+        const extraOptions = Array.isArray(this.setupDynamicCatalogOptions) ? this.setupDynamicCatalogOptions : [];
+        const mergedOptions = [];
+        const seen = new Set();
+        [...baseOptions, ...extraOptions].forEach(option => {
+            if (!option?.value || seen.has(option.value)) return;
+            seen.add(option.value);
+            mergedOptions.push(option);
+        });
+        const currentValue = select.value || this.pendingSetupTemplateId || '';
+        select.innerHTML = '<option value="">Selecionar depois</option>' + mergedOptions.map(option => `
+            <option value="${escapeHtml(option.value)}">${escapeHtml(option.label)}</option>
         `).join('');
-        select.innerHTML = '<option value="">Selecionar depois</option>' + options;
+        if (currentValue && seen.has(currentValue)) select.value = currentValue;
         select.dataset.ready = '1';
     }
 
@@ -3604,11 +3617,36 @@ StudyLifeControl.prototype.ensurePostSetupReady = async function() {
     this.loadView('dashboard');
     document.dispatchEvent(new Event('app-ready'));
 };
+StudyLifeControl.prototype.registerSetupDynamicCatalogOption = function(meta = {}) {
+    const faculdade = String(meta.faculdade || '').trim();
+    const curso = String(meta.curso || '').trim();
+    if (!faculdade || !curso) return '';
+    const value = `community:${faculdade.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-')}:${curso.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-')}`;
+    if (!Array.isArray(this.setupDynamicCatalogOptions)) this.setupDynamicCatalogOptions = [];
+    if (!this.setupDynamicCatalogOptions.some(option => option.value === value)) {
+        this.setupDynamicCatalogOptions.push({ value, label: `${faculdade} • ${curso} (comunidade)` });
+    }
+    const select = document.getElementById('setup-template-id');
+    if (select) {
+        if (![...select.options].some(option => option.value === value)) {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = `${faculdade} • ${curso} (comunidade)`;
+            select.appendChild(option);
+        }
+        select.value = value;
+    }
+    return value;
+};
+
 StudyLifeControl.prototype.applyImportedSetupCurriculum = function(parsed, source = 'json-import') {
     const items = (parsed?.items || []).map(item => this.normalizeCurriculumItem(item)).filter(item => item?.nome);
     if (!items.length) return;
     this.pendingSetupImportedCurriculum = items;
     this.pendingSetupTemplateId = source;
+    if (parsed?.meta?.faculdade && parsed?.meta?.curso) {
+        this.pendingSetupTemplateId = this.registerSetupDynamicCatalogOption(parsed.meta) || source;
+    }
 
     const universidadeInput = document.getElementById('universidade');
     const cursoInput = document.getElementById('curso');
