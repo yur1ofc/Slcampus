@@ -24,6 +24,35 @@ const DEFAULT_APP_DATA = () => ({
     }
 });
 
+const LOCAL_BACKUP_PREFIX = 'slc-backup:';
+
+function getBackupKey(userId) {
+    return `${LOCAL_BACKUP_PREFIX}${userId}`;
+}
+
+function saveLocalBackup(userId, data) {
+    try {
+        localStorage.setItem(getBackupKey(userId), JSON.stringify({
+            savedAt: new Date().toISOString(),
+            data
+        }));
+    } catch (error) {
+        console.warn('Não foi possível salvar backup local:', error);
+    }
+}
+
+function loadLocalBackup(userId) {
+    try {
+        const raw = localStorage.getItem(getBackupKey(userId));
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        return parsed?.data || null;
+    } catch (error) {
+        console.warn('Não foi possível ler backup local:', error);
+        return null;
+    }
+}
+
 const dbService = {
     async loadUserData(userId) {
         try {
@@ -48,10 +77,25 @@ const dbService = {
                 window.app.data = data;
             }
 
+            saveLocalBackup(userId, data);
+
             if (window.updateSyncStatus) window.updateSyncStatus(true);
             return data;
         } catch (error) {
             console.error('Erro ao carregar dados:', error);
+            const backup = loadLocalBackup(userId);
+            if (backup) {
+                if (window.updateSyncStatus) window.updateSyncStatus(false);
+                if (window.showToast) window.showToast('Sem conexão com o banco. Carregando último backup local.', 'warning');
+                return {
+                    ...DEFAULT_APP_DATA(),
+                    ...backup,
+                    settings: {
+                        ...DEFAULT_APP_DATA().settings,
+                        ...(backup.settings || {})
+                    }
+                };
+            }
             if (window.updateSyncStatus) window.updateSyncStatus(false);
             if (window.showToast) window.showToast('Erro ao sincronizar dados', 'error');
             throw error;
@@ -67,6 +111,7 @@ const dbService = {
 
             const dataToSave = dataOverride || window.app?.data || DEFAULT_APP_DATA();
             await db.collection('users').doc(user.uid).set(dataToSave, { merge: true });
+            saveLocalBackup(user.uid, dataToSave);
 
             if (window.app) {
                 window.app.data = dataToSave;
@@ -89,12 +134,13 @@ const dbService = {
         if (!user) return false;
 
         try {
-            await db.collection('users').doc(user.uid).update({
+            await db.collection('users').doc(user.uid).set({
                 [field]: data
-            });
+            }, { merge: true });
 
             if (window.app?.data) {
                 window.app.data[field] = data;
+                saveLocalBackup(user.uid, window.app.data);
             }
 
             if (window.updateSyncStatus) window.updateSyncStatus(true);

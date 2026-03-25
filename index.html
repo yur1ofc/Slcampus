@@ -4,6 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Study Life Control - Sistema Inteligente para Universitários</title>
+    <meta name="description" content="Organize estudos, tarefas, provas, hábitos e rotina acadêmica em um painel inteligente feito para universitários.">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta property="og:title" content="Study Life Control">
+    <meta property="og:description" content="Planejamento acadêmico inteligente para universitários.">
+    <meta property="og:type" content="website">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -17,7 +26,23 @@
     <div id="app">
         <div id="loading-screen" class="loading-container" style="display: none;">
             <div class="loading-spinner"></div>
-            <p>Carregando...</p>
+            <p id="loading-text">Carregando seu painel acadêmico...</p>
+        </div>
+
+        <div id="network-banner" class="network-banner" hidden>
+            <i class="fas fa-wifi"></i>
+            <span id="network-banner-text">Você está offline. Algumas ações podem ser salvas localmente.</span>
+        </div>
+
+        <div id="pwa-install-card" class="pwa-install-card" hidden>
+            <div>
+                <strong>Instalar app</strong>
+                <p>Abra o Study Life Control como app no celular ou PC.</p>
+            </div>
+            <div class="pwa-install-actions">
+                <button id="pwa-install-btn" class="btn-primary">Instalar</button>
+                <button id="pwa-install-close" class="btn-secondary">Agora não</button>
+            </div>
         </div>
 
         <div id="login-screen" class="login-container">
@@ -245,6 +270,9 @@
 
                 <main class="main-content">
                     <div class="content-header">
+                        <button class="btn-icon mobile-nav-toggle" id="mobile-nav-toggle" type="button" aria-label="Abrir menu">
+                            <i class="fas fa-bars"></i>
+                        </button>
                         <div class="page-title">
                             <h1 id="page-title">Dashboard</h1>
                         </div>
@@ -1026,6 +1054,8 @@
 <script src="views.js"></script>
 <script src="app.js"></script>
 <script src="script.js"></script>
-<script src="setup-onboarding-enhancer.js"></script>
+<div id="mobile-nav-overlay" class="mobile-nav-overlay" hidden></div>
+    <script src="setup-onboarding-enhancer.js"></script>
+    <script src="app-enhancements.js"></script>
 </body>
 </html>

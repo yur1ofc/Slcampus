@@ -69,6 +69,16 @@ async function loginWithGoogle() {
     await auth.signInWithPopup(googleProvider);
   } catch (error) {
     console.error('Erro no login:', error);
+    const code = error?.code || '';
+    if (code === 'auth/popup-blocked' || code === 'auth/cancelled-popup-request' || code === 'auth/popup-closed-by-user') {
+      try {
+        window.showToast?.('Popup bloqueado. Tentando login por redirecionamento...', 'warning');
+        await auth.signInWithRedirect(googleProvider);
+        return;
+      } catch (redirectError) {
+        console.error('Erro no login por redirecionamento:', redirectError);
+      }
+    }
     const message = error && error.message ? error.message : 'Falha ao entrar com Google';
     window.showToast?.('Erro ao fazer login: ' + message, 'error');
   } finally {
