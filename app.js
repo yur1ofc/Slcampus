@@ -3776,7 +3776,9 @@ Regras:
 - Em "prerequisitos", use lista de nomes das disciplinas.
 - Se algum dado não aparecer, use string vazia ou 0.
 - Não invente disciplinas que não existirem no arquivo.
-- Se houver disciplinas optativas/eletivas, em "tipo" use "optativa".`;
+- Se houver disciplinas optativas/eletivas, em "tipo" use "optativa".
+
+me entregue em arquivo .json`;
 };
 
 StudyLifeControl.prototype.showChatGPTImportHelper = function() {
