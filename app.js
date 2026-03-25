@@ -3609,14 +3609,25 @@ StudyLifeControl.prototype.applyImportedSetupCurriculum = function(parsed, sourc
     if (!items.length) return;
     this.pendingSetupImportedCurriculum = items;
     this.pendingSetupTemplateId = source;
+
     const universidadeInput = document.getElementById('universidade');
     const cursoInput = document.getElementById('curso');
     if (universidadeInput && !universidadeInput.value && parsed?.meta?.faculdade) universidadeInput.value = parsed.meta.faculdade;
     if (cursoInput && !cursoInput.value && parsed?.meta?.curso) cursoInput.value = parsed.meta.curso;
+
+    if (!this.data) this.data = {};
+    if (!Array.isArray(this.data.curriculum)) this.data.curriculum = [];
+    const mergeMode = document.getElementById('setup-template-mode')?.value || 'merge';
+    this.data.curriculum = mergeMode === 'replace'
+        ? items.map(item => this.normalizeCurriculumItem(item))
+        : this.mergeCurriculumItems(this.data.curriculum || [], items).merged;
+    this.normalizeCurriculumInMemory?.();
+
     const semester = String(document.getElementById('semestre')?.value || '').trim();
     const semesterSubjects = items.filter(item => String(item.semestre || '').trim() === semester)
         .map(item => ({ id: generateId(), nome: item.nome, dificuldade: 3, peso: item.tipo === 'obrigatoria' ? 4 : 3, notaDesejada: 7 }));
     if (semesterSubjects.length) this.populateSetupSubjects(semesterSubjects);
+
     const preview = document.getElementById('setup-template-preview');
     if (preview) {
         const totalHoras = items.reduce((acc, item) => acc + (Number(item.cargaHoraria) || 0), 0);
@@ -3632,6 +3643,10 @@ StudyLifeControl.prototype.applyImportedSetupCurriculum = function(parsed, sourc
                 </div>
             </div>
             <div class="setup-import-subject-tags">${items.slice(0, 8).map(item => `<span class="chip">${escapeHtml(item.nome)}</span>`).join('')}</div>`;
+    }
+
+    if (source === 'json-import' && auth?.currentUser && window.dbService?.saveData) {
+        dbService.saveData('curriculum', this.data.curriculum).catch(() => {});
     }
 };
 
@@ -3656,35 +3671,48 @@ StudyLifeControl.prototype.parseCurriculumImportJson = function(raw = '') {
 };
 
 StudyLifeControl.prototype.getChatGPTCurriculumPrompt = function() {
-    return `Leia o arquivo da grade curricular/fluxograma que vou anexar e devolva SOMENTE um JSON válido, sem texto antes ou depois.
+    return `Você vai receber um PDF, imagem ou print de um fluxograma/grade curricular universitária.
 
-Formato obrigatório:
+TAREFA:
+Leia o arquivo e devolva SOMENTE um JSON válido, puro, sem markdown, sem explicação, sem frase antes e sem frase depois.
+
+FORMATO OBRIGATÓRIO:
 {
   "faculdade": "Nome da faculdade",
   "curso": "Nome do curso",
   "versao": "Opcional",
   "disciplinas": [
     {
-      "nome": "Nome da disciplina",
+      "nome": "Nome exato da disciplina",
       "codigo": "Opcional",
       "semestre": 1,
       "cargaHoraria": 60,
-      "creditos": 4,
-      "prerequisitos": ["Disciplina anterior"],
+      "creditos": 0,
+      "prerequisitos": [],
       "tipo": "obrigatoria"
     }
   ]
 }
 
-Regras:
-- Retorne apenas JSON puro.
-- Use a chave "disciplinas".
-- Em "semestre", use número quando estiver claro.
-- Em "cargaHoraria" e "creditos", use número sem texto.
-- Em "prerequisitos", use lista de nomes das disciplinas.
-- Se algum dado não aparecer, use string vazia ou 0.
-- Não invente disciplinas que não existirem no arquivo.
-- Se houver disciplinas optativas/eletivas, em "tipo" use "optativa".`;
+REGRAS IMPORTANTES:
+- Responda APENAS com JSON válido.
+- Use exatamente a chave "disciplinas".
+- Inclua TODAS as disciplinas que estiverem visíveis no arquivo.
+- Não pare no 4º, 6º ou 8º semestre se o fluxograma continuar.
+- Se houver 9º, 10º, 11º e 12º semestre, inclua também.
+- Em "semestre", use número inteiro sem º ou texto.
+- Em "cargaHoraria" e "creditos", use apenas número.
+- Se crédito não aparecer, use 0.
+- Se código não aparecer, use string vazia.
+- Se pré-requisito não aparecer claramente, use lista vazia [].
+- Se a disciplina for optativa/eletiva, use "tipo": "optativa".
+- Não resuma nomes. Mantenha o nome mais completo possível.
+- Não invente disciplina, código, pré-requisito ou crédito.
+- Se o arquivo tiver blocos tipo internato, módulos ou oficinas, eles também devem entrar em "disciplinas" quando forem componentes curriculares.
+- Antes de responder, revise se o JSON está válido e completo.
+
+EXEMPLO DE RESPOSTA CORRETA:
+{"faculdade":"UFOB","curso":"Medicina","versao":"2014.2","disciplinas":[{"nome":"Oficina de Leitura e Produção Textual","codigo":"CHU0001","semestre":1,"cargaHoraria":60,"creditos":0,"prerequisitos":[],"tipo":"obrigatoria"}]}`;
 };
 
 StudyLifeControl.prototype.showChatGPTImportHelper = function() {
@@ -3765,7 +3793,7 @@ StudyLifeControl.prototype.ensureSetupImportJsonInput = function() {
         const selectedTemplateId = document.getElementById('setup-template-id')?.value || this.pendingSetupTemplateId || '';
         const importMode = document.getElementById('setup-template-mode')?.value || 'merge';
         if (!this.data.settings) this.data.settings = {};
-        if (selectedTemplateId && selectedTemplateId !== 'text-import') {
+        if (selectedTemplateId && selectedTemplateId !== 'text-import' && selectedTemplateId !== 'json-import') {
             this.data.settings.lastCurriculumTemplate = selectedTemplateId;
             const template = this.getCourseTemplateById(selectedTemplateId);
             if (template) {
@@ -3779,7 +3807,11 @@ StudyLifeControl.prototype.ensureSetupImportJsonInput = function() {
                 ? this.pendingSetupImportedCurriculum.map(item => this.normalizeCurriculumItem(item))
                 : this.mergeCurriculumItems(this.data.curriculum || [], this.pendingSetupImportedCurriculum).merged;
         }
-        return originalHandleSetupSubmit.call(this, e);
+        const response = await originalHandleSetupSubmit.call(this, e);
+        if (Array.isArray(this.data.curriculum) && this.data.curriculum.length) {
+            await dbService.saveData('curriculum', this.data.curriculum);
+        }
+        return response;
     };
 
     const originalSetupViewEvents = StudyLifeControl.prototype.setupViewEvents;
