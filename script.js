@@ -982,6 +982,16 @@
     const proto = window.StudyLifeControl.prototype;
     const originalLoadView = proto.loadView;
     proto.loadView = function (view) {
+      if (view === 'ajuda') {
+        if (!this.viewRenderer) this.viewRenderer = new ViewRenderer(this);
+        this.currentView = view;
+        const container = el('view-container');
+        if (!container) return;
+        container.innerHTML = window.renderHelpPage ? window.renderHelpPage() : '<div class="card"><div class="card-body">Ajuda indisponível.</div></div>';
+        window.aiAssistant?.updateContext(this.data);
+        setTimeout(() => window.bindHelpActions?.(container), 30);
+        return;
+      }
       if (view === 'gamificacao') {
         if (!this.viewRenderer) this.viewRenderer = new ViewRenderer(this);
         this.currentView = view;
@@ -1012,6 +1022,8 @@
         bindCalendarFilters();
         syncFloatingAIVisibility();
         setupNotificationCenter(this);
+        window.bindHelpActions?.(document);
+        window.SiteTutorial?.maybeStart?.();
       }, 80);
       return result;
     };
@@ -1145,6 +1157,25 @@
     el('notification-popover')?.classList.remove('open');
   }
 
+  function ensureHelpNavItem() {
+    const nav = el('sidebar-nav');
+    if (!nav || nav.querySelector('[data-view="ajuda"]')) return;
+    const item = document.createElement('a');
+    item.href = '#';
+    item.className = 'nav-item';
+    item.dataset.view = 'ajuda';
+    item.innerHTML = '<i class="fas fa-question-circle"></i><span>Ajuda</span>';
+    item.addEventListener('click', e => {
+      e.preventDefault();
+      window.app?.loadView?.('ajuda');
+      document.querySelectorAll('.nav-item').forEach(navItem => navItem.classList.remove('active'));
+      item.classList.add('active');
+      const pageTitle = el('page-title');
+      if (pageTitle) pageTitle.textContent = 'Ajuda';
+    });
+    nav.appendChild(item);
+  }
+
   function ensureGamificationNavItem() {
     const nav = el('sidebar-nav');
     if (!nav || nav.querySelector('[data-view="gamificacao"]')) return;
@@ -1270,6 +1301,7 @@
     patchLoadView();
     if (window.app) {
       ensureGamificationNavItem();
+    ensureHelpNavItem();
       trackXPSourceClicks();
       ensureLaunchData(window.app);
       ensureFocusState(window.app);
@@ -1294,6 +1326,7 @@
     el('add-aula')?.addEventListener('click', () => window.app?.addAulaField?.());
     install();
     ensureGamificationNavItem();
+    ensureHelpNavItem();
     trackXPSourceClicks();
     syncFloatingAIVisibility();
     const observer = new MutationObserver(() => syncFloatingAIVisibility());
@@ -1304,6 +1337,7 @@
     install();
     if (window.app) {
       ensureGamificationNavItem();
+    ensureHelpNavItem();
       trackXPSourceClicks();
       ensureFocusState(window.app);
       setTimeout(() => {

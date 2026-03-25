@@ -3756,3 +3756,30 @@ body.sidebar-open .mobile-nav-overlay {
     padding: 10px 12px;
   }
 }
+
+
+/* Tutorial interativo + ajuda */
+.help-header-actions{display:flex;gap:10px;flex-wrap:wrap}
+.help-hero-card{display:grid;grid-template-columns:1.4fr auto;gap:16px;align-items:center;background:linear-gradient(135deg,rgba(59,130,246,.12),rgba(124,58,237,.10));border:1px solid rgba(99,102,241,.18);border-radius:24px;padding:20px;margin-bottom:18px}
+.help-hero-card h3{margin:8px 0 8px;font-size:1.25rem}
+.help-hero-card p{margin:0;color:var(--text-secondary)}
+.help-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin:18px 0}
+.help-card-pro{display:flex;gap:14px;align-items:flex-start;padding:18px;border-radius:22px;background:rgba(15,23,42,.24);border:1px solid rgba(148,163,184,.14);box-shadow:0 8px 24px rgba(2,6,23,.18)}
+.help-card-icon{width:52px;height:52px;border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:1.35rem;background:linear-gradient(135deg,rgba(59,130,246,.18),rgba(124,58,237,.12));flex-shrink:0}
+.help-card-pro h3{margin:0 0 6px}
+.help-card-pro p{margin:0;color:var(--text-secondary);line-height:1.55}
+.help-chip-list{display:flex;flex-wrap:wrap;gap:10px}
+.help-chip{padding:10px 14px;border-radius:999px;border:1px solid rgba(99,102,241,.18);background:rgba(59,130,246,.10);color:inherit;cursor:pointer;transition:transform .18s ease, background .18s ease}
+.help-chip:hover{transform:translateY(-2px);background:rgba(59,130,246,.16)}
+.tutorial-overlay{position:fixed;inset:0;display:none;z-index:3000}
+.tutorial-overlay.open{display:block}
+.tutorial-backdrop{position:absolute;inset:0;background:rgba(2,6,23,.72);backdrop-filter:blur(3px)}
+.tutorial-spotlight{position:absolute;border-radius:22px;border:2px solid rgba(96,165,250,.95);box-shadow:0 0 0 9999px rgba(2,6,23,.52),0 0 0 8px rgba(96,165,250,.18),0 22px 44px rgba(15,23,42,.36);transition:all .24s ease;pointer-events:none}
+.tutorial-card{position:fixed;right:24px;bottom:24px;max-width:420px;width:calc(100% - 32px);background:linear-gradient(180deg,#0f172a,#111827);border:1px solid rgba(148,163,184,.18);border-radius:24px;padding:18px 18px 16px;box-shadow:0 18px 60px rgba(2,6,23,.48);color:#e5eefb}
+.tutorial-progress{display:flex;justify-content:space-between;gap:12px;align-items:center;font-size:.85rem;color:#93c5fd;margin-bottom:8px}
+.tutorial-skip{background:transparent;border:none;color:#cbd5e1;cursor:pointer;font-weight:700}
+.tutorial-card h3{margin:0 0 8px;font-size:1.2rem}
+.tutorial-card p{margin:0;color:#cbd5e1;line-height:1.55}
+.tutorial-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
+.tutorial-target-active{position:relative;z-index:3001!important}
+@media (max-width: 768px){.help-hero-card{grid-template-columns:1fr}.tutorial-card{left:16px;right:16px;bottom:16px;width:auto;max-width:none}}
