@@ -1304,3 +1304,126 @@ ${report.monthly}`;
 
   proto.__mentorUpgradeV5Patched = true;
 })();
+
+
+(function () {
+  if (!window.AIAssistant || window.AIAssistant.prototype.__coachSessionPatched) return;
+  const proto = window.AIAssistant.prototype;
+
+  proto._ensureSessionMemory = function () {
+    if (!Array.isArray(this.sessionMemory)) this.sessionMemory = [];
+    if (!this.sessionState) this.sessionState = { lastSubject: null, lastIntent: null, mood: 'coach' };
+  };
+
+  proto._rememberTurn = function (question, answer, meta = {}) {
+    this._ensureSessionMemory();
+    const turn = {
+      at: new Date().toISOString(),
+      question: String(question || ''),
+      answer: String(answer || ''),
+      subject: meta.subject || null,
+      intent: meta.intent || null
+    };
+    this.sessionMemory.push(turn);
+    if (this.sessionMemory.length > 12) this.sessionMemory.shift();
+    if (turn.subject) this.sessionState.lastSubject = turn.subject;
+    if (turn.intent) this.sessionState.lastIntent = turn.intent;
+  };
+
+  proto._resolveSubjectFromMemory = function (question) {
+    const current = this._findSubjectInQuestion?.(question || '');
+    if (current?.nome) return current.nome;
+    this._ensureSessionMemory();
+    const q = String(question || '').toLowerCase();
+    if (/(essa materia|essa matéria|essa|ela|nela|nessa|nisso|dela)/.test(q) && this.sessionState?.lastSubject) return this.sessionState.lastSubject;
+    return null;
+  };
+
+  proto._detectIntent = function (question) {
+    const p = String(question || '').toLowerCase();
+    if (/plano|organiza|estudar hoje|agora/.test(p)) return 'plan';
+    if (/risco|atrasad|pendenc|pendênc/.test(p)) return 'risk';
+    if (/prova|trabalho|avalia/.test(p)) return 'exam';
+    if (/como estou|situa|desempenho|nota|media|média/.test(p)) return 'status';
+    if (/presen|falta/.test(p)) return 'attendance';
+    if (/motivad|desanimad|cansad|perdid/.test(p)) return 'motivation';
+    return 'general';
+  };
+
+  proto._coachWrap = function (text, question, subjectName, intent) {
+    const q = String(question || '').toLowerCase();
+    const subjectLabel = subjectName ? ` em ${subjectName}` : '';
+    let opener = 'Papo reto:';
+    let closer = 'Se quiser, eu consigo puxar isso para um plano mais direto agora.';
+
+    if (/oi|olá|ola|tudo bem|eai|e aí/.test(q)) {
+      opener = 'Fala. Tô contigo nessa.';
+      closer = 'Me chama com algo tipo “organiza meu dia”, “o que está atrasado?” ou “como estou em X?”.';
+    } else if (intent === 'motivation') {
+      opener = `Respira. Dá para destravar isso${subjectLabel}.`;
+      closer = 'Vamos no simples: escolhe 1 bloco curto, fecha 1 tarefa e cria tração.';
+    } else if (intent === 'risk') {
+      opener = 'Vou te mostrar o que realmente merece atenção agora.';
+      closer = 'Minha recomendação é agir primeiro no que está mais perto de te cobrar resultado.';
+    } else if (intent === 'plan') {
+      opener = 'Fechou. Montei um caminho direto para você não ficar travado.';
+      closer = 'O importante é começar pelo bloco 1 sem ficar negociando muito com a própria cabeça.';
+    } else if (intent === 'status') {
+      opener = `Olhei tua situação${subjectLabel}.`;
+      closer = 'Se quiser, eu transformo isso em próximos passos objetivos.';
+    }
+
+    return `${opener}\n\n${String(text || '').trim()}\n\n${closer}`.trim();
+  };
+
+  proto._quickActionsFor = function (question, answer, subjectName, intent) {
+    const actions = [];
+    if (subjectName) {
+      actions.push(`Como estou em ${subjectName}?`);
+      actions.push(`Quanto preciso tirar em ${subjectName}?`);
+    }
+    if (intent === 'plan' || /plano|estudar/i.test(question || '')) {
+      actions.push('Organiza meu dia agora');
+      actions.push('Qual meu plano da semana?');
+    }
+    if (intent === 'risk') {
+      actions.push('O que está mais atrasado?');
+      actions.push('Qual matéria devo priorizar agora?');
+    }
+    if (intent === 'exam' || /prova|trabalho/i.test(answer || '')) {
+      actions.push('Próximas provas');
+      actions.push('Me dá um plano até a próxima prova');
+    }
+    if (intent === 'general') {
+      actions.push('Me dá um raio-x completo');
+      actions.push('O que falta cadastrar no meu site?');
+      actions.push('Como está minha presença?');
+    }
+    return actions.filter((item, index, arr) => item && arr.indexOf(item) === index).slice(0, 4);
+  };
+
+  const originalAsk = proto.ask;
+  proto.askRich = async function (pergunta) {
+    this._ensureSessionMemory();
+    const subjectName = this._resolveSubjectFromMemory(pergunta);
+    const intent = this._detectIntent(pergunta);
+    let rawAnswer = await originalAsk.call(this, pergunta);
+    if (subjectName && /(essa materia|essa matéria|essa|ela|nela|nessa|dela)/i.test(String(pergunta || ''))) {
+      if (/como estou|situa|status|nota|m[eé]dia|horas|presen|falta/i.test(String(pergunta || ''))) {
+        rawAnswer = this._buildSubjectStatusAnswer(subjectName);
+      }
+    }
+    const finalText = this._coachWrap(rawAnswer, pergunta, subjectName, intent);
+    const actions = this._quickActionsFor(pergunta, rawAnswer, subjectName, intent);
+    this._rememberTurn(pergunta, finalText, { subject: subjectName, intent });
+    return { text: finalText, actions, memory: this.sessionMemory.slice(-6) };
+  };
+
+  proto.getSessionMemorySummary = function () {
+    this._ensureSessionMemory();
+    if (!this.sessionMemory.length) return 'Ainda não tivemos conversa suficiente nessa sessão.';
+    return this.sessionMemory.map((turn, index) => `${index + 1}. ${turn.question}`).join('\n');
+  };
+
+  proto.__coachSessionPatched = true;
+})();

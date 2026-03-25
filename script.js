@@ -137,6 +137,10 @@
       .floating-ai-input{display:flex;gap:10px;padding:14px 16px 16px;border-top:1px solid rgba(148,163,184,.12);}
       .floating-ai-input input{flex:1;padding:12px 14px;border-radius:16px;border:1px solid rgba(148,163,184,.14);background:rgba(15,23,42,.72);color:inherit;}
       .floating-ai-input button{border:none;border-radius:16px;padding:0 16px;background:linear-gradient(135deg,#2563eb,#14b8a6);color:#fff;cursor:pointer;}
+      .floating-ai-inline-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+      .floating-ai-inline-action{border:1px solid rgba(96,165,250,.22);background:rgba(15,23,42,.78);color:#dbeafe;border-radius:999px;padding:8px 11px;font-size:.8rem;cursor:pointer;transition:transform .15s ease, background .15s ease;}
+      .floating-ai-inline-action:hover{transform:translateY(-1px);background:rgba(30,41,59,.94);}
+      .floating-ai-memory-chip{display:inline-flex;align-items:center;gap:6px;font-size:.74rem;padding:6px 10px;border-radius:999px;background:rgba(59,130,246,.12);color:#bfdbfe;margin-bottom:6px;}
       .floating-ai-backdrop{position:fixed;inset:0;background:rgba(2,6,23,.35);z-index:1190;display:none;}
       .floating-ai-backdrop.open{display:block;}
       .notification-popover{position:absolute;top:calc(100% + 10px);right:0;width:min(420px,calc(100vw - 32px));background:rgba(2,6,23,.96);border:1px solid rgba(148,163,184,.16);border-radius:20px;box-shadow:0 24px 60px rgba(2,6,23,.35);padding:14px;display:none;z-index:50;}
@@ -825,11 +829,26 @@
     const launcher = el('floating-ai-launcher');
     const open = () => { panel?.classList.add('open'); backdrop?.classList.add('open'); button?.classList.add('hidden'); launcher?.classList.add('panel-open'); setTimeout(() => input?.focus(), 50); };
     const hide = () => { panel?.classList.remove('open'); backdrop?.classList.remove('open'); button?.classList.remove('hidden'); launcher?.classList.remove('panel-open'); syncFloatingAIVisibility(); };
-    const append = (role, content) => {
+    const append = (role, content, options = {}) => {
       const node = document.createElement('div');
       node.className = `floating-ai-message ${role}`;
-      if (role === 'assistant') node.innerHTML = nl2brSafe(content || 'Sem resposta agora.');
-      else node.textContent = content || '';
+      if (role === 'assistant') {
+        const memoryTag = options?.memoryTag ? `<div class="floating-ai-memory-chip"><i class="fas fa-brain"></i>${options.memoryTag}</div>` : '';
+        node.innerHTML = `${memoryTag}${nl2brSafe(content || 'Sem resposta agora.')}`;
+        const actions = Array.isArray(options?.actions) ? options.actions.filter(Boolean).slice(0, 4) : [];
+        if (actions.length) {
+          const wrap = document.createElement('div');
+          wrap.className = 'floating-ai-inline-actions';
+          actions.forEach(actionText => {
+            const btn = document.createElement('button');
+            btn.className = 'floating-ai-inline-action';
+            btn.textContent = actionText;
+            btn.addEventListener('click', () => ask(actionText));
+            wrap.appendChild(btn);
+          });
+          node.appendChild(wrap);
+        }
+      } else node.textContent = content || '';
       messages?.appendChild(node);
       if (messages) messages.scrollTop = messages.scrollHeight;
       return node;
@@ -840,15 +859,20 @@
       open();
       append('user', text);
       if (input) input.value = '';
-      const loading = append('assistant', 'Pensando...');
+      const loading = append('assistant', 'Pensando no melhor próximo passo pra você...');
       try {
         window.aiAssistant?.updateContext(app?.data || {});
-        const answer = await window.aiAssistant?.ask?.(text);
+        const rich = await (window.aiAssistant?.askRich?.(text) || Promise.resolve(null));
+        const answer = rich?.text || await window.aiAssistant?.ask?.(text);
+        const memoryCount = Array.isArray(rich?.memory) ? rich.memory.length : 0;
         loading.remove();
-        append('assistant', answer || 'Não consegui responder agora.');
+        append('assistant', answer || 'Não consegui responder agora.', {
+          actions: rich?.actions || [],
+          memoryTag: memoryCount > 1 ? `Lembrando ${memoryCount} troca(s) dessa conversa` : 'Modo coach ligado'
+        });
       } catch (error) {
         loading.remove();
-        append('assistant', 'Deu erro ao responder agora. Tenta de novo.');
+        append('assistant', 'Deu erro ao responder agora. Tenta de novo.', { actions: ['Qual meu plano de hoje?', 'O que está atrasado?'] });
       }
     };
     button.dataset.bound = '1';
