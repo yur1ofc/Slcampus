@@ -1,6 +1,6 @@
 // script.js - Inicialização principal + melhorias avançadas
 (function () {
-  const PATCH_FLAG = '__slc_ultra_patch_v4__';
+  const PATCH_FLAG = '__slc_ultra_patch_v5__';
 
   function el(id) { return document.getElementById(id); }
   function normalizeText(value) { return String(value ?? '').trim().replace(/\s+/g, ' ').toLowerCase(); }
@@ -121,7 +121,7 @@
       .xp-progress-head{display:flex;justify-content:space-between;gap:10px;align-items:center;}
       .xp-progress-copy{font-size:.9rem;opacity:.84;margin-top:10px;}
       .floating-ai-launcher{position:fixed;right:18px;bottom:18px;z-index:1200;display:flex;flex-direction:column;align-items:flex-end;gap:10px;}
-      .floating-ai-badge{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:999px;background:rgba(15,23,42,.84);backdrop-filter:blur(12px);border:1px solid rgba(148,163,184,.16);box-shadow:0 16px 30px rgba(2,6,23,.25);font-size:.88rem;}
+      .floating-ai-launcher.hidden,.floating-ai-button.hidden{display:none !important;}
       .floating-ai-button{width:62px;height:62px;border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.35rem;color:#fff;background:linear-gradient(135deg,#2563eb,#14b8a6);box-shadow:0 18px 35px rgba(37,99,235,.38);}
       .floating-ai-panel{position:fixed;right:18px;bottom:94px;z-index:1200;width:min(380px,calc(100vw - 24px));max-height:min(74vh,680px);display:none;flex-direction:column;overflow:hidden;border-radius:24px;background:rgba(2,6,23,.95);backdrop-filter:blur(12px);border:1px solid rgba(148,163,184,.16);box-shadow:0 24px 60px rgba(2,6,23,.42);}
       .floating-ai-panel.open{display:flex;}
@@ -139,8 +139,18 @@
       .floating-ai-input button{border:none;border-radius:16px;padding:0 16px;background:linear-gradient(135deg,#2563eb,#14b8a6);color:#fff;cursor:pointer;}
       .floating-ai-backdrop{position:fixed;inset:0;background:rgba(2,6,23,.35);z-index:1190;display:none;}
       .floating-ai-backdrop.open{display:block;}
+      .notification-popover{position:absolute;top:calc(100% + 10px);right:0;width:min(420px,calc(100vw - 32px));background:rgba(2,6,23,.96);border:1px solid rgba(148,163,184,.16);border-radius:20px;box-shadow:0 24px 60px rgba(2,6,23,.35);padding:14px;display:none;z-index:50;}
+      .notification-popover.open{display:block;}
+      .notification-popover-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:10px;}
+      .notification-popover-list{display:grid;gap:10px;max-height:55vh;overflow:auto;}
+      .notification-empty{padding:12px 0;opacity:.8;}
+      .level-avatar-wrap{position:relative;width:54px;height:54px;border-radius:50%;display:grid;place-items:center;padding:3px;background:conic-gradient(#22c55e 0deg,#2563eb 0deg,#1e293b 0deg);box-shadow:0 10px 24px rgba(2,6,23,.24);}
+      .level-avatar-wrap .user-avatar{width:100%;height:100%;border:none;margin:0;background:rgba(15,23,42,.8);}
+      .level-avatar{position:relative;width:100%;height:100%;border-radius:50%;overflow:hidden;background:rgba(15,23,42,.8);display:grid;place-items:center;}
+      .level-badge-mini{position:absolute;right:-3px;bottom:-3px;min-width:24px;height:24px;padding:0 6px;border-radius:999px;background:linear-gradient(135deg,#1d4ed8,#0ea5e9);display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:800;color:#fff;border:2px solid rgba(2,6,23,.92);}
+      .xp-proof-note{margin-top:12px;font-size:.88rem;opacity:.82;}
       @media (max-width: 980px){.today-hero{grid-template-columns:1fr;}}
-      @media (max-width: 820px){.compact-weekly-schedule{overflow-x:auto;}.compact-weekly-schedule .weekly-timeline{min-width:860px;}.floating-ai-badge{display:none;}.floating-ai-panel{right:12px;left:12px;width:auto;bottom:88px;}}
+      @media (max-width: 820px){.compact-weekly-schedule{overflow-x:auto;}.compact-weekly-schedule .weekly-timeline{min-width:860px;}.floating-ai-panel{right:12px;left:12px;width:auto;bottom:88px;}.notification-popover{position:fixed;right:12px;left:12px;top:76px;width:auto;}}
     `;
     document.head.appendChild(style);
   }
@@ -537,7 +547,7 @@
   function renderGamificationSection(view) {
     const game = view.app.getGamificationSnapshot?.();
     if (!game) return '';
-    return `<div class="gamification-grid"><div class="gamification-card"><div class="xp-progress-head"><div><h3><i class="fas fa-trophy"></i> Gamificação</h3><small>XP por estudar, concluir tarefas e manter constância.</small></div><div class="today-badge">Nível ${game.level}</div></div><div class="impact-kpis"><div class="impact-kpi"><span>XP total</span><strong>${game.xp}</strong></div><div class="impact-kpi"><span>Streak</span><strong>${game.streak} dias</strong></div><div class="impact-kpi"><span>Tarefas</span><strong>${game.tasksDone}</strong></div><div class="impact-kpi"><span>Horas</span><strong>${game.totalHours}h</strong></div></div><div class="progress-bar" style="margin-top:14px"><div class="progress-fill" style="width:${game.progress}%"></div></div><div class="xp-progress-copy">Faltam ${game.nextLevelIn} XP para o próximo nível.</div><div class="achievement-list">${game.achievements.length ? game.achievements.map(item => `<div class="achievement-item"><div><strong><i class="fas ${item.icon}"></i> ${view.esc(item.title)}</strong><small>${view.esc(item.text)}</small></div></div>`).join('') : '<p class="text-secondary">Conclua mais sessões para desbloquear conquistas.</p>'}</div></div></div>`;
+    return `<div class="gamification-grid"><div class="gamification-card"><div class="xp-progress-head"><div><h3><i class="fas fa-trophy"></i> Gamificação</h3><small>XP só conta ações marcadas como concluídas dentro do sistema.</small></div><div class="today-badge">Nível ${game.level}</div></div><div class="impact-kpis"><div class="impact-kpi"><span>XP total</span><strong>${game.xp}</strong></div><div class="impact-kpi"><span>Streak</span><strong>${game.streak} dias</strong></div><div class="impact-kpi"><span>Tarefas feitas</span><strong>${game.tasksDone}</strong></div><div class="impact-kpi"><span>Horas validadas</span><strong>${game.totalHours}h</strong></div></div><div class="xp-progress-copy">Faltam ${game.nextLevelIn} XP para o próximo nível.</div><div class="xp-proof-note">Para ganhar XP, marque sessão, tarefa ou revisão como concluída. Nada sobe sozinho.</div><div class="achievement-list">${game.achievements.length ? game.achievements.map(item => `<div class="achievement-item"><div><strong><i class="fas ${item.icon}"></i> ${view.esc(item.title)}</strong><small>${view.esc(item.text)}</small></div></div>`).join('') : '<p class="text-secondary">Conclua mais sessões para desbloquear conquistas.</p>'}</div></div></div>`;
   }
 
   function ensureFloatingAIDom() {
@@ -545,9 +555,7 @@
     const launcher = document.createElement('div');
     launcher.id = 'floating-ai-launcher';
     launcher.className = 'floating-ai-launcher';
-    launcher.innerHTML = `
-      <div class="floating-ai-badge"> <i class="fas fa-robot"></i> Mentor IA sempre visível</div>
-      <button class="floating-ai-button" id="floating-ai-button" aria-label="Abrir mentor IA"><i class="fas fa-robot"></i></button>`;
+    launcher.innerHTML = `<button class="floating-ai-button" id="floating-ai-button" aria-label="Abrir mentor IA"><i class="fas fa-robot"></i></button>`;
     const backdrop = document.createElement('div');
     backdrop.id = 'floating-ai-backdrop';
     backdrop.className = 'floating-ai-backdrop';
@@ -576,6 +584,26 @@
     document.body.appendChild(launcher);
   }
 
+
+  function syncFloatingAIVisibility() {
+    const launcher = el('floating-ai-launcher');
+    const panel = el('floating-ai-panel');
+    const button = el('floating-ai-button');
+    const loginScreen = el('login-screen');
+    const setupScreen = el('setup-screen');
+    const mainDashboard = el('main-dashboard');
+    const loginVisible = !!loginScreen && getComputedStyle(loginScreen).display !== 'none';
+    const setupVisible = !!setupScreen && getComputedStyle(setupScreen).display !== 'none';
+    const dashboardVisible = !!mainDashboard && getComputedStyle(mainDashboard).display !== 'none';
+    const shouldShow = dashboardVisible && !loginVisible && !setupVisible;
+    if (launcher) launcher.classList.toggle('hidden', !shouldShow);
+    if (!shouldShow) {
+      panel?.classList.remove('open');
+      el('floating-ai-backdrop')?.classList.remove('open');
+      button?.classList.remove('hidden');
+    }
+  }
+
   function bindFloatingAI(app) {
     ensureFloatingAIDom();
     const button = el('floating-ai-button');
@@ -586,8 +614,9 @@
     const send = el('floating-ai-send');
     const messages = el('floating-ai-messages');
     if (!button || button.dataset.bound) return;
-    const open = () => { panel?.classList.add('open'); backdrop?.classList.add('open'); setTimeout(() => input?.focus(), 50); };
-    const hide = () => { panel?.classList.remove('open'); backdrop?.classList.remove('open'); };
+    const launcher = el('floating-ai-launcher');
+    const open = () => { panel?.classList.add('open'); backdrop?.classList.add('open'); button?.classList.add('hidden'); launcher?.classList.add('panel-open'); setTimeout(() => input?.focus(), 50); };
+    const hide = () => { panel?.classList.remove('open'); backdrop?.classList.remove('open'); button?.classList.remove('hidden'); launcher?.classList.remove('panel-open'); syncFloatingAIVisibility(); };
     const append = (role, content) => {
       const node = document.createElement('div');
       node.className = `floating-ai-message ${role}`;
@@ -655,8 +684,9 @@
     const originalConfig = proto.renderConfiguracoes;
 
     proto.renderDashboard = function () {
-      const base = originalDashboard.call(this);
-      const insert = `${renderTodayHero(this)}${renderDailyGoalCard(this)}${renderGoalsPanel(this)}${renderImpactSection(this)}${renderNotificationSection(this)}${renderGamificationSection(this)}<div class="report-stack"><div class="report-card"><h3><i class="fas fa-file-alt"></i> Relatórios automáticos</h3><p>${this.esc(this.app.getAutoReports().daily)}</p><p>${this.esc(this.app.getAutoReports().weekly)}</p><p>${this.esc(this.app.getAutoReports().monthly)}</p></div>${renderAgendaPanel(this)}</div>`;
+      let base = originalDashboard.call(this);
+      base = base.replace(/<div class="card">\s*<div class="card-header">\s*<h3><i class="fas fa-robot"><\/i> Plano de Hoje \(IA\)<\/h3>[\s\S]*?<\/div>\s*<\/div>/, '');
+      const insert = `${renderDailyGoalCard(this)}${renderGoalsPanel(this)}${renderImpactSection(this)}${renderGamificationSection(this)}<div class="report-stack"><div class="report-card"><h3><i class="fas fa-file-alt"></i> Relatórios automáticos</h3><p>${this.esc(this.app.getAutoReports().daily)}</p><p>${this.esc(this.app.getAutoReports().weekly)}</p><p>${this.esc(this.app.getAutoReports().monthly)}</p></div>${renderAgendaPanel(this)}</div>`;
       return base.replace('<div class="dashboard-grid">', `${insert}<div class="dashboard-grid">`);
     };
 
@@ -739,6 +769,8 @@
         }
         bindDashboardEvents(this);
         bindCalendarFilters();
+        syncFloatingAIVisibility();
+        setupNotificationCenter(this);
       }, 80);
       return result;
     };
@@ -806,6 +838,95 @@
     });
   }
 
+
+  function updateSidebarLevelRing(app) {
+    const info = el('user-info');
+    const avatar = el('user-avatar');
+    if (!info || !avatar) return;
+    let wrap = info.querySelector('.level-avatar-wrap');
+    let levelBadge = info.querySelector('.level-badge-mini');
+    let levelAvatar = info.querySelector('.level-avatar');
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.className = 'level-avatar-wrap';
+      levelAvatar = document.createElement('div');
+      levelAvatar.className = 'level-avatar';
+      avatar.parentNode.insertBefore(wrap, avatar);
+      levelAvatar.appendChild(avatar);
+      wrap.appendChild(levelAvatar);
+      levelBadge = document.createElement('div');
+      levelBadge.className = 'level-badge-mini';
+      wrap.appendChild(levelBadge);
+    }
+    const game = app?.getGamificationSnapshot?.();
+    const progress = Math.max(0, Math.min(100, Number(game?.progress) || 0));
+    wrap.style.background = `conic-gradient(#22c55e 0deg, #2563eb ${Math.round(progress * 3.6)}deg, rgba(30,41,59,.95) ${Math.round(progress * 3.6)}deg 360deg)`;
+    if (levelBadge) levelBadge.textContent = String(game?.level || 1);
+    wrap.title = `Nível ${game?.level || 1} • ${game?.xp || 0} XP`;
+  }
+
+  function ensureNotificationPopover() {
+    const badge = el('notification-badge');
+    if (!badge) return null;
+    badge.style.position = 'relative';
+    let pop = el('notification-popover');
+    if (!pop) {
+      pop = document.createElement('div');
+      pop.id = 'notification-popover';
+      pop.className = 'notification-popover';
+      pop.innerHTML = `
+        <div class="notification-popover-head">
+          <div><strong>Notificações</strong><div class="text-secondary">Alertas rápidos do teu semestre</div></div>
+          <button class="btn-secondary" type="button" id="notification-close-btn">Fechar</button>
+        </div>
+        <div class="notification-popover-list" id="notification-popover-list"></div>`;
+      badge.appendChild(pop);
+    }
+    return pop;
+  }
+
+  function renderNotificationPopover(app) {
+    const list = el('notification-popover-list');
+    const count = el('notification-count');
+    if (!list || !app) return;
+    const items = app.getLaunchNotifications?.() || [];
+    if (count) count.textContent = String(items.length);
+    list.innerHTML = items.length
+      ? items.map(item => `<div class="notification-item"><div><strong>${escapeHtml(item.title || '')}</strong><small>${escapeHtml(item.text || '')}</small></div><span class="risk-pill ${item.priority === 'alta' ? 'alto' : item.priority === 'media' ? 'medio' : 'baixo'}">${escapeHtml(item.badge || '')}</span></div>`).join('')
+      : '<div class="notification-empty">Nenhum alerta agora.</div>';
+  }
+
+  function openNotificationPopover() {
+    ensureNotificationPopover()?.classList.add('open');
+  }
+
+  function closeNotificationPopover() {
+    el('notification-popover')?.classList.remove('open');
+  }
+
+  function setupNotificationCenter(app) {
+    const badge = el('notification-badge');
+    const pop = ensureNotificationPopover();
+    if (!badge || !pop || !app) return;
+    renderNotificationPopover(app);
+    updateSidebarLevelRing(app);
+    if (!badge.dataset.bound) {
+      badge.dataset.bound = '1';
+      badge.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pop.classList.toggle('open');
+      });
+      document.addEventListener('click', (e) => {
+        if (!pop.contains(e.target) && !badge.contains(e.target)) closeNotificationPopover();
+      });
+      el('notification-close-btn')?.addEventListener('click', closeNotificationPopover);
+    }
+    if (!window.__slcNotifAutoOpened && (app.getLaunchNotifications?.() || []).length) {
+      window.__slcNotifAutoOpened = true;
+      setTimeout(openNotificationPopover, 120);
+    }
+  }
+
   function install() {
     injectStyles();
     patchDbService();
@@ -820,6 +941,9 @@
       bindDashboardEvents(window.app);
       bindCalendarFilters();
       bindFloatingAI(window.app);
+      syncFloatingAIVisibility();
+      setupNotificationCenter(window.app);
+      updateSidebarLevelRing(window.app);
       if (window.app.currentView === 'foco') bindFocusButtons(window.app);
     }
   }
@@ -832,6 +956,9 @@
     el('add-materia')?.addEventListener('click', () => window.app?.addMateriaField?.());
     el('add-aula')?.addEventListener('click', () => window.app?.addAulaField?.());
     install();
+    syncFloatingAIVisibility();
+    const observer = new MutationObserver(() => syncFloatingAIVisibility());
+    ['login-screen','setup-screen','main-dashboard'].forEach(id => { const node = el(id); if (node) observer.observe(node, { attributes: true, attributeFilter: ['style','class'] }); });
   });
 
   document.addEventListener('app-ready', () => {
@@ -843,6 +970,9 @@
           window.scheduleManager.ALTURA_POR_HORA = calculateCompactHourHeight(window.scheduleManager);
         }
       }, 100);
+      setupNotificationCenter(window.app);
+      updateSidebarLevelRing(window.app);
+      syncFloatingAIVisibility();
     }
   });
 
