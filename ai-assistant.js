@@ -885,3 +885,422 @@ ${report.monthly}`;
 
   proto.__mentorUpgradePatched = true;
 })();
+
+
+// __mentor_upgrade_v5_nlp__
+(function () {
+  if (!window.AIAssistant || window.AIAssistant.prototype.__mentorUpgradeV5Patched) return;
+
+  const proto = window.AIAssistant.prototype;
+
+  const normalize = (value) => String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^\w\s:/.-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const fmtDate = (value) => {
+    const d = value ? new Date(value) : null;
+    return d && !Number.isNaN(d.getTime())
+      ? d.toLocaleDateString('pt-BR')
+      : 'data indefinida';
+  };
+
+  const fmtHours = (hours) => `${Number(hours || 0).toFixed(1)}h`;
+
+  const daysTo = (value) => {
+    if (!value) return Infinity;
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return Infinity;
+    const now = new Date();
+    const a = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const b = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    return Math.round((b - a) / 86400000);
+  };
+
+  proto._normalizeMentorText = normalize;
+
+  proto._findSubjectInQuestion = function (question) {
+    const normalized = normalize(question);
+    const subjects = Array.isArray(this.context.subjects) ? this.context.subjects : [];
+    if (!subjects.length) return null;
+
+    let best = null;
+    let bestScore = 0;
+
+    const normWords = normalized.split(' ').filter(Boolean);
+
+    subjects.forEach(item => {
+      const nome = String(item?.nome || '').trim();
+      const nNome = normalize(nome);
+      if (!nNome) return;
+
+      let score = 0;
+      if (normalized.includes(nNome)) score += 100;
+
+      const nameWords = nNome.split(' ').filter(Boolean);
+      nameWords.forEach(word => {
+        if (word.length >= 3 && normalized.includes(word)) score += 18;
+      });
+
+      normWords.forEach(word => {
+        if (word.length >= 4 && nNome.includes(word)) score += 10;
+      });
+
+      const sigla = nameWords.map(w => w[0]).join('');
+      if (sigla && normalized.includes(sigla)) score += 14;
+
+      if (score > bestScore) {
+        best = item;
+        bestScore = score;
+      }
+    });
+
+    return bestScore >= 18 ? best : null;
+  };
+
+  proto._getPendingTasks = function () {
+    return (this.context.tasks || [])
+      .filter(item => !item?.concluida)
+      .sort((a, b) => {
+        const da = new Date(a?.dataLimite || a?.data || 0).getTime();
+        const db = new Date(b?.dataLimite || b?.data || 0).getTime();
+        return da - db;
+      });
+  };
+
+  proto._getOverdueTasks = function () {
+    return this._getPendingTasks().filter(item => daysTo(item?.dataLimite || item?.data) < 0);
+  };
+
+  proto._getOpenExams = function (days = 30) {
+    return (this.context.exams || [])
+      .filter(item => !item?.concluida)
+      .filter(item => daysTo(item?.data) <= days)
+      .sort((a, b) => new Date(a?.data || 0) - new Date(b?.data || 0));
+  };
+
+  proto._getMaterialsSummary = function (materiaNome = null) {
+    const materials = (this.context.materials || []).filter(item => !materiaNome || item?.materia === materiaNome);
+    if (!materials.length) {
+      return materiaNome
+        ? `Você ainda não cadastrou materiais em ${materiaNome}.`
+        : 'Você ainda não cadastrou materiais de estudo.';
+    }
+
+    const byType = {};
+    materials.forEach(item => {
+      const tipo = item?.tipo || 'outro';
+      byType[tipo] = (byType[tipo] || 0) + 1;
+    });
+
+    const head = materiaNome
+      ? `Materiais de ${materiaNome}: ${materials.length} item(ns).`
+      : `Você tem ${materials.length} material(is) cadastrados no total.`;
+
+    const dist = Object.entries(byType)
+      .sort((a, b) => b[1] - a[1])
+      .map(([k, v]) => `${k}: ${v}`)
+      .join(' • ');
+
+    const latest = materials
+      .slice()
+      .sort((a, b) => new Date(b?.updatedAt || b?.createdAt || 0) - new Date(a?.updatedAt || a?.createdAt || 0))
+      .slice(0, 3)
+      .map(item => item?.titulo || item?.conteudo || 'material sem título');
+
+    return [head, dist ? `Distribuição: ${dist}.` : '', latest.length ? `Mais recentes: ${latest.join(' • ')}.` : ''].filter(Boolean).join(' ');
+  };
+
+  proto._getCurriculumSummary = function () {
+    const items = this.context.curriculum || [];
+    if (!items.length) return 'Você ainda não cadastrou o fluxograma/currículo do curso.';
+    const done = items.filter(i => i?.status === 'concluida' || i?.status === 'aprovada' || i?.status === 'cursada').length;
+    const current = items.filter(i => i?.status === 'cursando').length;
+    const pending = items.filter(i => !['concluida', 'aprovada', 'cursada', 'cursando'].includes(i?.status)).length;
+    const next = items
+      .filter(i => !['concluida', 'aprovada', 'cursada'].includes(i?.status))
+      .sort((a, b) => Number(a?.semestre || 999) - Number(b?.semestre || 999))
+      .slice(0, 5)
+      .map(i => i?.nome || i?.codigo)
+      .filter(Boolean);
+    return [
+      `Fluxograma: ${items.length} disciplina(s) cadastrada(s).`,
+      `Concluídas: ${done}. Em andamento: ${current}. Pendentes: ${pending}.`,
+      next.length ? `Próximas no radar: ${next.join(', ')}.` : ''
+    ].filter(Boolean).join(' ');
+  };
+
+  proto._getExtraCoursesSummary = function () {
+    const items = this.context.extraCourses || [];
+    if (!items.length) return 'Você ainda não cadastrou cursos extras.';
+    const active = items.filter(i => i?.status === 'em-andamento').length;
+    const done = items.filter(i => i?.status === 'concluido').length;
+    const top = items
+      .slice()
+      .sort((a, b) => Number(b?.progresso || 0) - Number(a?.progresso || 0))
+      .slice(0, 3)
+      .map(i => `${i?.nome || 'curso'} (${Number(i?.progresso || 0)}%)`);
+    return `Cursos extras: ${items.length} no total, ${active} em andamento e ${done} concluído(s). Destaques: ${top.join(' • ')}.`;
+  };
+
+  proto._getAttendanceSummary = function (materiaNome = null) {
+    const diaries = (this.context.classDiaries || []).filter(item => !materiaNome || item?.materia === materiaNome);
+    if (!diaries.length) {
+      return materiaNome
+        ? `Ainda não há diário de aula suficiente para medir presença em ${materiaNome}.`
+        : 'Ainda não há diário de aula suficiente para medir presença.';
+    }
+    const present = diaries.filter(d => d?.presenca === 'present').length;
+    const rate = Math.round((present / diaries.length) * 100);
+    const latest = diaries
+      .slice()
+      .sort((a, b) => new Date(b?.data || 0) - new Date(a?.data || 0))[0];
+    return [
+      materiaNome ? `Presença em ${materiaNome}: ${rate}% (${present}/${diaries.length}).` : `Presença média registrada: ${rate}% (${present}/${diaries.length}).`,
+      latest?.conteudoExplicado ? `Último conteúdo anotado: ${latest.conteudoExplicado}.` : '',
+      latest?.precisoRevisar ? 'Tem sinal de conteúdo que precisa de revisão.' : ''
+    ].filter(Boolean).join(' ');
+  };
+
+  proto._getDailyLogSummary = function () {
+    const logs = this.context.dailyLogs || [];
+    if (!logs.length) return 'Você ainda não registrou diário de rotina/energia.';
+    const latest = logs.slice().sort((a, b) => new Date(b?.data || 0) - new Date(a?.data || 0))[0];
+    const worked = logs.filter(i => i?.trabalho?.trabalhou || i?.trabalhou).length;
+    const lowEnergy = logs.filter(i => (i?.energia || '').toLowerCase() === 'baixa').length;
+    return [
+      `Diário pessoal: ${logs.length} registro(s).`,
+      `Dias com trabalho anotado: ${worked}. Dias com energia baixa: ${lowEnergy}.`,
+      latest ? `Último registro: ${fmtDate(latest.data)} • energia ${latest.energia || 'não informada'} • foco ${latest.foco || 'não informado'}.` : ''
+    ].filter(Boolean).join(' ');
+  };
+
+  proto._getGamificationSummary = function () {
+    const g = this.context.user?.gamification || this.context.gamification || null;
+    if (!g) return 'Gamificação: ainda sem dados suficientes.';
+    const level = Number(g.level || 1);
+    const xp = Number(g.xp || 0);
+    const streak = Number(g.streak || this.context.user?.streak || 0);
+    const unlocked = Array.isArray(g.achievements) ? g.achievements.filter(a => a?.unlocked).length : 0;
+    return `Gamificação: nível ${level}, ${xp} XP total, streak de ${streak} dia(s) e ${unlocked} conquista(s) desbloqueada(s).`;
+  };
+
+  proto._getSiteSnapshot = function () {
+    const subjects = this.context.subjects || [];
+    const sessions = (this.context.sessions || []).filter(s => s?.concluida || s?.status === 'concluida');
+    const totalHours = sessions.reduce((acc, s) => acc + (Number(s?.duracao) || 0), 0) / 60;
+    const pendingTasks = this._getPendingTasks().length;
+    const overdueTasks = this._getOverdueTasks().length;
+    const exams = this._getOpenExams(30);
+    const reviews = (this.context.reviews || []).filter(r => !r?.concluida);
+    const materials = (this.context.materials || []).length;
+    const grades = (this.context.grades || []).length;
+    const curriculum = (this.context.curriculum || []).length;
+    const extraCourses = (this.context.extraCourses || []).length;
+    return [
+      `Resumo geral do seu site: ${subjects.length} matéria(s), ${fmtHours(totalHours)} estudadas, ${pendingTasks} tarefa(s) pendente(s), ${overdueTasks} atrasada(s), ${exams.length} prova(s)/trabalho(s) nos próximos 30 dias, ${reviews.length} revisão(ões) pendente(s), ${materials} material(is), ${grades} nota(s), ${curriculum} item(ns) de currículo e ${extraCourses} curso(s) extra(s).`,
+      this._getGamificationSummary()
+    ].join(' ');
+  };
+
+  proto._getWhatIsMissing = function () {
+    const missing = [];
+    if (!(this.context.subjects || []).length) missing.push('matérias');
+    if (!(this.context.classSchedule || []).length) missing.push('grade horária');
+    if (!(this.context.sessions || []).some(s => s?.concluida || s?.status === 'concluida')) missing.push('sessões de estudo concluídas');
+    if (!(this.context.tasks || []).length) missing.push('tarefas');
+    if (!(this.context.exams || []).length) missing.push('provas/trabalhos');
+    if (!(this.context.grades || []).length) missing.push('notas');
+    if (!(this.context.materials || []).length) missing.push('materiais');
+    if (!(this.context.classDiaries || []).length) missing.push('diário de aula');
+    if (!(this.context.curriculum || []).length) missing.push('fluxograma/currículo');
+    if (!(this.context.extraCourses || []).length) missing.push('cursos extras');
+    return missing.length
+      ? `Para eu te ajudar ainda melhor, o que mais está faltando cadastrar é: ${missing.join(', ')}.`
+      : 'Seu site já está bem completo em dados. O próximo passo é manter o registro atualizado.';
+  };
+
+  proto._getMentorCapabilities = function () {
+    return [
+      'Eu consigo puxar praticamente tudo do seu site:',
+      '- plano de hoje, da semana e recuperação',
+      '- matérias mais críticas e risco acadêmico',
+      '- tarefas pendentes e atrasadas',
+      '- provas, trabalhos e revisões',
+      '- horas estudadas por matéria e no total',
+      '- notas, média, presença e faltas',
+      '- próxima aula, grade horária e diário de aula',
+      '- materiais, currículo/fluxograma e cursos extras',
+      '- metas, relatórios, gamificação e visão geral do perfil',
+      '',
+      'Perguntas que chamam atenção e funcionam bem:',
+      '- me dá um raio-x completo',
+      '- o que está mais atrasado?',
+      '- qual matéria está mais perigosa?',
+      '- o que falta cadastrar no meu site?',
+      '- como está minha presença?',
+      '- resume minha semana',
+      '- como estou em [matéria]?',
+      '- organiza meu dia agora'
+    ].join('\n');
+  };
+
+  proto._smallTalk = function (normalized) {
+    if (!normalized) return null;
+    if (/^(oi|ola|olá|e ai|eae|salve|bom dia|boa tarde|boa noite)$/.test(normalized)) {
+      const weak = this.getMemorySnapshot?.().weak || [];
+      return weak.length
+        ? `Oi! Tô com teu contexto na mão. Hoje eu já vejo ${weak[0]} e ${weak[1] || weak[0]} como matérias que merecem atenção. Quer que eu monte um plano, faça um raio-x geral ou te diga o que está atrasado?`
+        : 'Oi! Já consigo puxar teus dados do site. Posso montar teu plano, mostrar risco, tarefas, notas, presença, provas e muito mais.';
+    }
+    if (normalized.includes('tudo bem') || normalized.includes('como voce esta') || normalized.includes('como vc esta')) {
+      return 'Tô bem e pronto pra ser útil. Me pede qualquer coisa do teu site: resumo geral, tarefas atrasadas, matéria mais crítica, próximas provas, presença, notas, rotina ou plano do dia.';
+    }
+    if (normalized.includes('obrigad') || normalized.includes('valeu')) {
+      return 'Tamo junto. Se quiser, agora eu posso ir além e te dar a próxima melhor ação com base no teu momento atual.';
+    }
+    if (normalized.includes('quem e voce') || normalized.includes('quem é voce')) {
+      return 'Eu sou teu mentor IA do site. Não sou uma IA aberta tipo ChatGPT com internet, mas puxo teus dados reais e transformo isso em respostas úteis e personalizadas.';
+    }
+    return null;
+  };
+
+  const originalAsk = proto.ask;
+  proto.ask = async function (pergunta) {
+    const raw = String(pergunta || '').trim();
+    if (!raw) return 'Me manda uma pergunta. Eu consigo usar praticamente tudo do teu site para te responder.';
+    const p = normalize(raw);
+    const materia = this._findSubjectInQuestion(raw);
+    const app = window.app;
+
+    const smallTalk = this._smallTalk(p);
+    if (smallTalk) return smallTalk;
+
+    if (p.includes('o que voce faz') || p.includes('o que vc faz') || p.includes('como voce pode ajudar') || p.includes('ajuda') || p.includes('comandos') || p.includes('o que voce consegue')) {
+      return this._getMentorCapabilities();
+    }
+
+    if (p.includes('raio x') || p.includes('raiox') || p.includes('resumo geral') || p.includes('visao geral') || p.includes('visão geral') || p.includes('me da um resumo') || p.includes('me da um raio x') || p.includes('resuma meu site')) {
+      return this._getSiteSnapshot();
+    }
+
+    if (p.includes('o que falta cadastrar') || p.includes('faltando cadastrar') || p.includes('o que ta faltando') || p.includes('oque ta faltando')) {
+      return this._getWhatIsMissing();
+    }
+
+    if ((p.includes('organiza meu dia') || p.includes('organize meu dia') || p.includes('o que eu faco agora') || p.includes('o que eu faço agora') || p.includes('to perdido') || p.includes('estou perdido')) && app?.getHojeInteligenteData) {
+      const today = app.getHojeInteligenteData();
+      const nextClass = today.nextClass ? `${today.nextClass.materia} às ${today.nextClass.inicio}` : 'sem aula próxima detectada';
+      const urgent = today.urgentTasks.slice(0, 3).map(t => t.titulo).join(', ') || 'nenhuma pendência urgente';
+      const top = today.topSuggestion ? `${today.topSuggestion.materia} por ${today.topSuggestion.duracao} min` : '30 min para organizar pendências';
+      return [
+        `Plano rápido para agora:`,
+        `- próximo compromisso: ${nextClass}`,
+        `- tarefa urgente: ${urgent}`,
+        `- bloco principal: ${top}`,
+        `- meta do dia: ${Number(today.dailyTargetHours || 0).toFixed(0)}h`,
+        `- progresso de hoje: ${Number(today.todayProgress?.concluido || 0).toFixed(1)}h concluídas`,
+        today.antiProcrastination ? `- modo recuperação ligado: ${today.antiProcrastination.reason}` : '- você pode focar sem precisar entrar em modo recuperação'
+      ].join('\n');
+    }
+
+    if (p.includes('tarefa') || p.includes('pendencia') || p.includes('pendência') || p.includes('atrasada') || p.includes('atrasado')) {
+      const pending = this._getPendingTasks();
+      const overdue = this._getOverdueTasks();
+      if (!pending.length) return 'Você não tem tarefas pendentes agora.';
+      const top = pending.slice(0, 6).map(item => `- ${item.titulo} (${item.materia || 'sem matéria'}) • prazo ${fmtDate(item.dataLimite || item.data)}${daysTo(item.dataLimite || item.data) < 0 ? ' • atrasada' : ''}`);
+      return [
+        `Você tem ${pending.length} tarefa(s) pendente(s), sendo ${overdue.length} atrasada(s).`,
+        ...top,
+        overdue.length ? 'Ação recomendada: feche primeiro as atrasadas e só depois avance nas de prazo futuro.' : 'Ação recomendada: ataque primeiro as de prazo mais próximo.'
+      ].join('\n');
+    }
+
+    if (p.includes('presenca') || p.includes('presença') || p.includes('falta') || p.includes('faltas')) {
+      return this._getAttendanceSummary(materia?.nome || null);
+    }
+
+    if (p.includes('material') || p.includes('apostila') || p.includes('pdf') || p.includes('link de estudo')) {
+      return this._getMaterialsSummary(materia?.nome || null);
+    }
+
+    if (p.includes('curriculo') || p.includes('currículo') || p.includes('fluxograma') || p.includes('grade do curso') || p.includes('disciplinas do curso')) {
+      return this._getCurriculumSummary();
+    }
+
+    if (p.includes('curso extra') || p.includes('cursos extras') || p.includes('curso por fora') || p.includes('plataforma')) {
+      return this._getExtraCoursesSummary();
+    }
+
+    if (p.includes('diario') || p.includes('diário') || p.includes('rotina') || p.includes('energia') || p.includes('foco de hoje')) {
+      return this._getDailyLogSummary();
+    }
+
+    if (p.includes('gamificacao') || p.includes('gamificação') || p.includes('xp') || p.includes('nivel') || p.includes('nível') || p.includes('streak') || p.includes('conquista')) {
+      return this._getGamificationSummary();
+    }
+
+    if (materia && (p.includes('nota') || p.includes('media') || p.includes('média') || p.includes('quanto preciso'))) {
+      const perf = app?.getSubjectPerformance?.(materia.nome);
+      if (perf) {
+        return [
+          `Notas em ${materia.nome}:`,
+          `- média atual: ${perf.average > 0 ? perf.average.toFixed(1) : 'sem notas ainda'}`,
+          `- próxima nota ideal para buscar sua meta: ${perf.nextRequiredGrade}`,
+          `- recomendação: ${perf.recommendation}`
+        ].join('\n');
+      }
+    }
+
+    if (materia && (p.includes('presenca') || p.includes('presença') || p.includes('falta') || p.includes('faltas'))) {
+      return this._getAttendanceSummary(materia.nome);
+    }
+
+    if (materia && (p.includes('material') || p.includes('materiais'))) {
+      return this._getMaterialsSummary(materia.nome);
+    }
+
+    if (materia && (p.includes('ultimo conteudo') || p.includes('último conteúdo') || p.includes('ultima aula') || p.includes('última aula'))) {
+      const last = this.getUltimaAulaRegistrada(materia.nome);
+      if (!last) return `Ainda não achei diário de aula suficiente em ${materia.nome}.`;
+      return [
+        `Último registro de ${materia.nome}:`,
+        `- data: ${fmtDate(last.data)}`,
+        last.conteudo || last.conteudoExplicado ? `- conteúdo: ${last.conteudo || last.conteudoExplicado}` : '',
+        last.exerciciosPassados ? `- exercícios passados: ${last.exerciciosPassados}` : '',
+        last.trabalhoAnunciado ? `- trabalho anunciado: ${last.trabalhoAnunciado}` : '',
+        last.precisoRevisar ? '- sinal: esse conteúdo foi marcado como algo para revisar' : ''
+      ].filter(Boolean).join('\n');
+    }
+
+    if (p.includes('semana') && (p.includes('resum') || p.includes('como foi') || p.includes('me fala da'))) {
+      const report = app?.getAutoReports?.();
+      if (report) return report.weekly;
+    }
+
+    if (p.includes('hoje') && (p.includes('resum') || p.includes('como estou') || p.includes('como foi meu dia'))) {
+      const report = app?.getAutoReports?.();
+      if (report) return report.daily;
+    }
+
+    if (p.includes('mes') || p.includes('mês')) {
+      const report = app?.getAutoReports?.();
+      if (report && (p.includes('resum') || p.includes('relatorio') || p.includes('relatório'))) return report.monthly;
+    }
+
+    if (p.includes('me conhece') || p.includes('o que voce sabe de mim') || p.includes('o que vc sabe de mim')) {
+      const user = this.context.user || {};
+      return [
+        `Eu sei o que está no teu site: nome ${user.nome || 'não cadastrado'}, curso ${user.curso || 'não cadastrado'}, universidade ${user.universidade || 'não cadastrada'}, semestre ${user.semestre || 'não cadastrado'}, turno principal ${user.turnoPrincipal || 'não definido'}.`,
+        this._getSiteSnapshot()
+      ].join(' ');
+    }
+
+    return originalAsk.call(this, pergunta);
+  };
+
+  proto.__mentorUpgradeV5Patched = true;
+})();

@@ -285,7 +285,7 @@ class ViewRenderer {
                     <div class="chat-messages" id="chat-messages">
                         <div class="message assistant">
                             <div class="message-content">
-                                Olá! Sou seu mentor IA. Posso ajudar com planos de estudo, análise de risco, próximas aulas e muito mais. Como posso ajudar hoje?
+                                Olá! Sou seu mentor IA. Eu puxo praticamente tudo do teu site: plano do dia, tarefas, provas, notas, presença, materiais, currículo, cursos extras, rotina e gamificação. Você pode escrever normal, tipo: “me dá um raio-x completo”, “o que está atrasado?” ou “como estou em Física?”. 
                             </div>
                         </div>
                     </div>
@@ -316,6 +316,18 @@ class ViewRenderer {
                         </button>
                         <button class="sugestao-btn" data-pergunta="Dica de estudo">
                             <i class="fas fa-lightbulb"></i> Dica de estudo
+                        </button>
+                        <button class="sugestao-btn" data-pergunta="Me dá um raio-x completo">
+                            <i class="fas fa-heartbeat"></i> Raio-x completo
+                        </button>
+                        <button class="sugestao-btn" data-pergunta="O que está mais atrasado?">
+                            <i class="fas fa-list-check"></i> O que está atrasado?
+                        </button>
+                        <button class="sugestao-btn" data-pergunta="Como está minha presença?">
+                            <i class="fas fa-user-check"></i> Minha presença
+                        </button>
+                        <button class="sugestao-btn" data-pergunta="O que falta cadastrar no meu site?">
+                            <i class="fas fa-database"></i> O que falta cadastrar?
                         </button>
                     </div>
                 </div>
