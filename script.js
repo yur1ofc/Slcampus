@@ -91,8 +91,56 @@
       .situation-list{display:grid;gap:10px;}
       .report-stack{display:grid;gap:14px;margin-top:18px;}
       .calendar-grid + .agenda-filters{margin-top:18px;}
+      .impact-grid,.notification-grid,.gamification-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin:18px 0;}
+      .impact-card,.notification-card,.gamification-card{background:rgba(15,23,42,.24);border:1px solid rgba(148,163,184,.14);border-radius:22px;padding:18px;box-shadow:0 8px 24px rgba(2,6,23,.18);}
+      .mini-chart{display:flex;align-items:flex-end;gap:10px;min-height:180px;padding-top:10px;}
+      .mini-chart-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0;}
+      .mini-chart-bar{width:100%;max-width:44px;border-radius:14px 14px 6px 6px;background:linear-gradient(180deg,rgba(96,165,250,.95),rgba(37,99,235,.55));min-height:8px;transition:transform .2s ease;}
+      .mini-chart-bar:hover{transform:translateY(-3px);}
+      .mini-chart-label,.mini-chart-value{font-size:.8rem;opacity:.82;text-align:center;}
+      .subject-share-list,.notification-list,.achievement-list{display:grid;gap:10px;margin-top:12px;}
+      .subject-share-item,.notification-item,.achievement-item{display:flex;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:16px;background:rgba(15,23,42,.12);align-items:flex-start;}
+      .subject-share-meta{flex:1;min-width:0;}
+      .subject-share-track{height:10px;background:rgba(148,163,184,.16);border-radius:999px;overflow:hidden;margin-top:8px;}
+      .subject-share-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,rgba(16,185,129,.9),rgba(59,130,246,.8));}
+      .impact-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-top:12px;}
+      .impact-kpi{padding:12px;border-radius:16px;background:rgba(15,23,42,.12);}
+      .impact-kpi strong{display:block;font-size:1.15rem;margin-top:4px;}
+      .daily-goal-card{margin:18px 0;padding:18px;border-radius:22px;background:linear-gradient(135deg,rgba(14,165,233,.14),rgba(59,130,246,.08));border:1px solid rgba(56,189,248,.18);}
+      .daily-goal-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;}
+      .daily-goal-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:14px;}
+      .daily-goal-pill{padding:12px;border-radius:16px;background:rgba(15,23,42,.14);}
+      .daily-goal-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+      .daily-goal-inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+      .daily-goal-inline input{width:90px;padding:10px 12px;border-radius:14px;border:1px solid rgba(148,163,184,.16);background:rgba(15,23,42,.12);color:inherit;}
+      .risk-meter{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
+      .risk-meter .risk-segment{flex:1;padding:10px 12px;border-radius:14px;background:rgba(15,23,42,.12);text-align:center;font-size:.9rem;}
+      .risk-segment.alto{border:1px solid rgba(239,68,68,.25)} .risk-segment.medio{border:1px solid rgba(245,158,11,.25)} .risk-segment.baixo{border:1px solid rgba(16,185,129,.25)}
+      .notification-item small,.achievement-item small{display:block;opacity:.78;margin-top:4px;}
+      .notification-badge{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:24px;padding:0 8px;border-radius:999px;background:rgba(239,68,68,.15);font-size:.8rem;font-weight:700;}
+      .xp-progress-head{display:flex;justify-content:space-between;gap:10px;align-items:center;}
+      .xp-progress-copy{font-size:.9rem;opacity:.84;margin-top:10px;}
+      .floating-ai-launcher{position:fixed;right:18px;bottom:18px;z-index:1200;display:flex;flex-direction:column;align-items:flex-end;gap:10px;}
+      .floating-ai-badge{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:999px;background:rgba(15,23,42,.84);backdrop-filter:blur(12px);border:1px solid rgba(148,163,184,.16);box-shadow:0 16px 30px rgba(2,6,23,.25);font-size:.88rem;}
+      .floating-ai-button{width:62px;height:62px;border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.35rem;color:#fff;background:linear-gradient(135deg,#2563eb,#14b8a6);box-shadow:0 18px 35px rgba(37,99,235,.38);}
+      .floating-ai-panel{position:fixed;right:18px;bottom:94px;z-index:1200;width:min(380px,calc(100vw - 24px));max-height:min(74vh,680px);display:none;flex-direction:column;overflow:hidden;border-radius:24px;background:rgba(2,6,23,.95);backdrop-filter:blur(12px);border:1px solid rgba(148,163,184,.16);box-shadow:0 24px 60px rgba(2,6,23,.42);}
+      .floating-ai-panel.open{display:flex;}
+      .floating-ai-header{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding:18px 18px 12px;border-bottom:1px solid rgba(148,163,184,.12);}
+      .floating-ai-header p{margin:4px 0 0;font-size:.9rem;opacity:.78;}
+      .floating-ai-close{border:none;background:transparent;color:inherit;font-size:1.2rem;cursor:pointer;}
+      .floating-ai-messages{padding:16px;display:grid;gap:10px;overflow:auto;max-height:46vh;}
+      .floating-ai-message{padding:12px 14px;border-radius:18px;line-height:1.45;font-size:.94rem;background:rgba(30,41,59,.72);}
+      .floating-ai-message.user{background:rgba(37,99,235,.22);margin-left:28px;}
+      .floating-ai-message.assistant{margin-right:28px;}
+      .floating-ai-suggestions{display:flex;gap:8px;flex-wrap:wrap;padding:0 16px 14px;}
+      .floating-ai-suggestion{border:1px solid rgba(148,163,184,.14);background:rgba(15,23,42,.6);color:inherit;border-radius:999px;padding:8px 12px;font-size:.82rem;cursor:pointer;}
+      .floating-ai-input{display:flex;gap:10px;padding:14px 16px 16px;border-top:1px solid rgba(148,163,184,.12);}
+      .floating-ai-input input{flex:1;padding:12px 14px;border-radius:16px;border:1px solid rgba(148,163,184,.14);background:rgba(15,23,42,.72);color:inherit;}
+      .floating-ai-input button{border:none;border-radius:16px;padding:0 16px;background:linear-gradient(135deg,#2563eb,#14b8a6);color:#fff;cursor:pointer;}
+      .floating-ai-backdrop{position:fixed;inset:0;background:rgba(2,6,23,.35);z-index:1190;display:none;}
+      .floating-ai-backdrop.open{display:block;}
       @media (max-width: 980px){.today-hero{grid-template-columns:1fr;}}
-      @media (max-width: 820px){.compact-weekly-schedule{overflow-x:auto;}.compact-weekly-schedule .weekly-timeline{min-width:860px;}}
+      @media (max-width: 820px){.compact-weekly-schedule{overflow-x:auto;}.compact-weekly-schedule .weekly-timeline{min-width:860px;}.floating-ai-badge{display:none;}.floating-ai-panel{right:12px;left:12px;width:auto;bottom:88px;}}
     `;
     document.head.appendChild(style);
   }
@@ -304,6 +352,277 @@
     return `<div class="agenda-card"><div class="agenda-head"><div><h3><i class="fas fa-calendar-check"></i> Agenda acadêmica completa</h3><small>Provas, trabalhos, revisões, sessões e diários.</small></div></div><div class="agenda-filters">${buttons}</div><div class="agenda-list" id="agenda-list">${list}</div></div>`;
   }
 
+  function ensureLaunchData(app) {
+    if (!app?.data) return;
+    app.data.user = app.data.user || {};
+    app.data.settings = app.data.settings || {};
+    if (!Number.isFinite(Number(app.data.user.dailyStudyGoalHours))) {
+      app.data.user.dailyStudyGoalHours = Math.max(2, Math.min(8, Number(app.data.user.horasMaximas) || 3));
+    }
+    if (!Array.isArray(app.data.user.achievements)) app.data.user.achievements = [];
+  }
+
+  function patchLaunchMethods() {
+    if (!window.StudyLifeControl || window.StudyLifeControl.prototype.__launchMethodsPatched) return;
+    const proto = window.StudyLifeControl.prototype;
+
+    proto.getDailyGoalSnapshot = function () {
+      ensureLaunchData(this);
+      const progress = this.calcularProgressoHoje?.() || { concluido: 0, percentual: 0 };
+      const target = Math.max(1, Number(this.data.user?.dailyStudyGoalHours) || 3);
+      const concluded = Number(progress.concluido) || 0;
+      return {
+        target,
+        concluded,
+        remaining: Math.max(0, +(target - concluded).toFixed(1)),
+        percent: Math.min(100, Math.round((concluded / target) * 100)),
+        streak: Number(this.data.user?.streak || 0)
+      };
+    };
+
+    proto.saveDailyGoal = async function (hours) {
+      ensureLaunchData(this);
+      const value = Math.max(1, Math.min(12, Number(hours) || 3));
+      this.data.user.dailyStudyGoalHours = value;
+      await dbService.saveData('user', this.data.user);
+      return value;
+    };
+
+    proto.getGamificationSnapshot = function () {
+      ensureLaunchData(this);
+      const sessions = (this.data.sessions || []).filter(s => s?.concluida || s?.status === 'concluida');
+      const tasksDone = (this.data.tasks || []).filter(t => t?.concluida).length;
+      const reviewsDone = (this.data.reviews || []).filter(r => r?.concluida).length;
+      const minutes = sessions.reduce((acc, s) => acc + (Number(s?.duracao) || 0), 0);
+      const xp = Math.round(minutes + (tasksDone * 35) + (reviewsDone * 20) + ((Number(this.data.user?.streak) || 0) * 12));
+      const level = Math.max(1, Math.floor(xp / 300) + 1);
+      const currentBase = (level - 1) * 300;
+      const nextBase = level * 300;
+      const progress = Math.min(100, Math.round(((xp - currentBase) / Math.max(1, nextBase - currentBase)) * 100));
+      const achievements = [];
+      if (xp >= 150) achievements.push({ icon: 'fa-bolt', title: 'Primeiro gás', text: 'Você já passou dos 150 XP totais.' });
+      if ((Number(this.data.user?.streak) || 0) >= 3) achievements.push({ icon: 'fa-fire', title: 'Constância', text: `Streak atual de ${this.data.user?.streak || 0} dias.` });
+      if (tasksDone >= 5) achievements.push({ icon: 'fa-check-circle', title: 'Executor', text: `${tasksDone} tarefas concluídas.` });
+      if (minutes >= 600) achievements.push({ icon: 'fa-brain', title: 'Mente blindada', text: `${Math.round(minutes / 60)}h estudadas no total.` });
+      return {
+        xp,
+        level,
+        progress,
+        nextLevelIn: Math.max(0, nextBase - xp),
+        tasksDone,
+        reviewsDone,
+        totalHours: +(minutes / 60).toFixed(1),
+        streak: Number(this.data.user?.streak || 0),
+        achievements: achievements.slice(0, 4)
+      };
+    };
+
+    proto.getLaunchNotifications = function () {
+      const items = [];
+      (this.getUpcomingExams?.(7) || []).slice(0, 4).forEach(exam => items.push({
+        type: 'prova',
+        priority: diasAte(exam.data) <= 2 ? 'alta' : 'media',
+        title: `${exam.titulo || 'Prova'} chegando`,
+        text: `${exam.materia} em ${Math.max(0, diasAte(exam.data))} dia(s).`,
+        badge: `${Math.max(0, diasAte(exam.data))}d`
+      }));
+      (this.data.tasks || []).filter(t => !t?.concluida && diasAte(t.dataLimite) < 0).slice(0, 4).forEach(task => items.push({
+        type: 'tarefa',
+        priority: 'alta',
+        title: 'Tarefa atrasada',
+        text: `${task.titulo} • ${task.materia || 'sem matéria'}`,
+        badge: `${Math.abs(diasAte(task.dataLimite))}d`
+      }));
+      (this.analyzeAcademicRisk?.() || []).slice(0, 3).forEach(risk => items.push({
+        type: 'risco',
+        priority: risk.nivel === 'alto' ? 'alta' : 'media',
+        title: `Risco ${risk.nivel} em ${risk.materia}`,
+        text: risk.motivo,
+        badge: risk.nivel
+      }));
+      (this.getReviewItemsForDays?.(0) || []).slice(0, 3).forEach(review => items.push({
+        type: 'revisao',
+        priority: 'baixa',
+        title: 'Revisão pendente hoje',
+        text: `${review.materia || 'Matéria'} • ${review.topico || 'revisar conteúdo'}`,
+        badge: 'hoje'
+      }));
+      const rank = { alta: 0, media: 1, baixa: 2 };
+      return items.sort((a, b) => rank[a.priority] - rank[b.priority]).slice(0, 8);
+    };
+
+    proto.getWeeklyHoursChartData = function () {
+      const source = this.smartDashboard?.getProgressoSemanal?.() || [];
+      return source.map(item => ({ ...item, value: Number(item.horas) || 0 }));
+    };
+
+    proto.getDashboardSubjectShare = function () {
+      const totals = this.calcularHorasPorMateria?.() || [];
+      const grand = totals.reduce((acc, item) => acc + (Number(item.horas) || 0), 0) || 1;
+      return (this.data.subjects || []).map(subject => {
+        const perf = this.getSubjectPerformance?.(subject.nome);
+        const hours = Number(totals.find(item => item.materia === subject.nome)?.horas || 0);
+        return {
+          materia: subject.nome,
+          hours,
+          share: Math.round((hours / grand) * 100),
+          average: perf?.average || 0,
+          riskLevel: perf?.riskLevel || 'baixo',
+          tasksPending: perf?.tasksPending || 0
+        };
+      }).sort((a, b) => b.hours - a.hours).slice(0, 6);
+    };
+
+    proto.__launchMethodsPatched = true;
+  }
+
+  function renderDailyGoalCard(view) {
+    const goal = view.app.getDailyGoalSnapshot?.();
+    if (!goal) return '';
+    return `<div class="daily-goal-card">
+      <div class="daily-goal-top">
+        <div>
+          <h3><i class="fas fa-bullseye"></i> Meta diária de estudo</h3>
+          <p>Hoje: <strong>${goal.concluded.toFixed(1)}h</strong> de <strong>${goal.target}h</strong>. Falta ${goal.remaining.toFixed(1)}h para bater tua meta.</p>
+        </div>
+        <div class="daily-goal-actions">
+          <div class="daily-goal-inline">
+            <input type="number" id="daily-goal-input" min="1" max="12" step="0.5" value="${goal.target}">
+            <button class="btn-secondary" id="save-daily-goal-btn"><i class="fas fa-save"></i> Salvar meta</button>
+          </div>
+        </div>
+      </div>
+      <div class="progress-bar" style="margin-top:14px"><div class="progress-fill" style="width:${goal.percent}%"></div></div>
+      <div class="daily-goal-meta">
+        <div class="daily-goal-pill"><span>Progresso</span><strong>${goal.percent}%</strong></div>
+        <div class="daily-goal-pill"><span>Sequência</span><strong>${goal.streak} dias</strong></div>
+        <div class="daily-goal-pill"><span>Ritmo sugerido</span><strong>${goal.remaining > 0 ? `${goal.remaining.toFixed(1)}h restantes` : 'Meta batida'}</strong></div>
+      </div>
+    </div>`;
+  }
+
+  function renderImpactSection(view) {
+    const chart = view.app.getWeeklyHoursChartData?.() || [];
+    const subjects = view.app.getDashboardSubjectShare?.() || [];
+    const risk = view.app.analyzeAcademicRisk?.() || [];
+    const totalWeek = chart.reduce((acc, item) => acc + (Number(item.value) || 0), 0);
+    const topSubject = subjects[0]?.materia || '—';
+    const maxBar = Math.max(1, ...chart.map(item => Number(item.value) || 0));
+    return `<div class="impact-grid">
+      <div class="impact-card">
+        <div class="subject-performance-head"><div><h3><i class="fas fa-chart-column"></i> Horas da semana</h3><small>Visual do teu ritmo nos últimos 7 dias.</small></div><div class="today-badge">${totalWeek.toFixed(1)}h</div></div>
+        <div class="mini-chart">${chart.map(item => `<div class="mini-chart-bar-wrap"><div class="mini-chart-value">${Number(item.value || 0).toFixed(1)}h</div><div class="mini-chart-bar" style="height:${Math.max(10, Math.round(((Number(item.value)||0) / maxBar) * 120))}px"></div><div class="mini-chart-label">${item.dia}</div></div>`).join('')}</div>
+      </div>
+      <div class="impact-card">
+        <div class="subject-performance-head"><div><h3><i class="fas fa-book-open"></i> % por matéria</h3><small>Onde teu esforço está indo agora.</small></div><div class="today-badge">Top: ${view.esc(topSubject)}</div></div>
+        <div class="subject-share-list">${subjects.length ? subjects.map(item => `<div class="subject-share-item"><div class="subject-share-meta"><strong>${view.esc(item.materia)}</strong><small>${item.hours.toFixed(1)}h • média ${Number(item.average || 0).toFixed(1)} • ${item.tasksPending} pendência(s)</small><div class="subject-share-track"><div class="subject-share-fill" style="width:${Math.max(4, item.share)}%"></div></div></div><span class="risk-pill ${view.esc(item.riskLevel)}">${item.share}%</span></div>`).join('') : '<p class="text-secondary">Adicione sessões concluídas para ver distribuição por matéria.</p>'}</div>
+      </div>
+      <div class="impact-card">
+        <div class="subject-performance-head"><div><h3><i class="fas fa-triangle-exclamation"></i> Risco de reprovação</h3><small>Leitura rápida do semestre.</small></div><div class="today-badge">${risk.length} alerta(s)</div></div>
+        <div class="risk-meter">
+          <div class="risk-segment alto"><span>Alto</span><strong>${risk.filter(item => item.nivel === 'alto').length}</strong></div>
+          <div class="risk-segment medio"><span>Médio</span><strong>${risk.filter(item => item.nivel === 'medio').length}</strong></div>
+          <div class="risk-segment baixo"><span>Baixo</span><strong>${Math.max(0, (view.app.data.subjects || []).length - risk.length)}</strong></div>
+        </div>
+        <div class="subject-share-list">${risk.length ? risk.slice(0, 4).map(item => `<div class="subject-share-item"><div class="subject-share-meta"><strong>${view.esc(item.materia)}</strong><small>${view.esc(item.motivo)}</small></div><span class="risk-pill ${view.esc(item.nivel)}">${view.esc(item.nivel)}</span></div>`).join('') : '<p class="text-secondary">Nenhuma matéria em risco forte agora.</p>'}</div>
+      </div>
+    </div>`;
+  }
+
+  function renderNotificationSection(view) {
+    const items = view.app.getLaunchNotifications?.() || [];
+    return `<div class="notification-grid"><div class="notification-card"><div class="subject-performance-head"><div><h3><i class="fas fa-bell"></i> Notificações simples</h3><small>Provas chegando, tarefas atrasadas e revisões do dia.</small></div><span class="notification-badge">${items.length}</span></div><div class="notification-list">${items.length ? items.map(item => `<div class="notification-item"><div><strong>${view.esc(item.title)}</strong><small>${view.esc(item.text)}</small></div><span class="risk-pill ${item.priority === 'alta' ? 'alto' : item.priority === 'media' ? 'medio' : 'baixo'}">${view.esc(item.badge)}</span></div>`).join('') : '<p class="text-secondary">Nenhum alerta agora. Tá tudo sob controle.</p>'}</div></div></div>`;
+  }
+
+  function renderGamificationSection(view) {
+    const game = view.app.getGamificationSnapshot?.();
+    if (!game) return '';
+    return `<div class="gamification-grid"><div class="gamification-card"><div class="xp-progress-head"><div><h3><i class="fas fa-trophy"></i> Gamificação</h3><small>XP por estudar, concluir tarefas e manter constância.</small></div><div class="today-badge">Nível ${game.level}</div></div><div class="impact-kpis"><div class="impact-kpi"><span>XP total</span><strong>${game.xp}</strong></div><div class="impact-kpi"><span>Streak</span><strong>${game.streak} dias</strong></div><div class="impact-kpi"><span>Tarefas</span><strong>${game.tasksDone}</strong></div><div class="impact-kpi"><span>Horas</span><strong>${game.totalHours}h</strong></div></div><div class="progress-bar" style="margin-top:14px"><div class="progress-fill" style="width:${game.progress}%"></div></div><div class="xp-progress-copy">Faltam ${game.nextLevelIn} XP para o próximo nível.</div><div class="achievement-list">${game.achievements.length ? game.achievements.map(item => `<div class="achievement-item"><div><strong><i class="fas ${item.icon}"></i> ${view.esc(item.title)}</strong><small>${view.esc(item.text)}</small></div></div>`).join('') : '<p class="text-secondary">Conclua mais sessões para desbloquear conquistas.</p>'}</div></div></div>`;
+  }
+
+  function ensureFloatingAIDom() {
+    if (el('floating-ai-launcher')) return;
+    const launcher = document.createElement('div');
+    launcher.id = 'floating-ai-launcher';
+    launcher.className = 'floating-ai-launcher';
+    launcher.innerHTML = `
+      <div class="floating-ai-badge"> <i class="fas fa-robot"></i> Mentor IA sempre visível</div>
+      <button class="floating-ai-button" id="floating-ai-button" aria-label="Abrir mentor IA"><i class="fas fa-robot"></i></button>`;
+    const backdrop = document.createElement('div');
+    backdrop.id = 'floating-ai-backdrop';
+    backdrop.className = 'floating-ai-backdrop';
+    const panel = document.createElement('div');
+    panel.id = 'floating-ai-panel';
+    panel.className = 'floating-ai-panel';
+    panel.innerHTML = `
+      <div class="floating-ai-header">
+        <div><strong>Mentor IA</strong><p>Abre tipo chat e responde com base no teu semestre.</p></div>
+        <button class="floating-ai-close" id="floating-ai-close" aria-label="Fechar"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="floating-ai-messages" id="floating-ai-messages">
+        <div class="floating-ai-message assistant">Fala. Posso montar teu plano de hoje, analisar risco, dizer o que estudar agora e revisar metas.</div>
+      </div>
+      <div class="floating-ai-suggestions" id="floating-ai-suggestions">
+        <button class="floating-ai-suggestion" data-question="Qual meu plano de estudo para hoje?">Plano de hoje</button>
+        <button class="floating-ai-suggestion" data-question="Quais os riscos acadêmicos agora?">Riscos</button>
+        <button class="floating-ai-suggestion" data-question="O que estudar agora?">O que estudar</button>
+      </div>
+      <div class="floating-ai-input">
+        <input type="text" id="floating-ai-input" placeholder="Pergunte qualquer coisa sobre tua rotina...">
+        <button id="floating-ai-send"><i class="fas fa-paper-plane"></i></button>
+      </div>`;
+    document.body.appendChild(backdrop);
+    document.body.appendChild(panel);
+    document.body.appendChild(launcher);
+  }
+
+  function bindFloatingAI(app) {
+    ensureFloatingAIDom();
+    const button = el('floating-ai-button');
+    const panel = el('floating-ai-panel');
+    const backdrop = el('floating-ai-backdrop');
+    const close = el('floating-ai-close');
+    const input = el('floating-ai-input');
+    const send = el('floating-ai-send');
+    const messages = el('floating-ai-messages');
+    if (!button || button.dataset.bound) return;
+    const open = () => { panel?.classList.add('open'); backdrop?.classList.add('open'); setTimeout(() => input?.focus(), 50); };
+    const hide = () => { panel?.classList.remove('open'); backdrop?.classList.remove('open'); };
+    const append = (role, content) => {
+      const node = document.createElement('div');
+      node.className = `floating-ai-message ${role}`;
+      if (role === 'assistant') node.innerHTML = nl2brSafe(content || 'Sem resposta agora.');
+      else node.textContent = content || '';
+      messages?.appendChild(node);
+      if (messages) messages.scrollTop = messages.scrollHeight;
+      return node;
+    };
+    const ask = async (question) => {
+      const text = String(question || input?.value || '').trim();
+      if (!text) return;
+      open();
+      append('user', text);
+      if (input) input.value = '';
+      const loading = append('assistant', 'Pensando...');
+      try {
+        window.aiAssistant?.updateContext(app?.data || {});
+        const answer = await window.aiAssistant?.ask?.(text);
+        loading.remove();
+        append('assistant', answer || 'Não consegui responder agora.');
+      } catch (error) {
+        loading.remove();
+        append('assistant', 'Deu erro ao responder agora. Tenta de novo.');
+      }
+    };
+    button.dataset.bound = '1';
+    button.addEventListener('click', open);
+    close?.addEventListener('click', hide);
+    backdrop?.addEventListener('click', hide);
+    send?.addEventListener('click', () => ask());
+    input?.addEventListener('keydown', e => { if (e.key === 'Enter') ask(); });
+    document.querySelectorAll('.floating-ai-suggestion').forEach(btn => btn.addEventListener('click', () => ask(btn.dataset.question || '')));
+  }
+
   function renderSituationPage(view) {
     const summary = view.app.getAcademicSituationSummary();
     const makeList = (items, empty) => items.length ? items.map(item => `<div class="agenda-item"><div><strong>${view.esc(item.subject.nome)}</strong><small>${view.esc(item.recommendation)}</small></div><span class="risk-pill ${view.esc(item.riskLevel)}">${view.esc(item.riskLevel)}</span></div>`).join('') : `<p class="text-secondary">${empty}</p>`;
@@ -337,7 +656,7 @@
 
     proto.renderDashboard = function () {
       const base = originalDashboard.call(this);
-      const insert = `${renderTodayHero(this)}${renderGoalsPanel(this)}<div class="report-stack"><div class="report-card"><h3><i class="fas fa-file-alt"></i> Relatórios automáticos</h3><p>${this.esc(this.app.getAutoReports().daily)}</p><p>${this.esc(this.app.getAutoReports().weekly)}</p><p>${this.esc(this.app.getAutoReports().monthly)}</p></div>${renderAgendaPanel(this)}</div>`;
+      const insert = `${renderTodayHero(this)}${renderDailyGoalCard(this)}${renderGoalsPanel(this)}${renderImpactSection(this)}${renderNotificationSection(this)}${renderGamificationSection(this)}<div class="report-stack"><div class="report-card"><h3><i class="fas fa-file-alt"></i> Relatórios automáticos</h3><p>${this.esc(this.app.getAutoReports().daily)}</p><p>${this.esc(this.app.getAutoReports().weekly)}</p><p>${this.esc(this.app.getAutoReports().monthly)}</p></div>${renderAgendaPanel(this)}</div>`;
       return base.replace('<div class="dashboard-grid">', `${insert}<div class="dashboard-grid">`);
     };
 
@@ -460,6 +779,16 @@
         app.loadView(app.currentView);
       });
     }
+    const saveDailyGoal = el('save-daily-goal-btn');
+    if (saveDailyGoal && !saveDailyGoal.dataset.bound) {
+      saveDailyGoal.dataset.bound = '1';
+      saveDailyGoal.addEventListener('click', async () => {
+        const value = Number(el('daily-goal-input')?.value || 0);
+        await app.saveDailyGoal?.(value);
+        showToast('Meta diária atualizada!', 'success');
+        app.loadView(app.currentView);
+      });
+    }
   }
 
   function bindCalendarFilters() {
@@ -482,12 +811,15 @@
     patchDbService();
     patchSubmitGuards();
     patchFocusTimer();
+    patchLaunchMethods();
     patchViewRenderer();
     patchLoadView();
     if (window.app) {
+      ensureLaunchData(window.app);
       ensureFocusState(window.app);
       bindDashboardEvents(window.app);
       bindCalendarFilters();
+      bindFloatingAI(window.app);
       if (window.app.currentView === 'foco') bindFocusButtons(window.app);
     }
   }
