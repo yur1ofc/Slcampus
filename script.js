@@ -157,6 +157,23 @@
       .history-xp.gain{background:rgba(34,197,94,.12);color:#86efac;}
       .history-xp.neutral{background:rgba(59,130,246,.12);color:#93c5fd;}
       .achievement-item.unlocked{border:1px solid rgba(34,197,94,.16);}
+      .achievement-status{display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;border-radius:999px;font-size:.78rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;}
+      .achievement-status.unlocked{background:rgba(34,197,94,.14);color:#86efac;}
+      .achievement-status.locked{background:rgba(148,163,184,.12);color:#cbd5e1;}
+      .gamification-page-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:18px;}
+      .achievement-steam-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px;}
+      .achievement-steam-card{display:flex;gap:14px;align-items:center;padding:16px;border-radius:18px;background:rgba(15,23,42,.16);border:1px solid rgba(148,163,184,.14);transition:transform .18s ease, border-color .18s ease, opacity .18s ease;}
+      .achievement-steam-card.unlocked{box-shadow:0 10px 24px rgba(2,6,23,.16);}
+      .achievement-steam-card.locked{opacity:.72;filter:saturate(.7);}
+      .achievement-steam-card.bronze.unlocked{border-color:rgba(245,158,11,.28);}
+      .achievement-steam-card.silver.unlocked{border-color:rgba(148,163,184,.3);}
+      .achievement-steam-card.gold.unlocked{border-color:rgba(250,204,21,.3);}
+      .achievement-steam-icon{width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;background:rgba(37,99,235,.14);font-size:1.2rem;flex:0 0 auto;}
+      .achievement-steam-body{display:grid;gap:4px;min-width:0;}
+      .achievement-steam-body small{opacity:.82;}
+      .xp-burst-fx{position:absolute;transform:translate(-50%,0) scale(.88);opacity:0;pointer-events:none;z-index:120;background:rgba(34,197,94,.16);color:#86efac;border:1px solid rgba(34,197,94,.24);padding:8px 12px;border-radius:999px;font-weight:800;box-shadow:0 12px 24px rgba(2,6,23,.22);transition:transform .8s cubic-bezier(.2,.7,.2,1), opacity .8s ease;}
+      .xp-burst-fx.show{opacity:1;transform:translate(-50%,-42px) scale(1);}
+
       .level-up-fx{position:fixed;inset:0;display:grid;place-items:center;background:rgba(2,6,23,.45);backdrop-filter:blur(4px);z-index:1600;opacity:0;pointer-events:none;transition:opacity .25s ease;}
       .level-up-fx.show{opacity:1;}
       .level-up-card{position:relative;min-width:min(92vw,360px);padding:28px 24px;border-radius:28px;background:radial-gradient(circle at top,rgba(37,99,235,.22),rgba(2,6,23,.96));border:1px solid rgba(96,165,250,.28);box-shadow:0 30px 80px rgba(2,6,23,.5);text-align:center;transform:scale(.86);transition:transform .25s ease;}
@@ -167,7 +184,7 @@
       .level-up-copy{margin-top:8px;opacity:.82;}
       @keyframes slcSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
       @media (max-width: 980px){.today-hero{grid-template-columns:1fr;}}
-      @media (max-width: 820px){.compact-weekly-schedule{overflow-x:auto;}.compact-weekly-schedule .weekly-timeline{min-width:860px;}.floating-ai-panel{right:12px;left:12px;width:auto;bottom:88px;}.notification-popover{position:fixed;right:12px;left:12px;top:76px;width:auto;}}
+      @media (max-width: 820px){.compact-weekly-schedule{overflow-x:auto;}.compact-weekly-schedule .weekly-timeline{min-width:860px;}.floating-ai-panel{right:12px;left:12px;width:auto;bottom:88px;}.notification-popover{position:fixed;right:12px;left:12px;top:76px;width:auto;}.gamification-page-grid{grid-template-columns:1fr;}}
     `;
     document.head.appendChild(style);
   }
@@ -404,18 +421,29 @@
     const totalMinutes = sessionsDone.reduce((acc, s) => acc + (Number(s?.duracao) || 0), 0);
     const streak = Number(app?.data?.user?.streak || 0);
     const xp = Number(app?.data?.user?.gamification?.xp || 0);
+    const totalActions = sessionsDone.length + tasksDone + reviewsDone;
     return [
-      { id: 'first_task', icon: 'fa-check-circle', title: 'Primeira entrega', text: 'Concluiu a primeira tarefa no sistema.', unlocked: tasksDone >= 1 },
-      { id: 'reviewer', icon: 'fa-rotate', title: 'Revisor nato', text: 'Fez 5 revisões concluídas.', unlocked: reviewsDone >= 5 },
-      { id: 'focus_10h', icon: 'fa-brain', title: 'Mente blindada', text: 'Acumulou 10 horas válidas de estudo.', unlocked: totalMinutes >= 600 },
-      { id: 'streak_3', icon: 'fa-fire', title: 'Constância', text: 'Manteve streak de 3 dias.', unlocked: streak >= 3 },
-      { id: 'xp_300', icon: 'fa-bolt', title: 'Subiu de patamar', text: 'Chegou aos 300 XP totais.', unlocked: xp >= 300 },
-      { id: 'task_10', icon: 'fa-list-check', title: 'Executor', text: 'Concluiu 10 tarefas.', unlocked: tasksDone >= 10 }
+      { id: 'welcome', icon: 'fa-seedling', title: 'Primeiros passos', text: 'Ganhe seu primeiro XP no sistema.', unlocked: xp >= 1, tier: 'bronze' },
+      { id: 'first_task', icon: 'fa-check-circle', title: 'Primeira entrega', text: 'Concluiu a primeira tarefa no sistema.', unlocked: tasksDone >= 1, tier: 'bronze' },
+      { id: 'task_5', icon: 'fa-list-check', title: 'Embalado', text: 'Concluiu 5 tarefas.', unlocked: tasksDone >= 5, tier: 'silver' },
+      { id: 'task_20', icon: 'fa-clipboard-check', title: 'Máquina de concluir', text: 'Concluiu 20 tarefas.', unlocked: tasksDone >= 20, tier: 'gold' },
+      { id: 'review_1', icon: 'fa-rotate', title: 'Revisou de verdade', text: 'Fez a primeira revisão concluída.', unlocked: reviewsDone >= 1, tier: 'bronze' },
+      { id: 'review_10', icon: 'fa-book-bookmark', title: 'Memória afiada', text: 'Fez 10 revisões concluídas.', unlocked: reviewsDone >= 10, tier: 'silver' },
+      { id: 'session_5', icon: 'fa-stopwatch', title: 'Entrou no ritmo', text: 'Concluiu 5 sessões de estudo.', unlocked: sessionsDone.length >= 5, tier: 'bronze' },
+      { id: 'focus_10h', icon: 'fa-brain', title: 'Mente blindada', text: 'Acumulou 10 horas válidas de estudo.', unlocked: totalMinutes >= 600, tier: 'silver' },
+      { id: 'focus_30h', icon: 'fa-fire-flame-curved', title: 'Monstro da disciplina', text: 'Acumulou 30 horas válidas de estudo.', unlocked: totalMinutes >= 1800, tier: 'gold' },
+      { id: 'streak_3', icon: 'fa-fire', title: 'Constância', text: 'Manteve streak de 3 dias.', unlocked: streak >= 3, tier: 'bronze' },
+      { id: 'streak_7', icon: 'fa-fire', title: 'Semana fechada', text: 'Manteve streak de 7 dias.', unlocked: streak >= 7, tier: 'silver' },
+      { id: 'xp_250', icon: 'fa-bolt', title: 'Subiu de patamar', text: 'Chegou aos 250 XP totais.', unlocked: xp >= 250, tier: 'bronze' },
+      { id: 'xp_750', icon: 'fa-trophy', title: 'Conta forte', text: 'Chegou aos 750 XP totais.', unlocked: xp >= 750, tier: 'gold' },
+      { id: 'all_rounder', icon: 'fa-shield-heart', title: 'Jogador completo', text: 'Concluiu sessão, tarefa e revisão.', unlocked: sessionsDone.length >= 1 && tasksDone >= 1 && reviewsDone >= 1, tier: 'silver' },
+      { id: 'action_50', icon: 'fa-gamepad', title: 'No vício certo', text: 'Completou 50 ações válidas.', unlocked: totalActions >= 50, tier: 'gold' }
     ];
   }
 
   function computeLevelFromXP(xp) {
-    return Math.max(1, Math.floor((Number(xp) || 0) / 300) + 1);
+    const value = Math.max(0, Number(xp) || 0);
+    return Math.max(1, Math.floor(value / 250) + 1);
   }
 
   function ensureLevelUpFX() {
@@ -438,6 +466,26 @@
     clearTimeout(window.__slcLevelUpTimer);
     window.__slcLevelUpTimer = setTimeout(() => fx.classList.remove('show'), 2600);
   }
+
+  function showXPBurst(xpValue, sourceEl) {
+    const amount = Math.max(0, Math.round(Number(xpValue) || 0));
+    if (!amount) return;
+    const burst = document.createElement('div');
+    burst.className = 'xp-burst-fx';
+    burst.textContent = `+${amount} XP`;
+    const rect = sourceEl?.getBoundingClientRect?.();
+    if (rect) {
+      burst.style.left = `${rect.left + rect.width / 2}px`;
+      burst.style.top = `${rect.top + window.scrollY - 6}px`;
+    } else {
+      burst.style.left = '50%';
+      burst.style.top = `${window.scrollY + 140}px`;
+    }
+    document.body.appendChild(burst);
+    setTimeout(() => burst.classList.add('show'), 10);
+    setTimeout(() => burst.remove(), 1500);
+  }
+
 
   function patchLaunchMethods() {
     if (!window.StudyLifeControl || window.StudyLifeControl.prototype.__launchMethodsPatched) return;
@@ -474,13 +522,14 @@
       const minutes = sessions.reduce((acc, s) => acc + (Number(s?.duracao) || 0), 0);
       const xp = Math.max(0, Math.round(Number(game.xp) || 0));
       const level = computeLevelFromXP(xp);
-      const currentBase = (level - 1) * 300;
-      const nextBase = level * 300;
+      const currentBase = (level - 1) * 250;
+      const nextBase = level * 250;
       const progress = Math.min(100, Math.round(((xp - currentBase) / Math.max(1, nextBase - currentBase)) * 100));
       const allAchievements = getAchievementCatalog(this);
       const unlockedIds = new Set(game.achievementsUnlocked || []);
       const achievements = allAchievements.filter(item => unlockedIds.has(item.id));
-      const history = (game.history || []).slice().sort((a, b) => new Date(b.at || 0) - new Date(a.at || 0)).slice(0, 6);
+      const lockedAchievements = allAchievements.filter(item => !unlockedIds.has(item.id));
+      const history = (game.history || []).slice().sort((a, b) => new Date(b.at || 0) - new Date(a.at || 0)).slice(0, 20);
       return {
         xp,
         level,
@@ -491,6 +540,7 @@
         totalHours: +(minutes / 60).toFixed(1),
         streak: Number(this.data.user?.streak || 0),
         achievements,
+        lockedAchievements,
         allAchievements,
         history
       };
@@ -539,6 +589,7 @@
         playLevelUpAnimation(game.level);
         showToast(`Level up! Você chegou no nível ${game.level}.`, 'success');
       } else if (xpValue > 0) {
+        showXPBurst(xpValue, window.__slcLastXpSourceEl);
         showToast(`+${xpValue} XP • ${payload.label || 'progresso registrado'}`, 'success');
       }
       return { awarded: true, level: game.level, xp: game.xp };
@@ -662,9 +713,49 @@
   }
 
   function renderGamificationSection(view) {
+    return '';
+  }
+
+  function renderGamificationPage(view) {
     const game = view.app.getGamificationSnapshot?.();
     if (!game) return '';
-    return `<div class="gamification-grid"><div class="gamification-card"><div class="xp-progress-head"><div><h3><i class="fas fa-trophy"></i> Gamificação</h3><small>XP só cai ao concluir sessão, tarefa ou revisão dentro do sistema.</small></div><div class="today-badge">Nível ${game.level}</div></div><div class="impact-kpis"><div class="impact-kpi"><span>XP total</span><strong>${game.xp}</strong></div><div class="impact-kpi"><span>Streak</span><strong>${game.streak} dias</strong></div><div class="impact-kpi"><span>Tarefas feitas</span><strong>${game.tasksDone}</strong></div><div class="impact-kpi"><span>Horas validadas</span><strong>${game.totalHours}h</strong></div></div><div class="xp-progress-copy">Faltam ${game.nextLevelIn} XP para o próximo nível.</div><div class="xp-proof-note">Tudo que gera XP fica salvo no histórico abaixo.</div><div class="history-title"><strong>Histórico de XP</strong></div><div class="history-list">${game.history.length ? game.history.map(item => `<div class="history-item"><div><strong>${view.esc(item.label)}</strong><small>${view.esc(formatarData(item.at || new Date().toISOString()))}</small></div><span class="history-xp ${Number(item.xp) > 0 ? 'gain' : 'neutral'}">${Number(item.xp) > 0 ? '+' : ''}${Number(item.xp) || 0} XP</span></div>`).join('') : '<p class="text-secondary">Ainda não houve ganho de XP nesta conta.</p>'}</div><div class="history-title" style="margin-top:16px"><strong>Conquistas desbloqueadas</strong></div><div class="achievement-list">${game.achievements.length ? game.achievements.map(item => `<div class="achievement-item unlocked"><div><strong><i class="fas ${item.icon}"></i> ${view.esc(item.title)}</strong><small>${view.esc(item.text)}</small></div><span class="today-badge">desbloqueada</span></div>`).join('') : '<p class="text-secondary">Conclua mais ações para desbloquear conquistas reais.</p>'}</div></div></div>`;
+    const badgeFor = (item, locked = false) => `<span class="achievement-status ${locked ? 'locked' : 'unlocked'}">${locked ? 'bloqueada' : 'desbloqueada'}</span>`;
+    const cardFor = (item, locked = false) => `
+      <div class="achievement-steam-card ${locked ? 'locked' : 'unlocked'} ${item.tier || 'bronze'}">
+        <div class="achievement-steam-icon"><i class="fas ${view.esc(item.icon || 'fa-trophy')}"></i></div>
+        <div class="achievement-steam-body">
+          <strong>${view.esc(item.title)}</strong>
+          <small>${view.esc(item.text)}</small>
+        </div>
+        ${badgeFor(item, locked)}
+      </div>`;
+    return `
+      <div class="view-header"><h2><i class="fas fa-trophy"></i> Gamificação</h2></div>
+      <div class="gamification-page-grid">
+        <div class="gamification-card">
+          <div class="xp-progress-head"><div><h3>Nível ${game.level}</h3><small>XP só cai quando você conclui ações dentro do sistema.</small></div><div class="today-badge">${game.xp} XP</div></div>
+          <div class="impact-kpis">
+            <div class="impact-kpi"><span>XP total</span><strong>${game.xp}</strong></div>
+            <div class="impact-kpi"><span>Streak</span><strong>${game.streak} dias</strong></div>
+            <div class="impact-kpi"><span>Tarefas feitas</span><strong>${game.tasksDone}</strong></div>
+            <div class="impact-kpi"><span>Horas validadas</span><strong>${game.totalHours}h</strong></div>
+          </div>
+          <div class="progress-bar" style="margin-top:14px"><div class="progress-fill" style="width:${game.progress}%"></div></div>
+          <div class="xp-progress-copy">Faltam ${game.nextLevelIn} XP para o próximo nível.</div>
+        </div>
+        <div class="gamification-card">
+          <div class="history-title"><strong>Histórico de XP</strong></div>
+          <div class="history-list">${game.history.length ? game.history.map(item => `<div class="history-item"><div><strong>${view.esc(item.label)}</strong><small>${view.esc(formatarData(item.at || new Date().toISOString()))}</small></div><span class="history-xp ${Number(item.xp) > 0 ? 'gain' : 'neutral'}">${Number(item.xp) > 0 ? '+' : ''}${Number(item.xp) || 0} XP</span></div>`).join('') : '<p class="text-secondary">Ainda não houve ganho de XP nesta conta.</p>'}</div>
+        </div>
+      </div>
+      <div class="gamification-card" style="margin-top:18px">
+        <div class="history-title"><strong>Conquistas desbloqueadas</strong></div>
+        <div class="achievement-steam-grid unlocked-grid">${game.achievements.length ? game.achievements.map(item => cardFor(item, false)).join('') : '<p class="text-secondary">Ainda não tem conquista desbloqueada.</p>'}</div>
+      </div>
+      <div class="gamification-card" style="margin-top:18px">
+        <div class="history-title"><strong>Conquistas bloqueadas</strong></div>
+        <div class="achievement-steam-grid locked-grid">${game.lockedAchievements.length ? game.lockedAchievements.map(item => cardFor(item, true)).join('') : '<p class="text-secondary">Você desbloqueou tudo. Monstro.</p>'}</div>
+      </div>`;
   }
 
   function ensureFloatingAIDom() {
@@ -803,7 +894,7 @@
     proto.renderDashboard = function () {
       let base = originalDashboard.call(this);
       base = base.replace(/<div class="card">\s*<div class="card-header">\s*<h3><i class="fas fa-robot"><\/i> Plano de Hoje \(IA\)<\/h3>[\s\S]*?<\/div>\s*<\/div>/, '');
-      const insert = `${renderDailyGoalCard(this)}${renderGoalsPanel(this)}${renderImpactSection(this)}${renderGamificationSection(this)}<div class="report-stack"><div class="report-card"><h3><i class="fas fa-file-alt"></i> Relatórios automáticos</h3><p>${this.esc(this.app.getAutoReports().daily)}</p><p>${this.esc(this.app.getAutoReports().weekly)}</p><p>${this.esc(this.app.getAutoReports().monthly)}</p></div>${renderAgendaPanel(this)}</div>`;
+      const insert = `${renderDailyGoalCard(this)}${renderGoalsPanel(this)}${renderImpactSection(this)}<div class="report-stack"><div class="report-card"><h3><i class="fas fa-file-alt"></i> Relatórios automáticos</h3><p>${this.esc(this.app.getAutoReports().daily)}</p><p>${this.esc(this.app.getAutoReports().weekly)}</p><p>${this.esc(this.app.getAutoReports().monthly)}</p></div>${renderAgendaPanel(this)}</div>`;
       return base.replace('<div class="dashboard-grid">', `${insert}<div class="dashboard-grid">`);
     };
 
@@ -867,6 +958,15 @@
     const proto = window.StudyLifeControl.prototype;
     const originalLoadView = proto.loadView;
     proto.loadView = function (view) {
+      if (view === 'gamificacao') {
+        if (!this.viewRenderer) this.viewRenderer = new ViewRenderer(this);
+        this.currentView = view;
+        const container = el('view-container');
+        if (!container) return;
+        container.innerHTML = renderGamificationPage(this.viewRenderer);
+        window.aiAssistant?.updateContext(this.data);
+        return;
+      }
       if (view === 'situacao-academica') {
         if (!this.viewRenderer) this.viewRenderer = new ViewRenderer(this);
         this.currentView = view;
@@ -1021,6 +1121,35 @@
     el('notification-popover')?.classList.remove('open');
   }
 
+  function ensureGamificationNavItem() {
+    const nav = el('sidebar-nav');
+    if (!nav || nav.querySelector('[data-view="gamificacao"]')) return;
+    const target = nav.querySelector('[data-view="situacao-academica"]') || nav.lastElementChild;
+    const item = document.createElement('a');
+    item.href = '#';
+    item.className = 'nav-item';
+    item.dataset.view = 'gamificacao';
+    item.innerHTML = '<i class="fas fa-trophy"></i><span>Gamificação</span>';
+    item.addEventListener('click', e => {
+      e.preventDefault();
+      window.app?.loadView?.('gamificacao');
+      document.querySelectorAll('.nav-item').forEach(navItem => navItem.classList.remove('active'));
+      item.classList.add('active');
+      const pageTitle = el('page-title');
+      if (pageTitle) pageTitle.textContent = 'Gamificação';
+    });
+    if (target) nav.insertBefore(item, target); else nav.appendChild(item);
+  }
+
+  function trackXPSourceClicks() {
+    if (document.body?.dataset?.xpTrackBound) return;
+    if (document.body?.dataset) document.body.dataset.xpTrackBound = '1';
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('.btn-concluir-sessao,.btn-concluir-tarefa,[data-action="concluir-revisao"],.btn-complete-review,#focus-next-button');
+      if (btn) window.__slcLastXpSourceEl = btn;
+    }, true);
+  }
+
   function setupNotificationCenter(app) {
     const badge = el('notification-badge');
     const pop = ensureNotificationPopover();
@@ -1054,7 +1183,7 @@
         const alreadyDone = !!(session?.concluida || session?.status === 'concluida');
         const result = await originalConcluirSessao.call(this, id);
         if (session && !alreadyDone && (session.concluida || session.status === 'concluida')) {
-          const xp = Math.max(10, Math.round(Number(session.duracao) || 25));
+          const xp = Math.max(12, Math.round((Number(session.duracao) || 25) * 0.8));
           await this.awardXP({ ref: `session:${id}`, xp, type: 'session', label: `Sessão concluída: ${session.materia || 'Estudo'}`, meta: session.tipo || '' });
           setTimeout(() => { this.loadView?.(this.currentView); updateSidebarLevelRing(this); }, 80);
         }
@@ -1067,7 +1196,7 @@
         const alreadyDone = !!task?.concluida;
         const result = await originalConcluirTarefa.call(this, id);
         if (task && !alreadyDone && task.concluida) {
-          await this.awardXP({ ref: `task:${id}`, xp: 35, type: 'task', label: `Tarefa concluída: ${task.titulo || 'Tarefa'}`, meta: task.materia || '' });
+          await this.awardXP({ ref: `task:${id}`, xp: 28, type: 'task', label: `Tarefa concluída: ${task.titulo || 'Tarefa'}`, meta: task.materia || '' });
           setTimeout(() => { this.loadView?.(this.currentView); updateSidebarLevelRing(this); }, 80);
         }
         return result;
@@ -1079,7 +1208,7 @@
         const result = await originalTimerComplete.call(this);
         const session = (this.data.sessions || []).find(s => !beforeIds.has(s.id) && (s.concluida || s.status === 'concluida') && String(s.tipo || '').toLowerCase() === 'foco');
         if (session) {
-          const xp = Math.max(15, Math.round(Number(session.duracao) || 25));
+          const xp = Math.max(18, Math.round((Number(session.duracao) || 25) * 0.9));
           await this.awardXP({ ref: `session:${session.id}`, xp, type: 'focus', label: `Sessão foco concluída`, meta: `${session.duracao || 25} min` });
           setTimeout(() => { this.loadView?.(this.currentView); updateSidebarLevelRing(this); }, 80);
         }
@@ -1097,7 +1226,7 @@
         const app = window.app;
         const latest = (app?.data?.reviews || []).find(r => r.id === revisaoId) || review;
         if (result && app && latest && !alreadyDone && latest.concluida) {
-          await app.awardXP({ ref: `review:${revisaoId}`, xp: 20, type: 'review', label: `Revisão concluída: ${latest.topico || latest.materia || 'Revisão'}`, meta: latest.materia || '' });
+          await app.awardXP({ ref: `review:${revisaoId}`, xp: 18, type: 'review', label: `Revisão concluída: ${latest.topico || latest.materia || 'Revisão'}`, meta: latest.materia || '' });
           setTimeout(() => { app.loadView?.(app.currentView); updateSidebarLevelRing(app); }, 80);
         }
         return result;
@@ -1116,6 +1245,8 @@
     patchViewRenderer();
     patchLoadView();
     if (window.app) {
+      ensureGamificationNavItem();
+      trackXPSourceClicks();
       ensureLaunchData(window.app);
       ensureFocusState(window.app);
       bindDashboardEvents(window.app);
@@ -1138,6 +1269,8 @@
     el('add-materia')?.addEventListener('click', () => window.app?.addMateriaField?.());
     el('add-aula')?.addEventListener('click', () => window.app?.addAulaField?.());
     install();
+    ensureGamificationNavItem();
+    trackXPSourceClicks();
     syncFloatingAIVisibility();
     const observer = new MutationObserver(() => syncFloatingAIVisibility());
     ['login-screen','setup-screen','main-dashboard'].forEach(id => { const node = el(id); if (node) observer.observe(node, { attributes: true, attributeFilter: ['style','class'] }); });
@@ -1146,6 +1279,8 @@
   document.addEventListener('app-ready', () => {
     install();
     if (window.app) {
+      ensureGamificationNavItem();
+      trackXPSourceClicks();
       ensureFocusState(window.app);
       setTimeout(() => {
         if (window.app.currentView === 'grade-horaria' && window.scheduleManager) {
