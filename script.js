@@ -149,6 +149,23 @@
       .level-avatar{position:relative;width:100%;height:100%;border-radius:50%;overflow:hidden;background:rgba(15,23,42,.8);display:grid;place-items:center;}
       .level-badge-mini{position:absolute;right:-3px;bottom:-3px;min-width:24px;height:24px;padding:0 6px;border-radius:999px;background:linear-gradient(135deg,#1d4ed8,#0ea5e9);display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:800;color:#fff;border:2px solid rgba(2,6,23,.92);}
       .xp-proof-note{margin-top:12px;font-size:.88rem;opacity:.82;}
+      .history-title{margin-top:14px;font-size:.92rem;opacity:.9;}
+      .history-list{display:grid;gap:10px;margin-top:10px;}
+      .history-item{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:16px;background:rgba(15,23,42,.12);}
+      .history-item small{display:block;opacity:.72;margin-top:4px;}
+      .history-xp{white-space:nowrap;font-weight:800;border-radius:999px;padding:6px 10px;background:rgba(148,163,184,.12);}
+      .history-xp.gain{background:rgba(34,197,94,.12);color:#86efac;}
+      .history-xp.neutral{background:rgba(59,130,246,.12);color:#93c5fd;}
+      .achievement-item.unlocked{border:1px solid rgba(34,197,94,.16);}
+      .level-up-fx{position:fixed;inset:0;display:grid;place-items:center;background:rgba(2,6,23,.45);backdrop-filter:blur(4px);z-index:1600;opacity:0;pointer-events:none;transition:opacity .25s ease;}
+      .level-up-fx.show{opacity:1;}
+      .level-up-card{position:relative;min-width:min(92vw,360px);padding:28px 24px;border-radius:28px;background:radial-gradient(circle at top,rgba(37,99,235,.22),rgba(2,6,23,.96));border:1px solid rgba(96,165,250,.28);box-shadow:0 30px 80px rgba(2,6,23,.5);text-align:center;transform:scale(.86);transition:transform .25s ease;}
+      .level-up-fx.show .level-up-card{transform:scale(1);}
+      .level-up-burst{position:absolute;inset:-20px;border-radius:40px;background:conic-gradient(from 0deg,rgba(250,204,21,.18),rgba(59,130,246,.18),rgba(16,185,129,.16),rgba(250,204,21,.18));filter:blur(24px);z-index:-1;animation:slcSpin 3s linear infinite;}
+      .level-up-label{font-size:.84rem;font-weight:900;letter-spacing:.2em;color:#93c5fd;}
+      .level-up-value{font-size:2rem;font-weight:900;margin-top:10px;}
+      .level-up-copy{margin-top:8px;opacity:.82;}
+      @keyframes slcSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
       @media (max-width: 980px){.today-hero{grid-template-columns:1fr;}}
       @media (max-width: 820px){.compact-weekly-schedule{overflow-x:auto;}.compact-weekly-schedule .weekly-timeline{min-width:860px;}.floating-ai-panel{right:12px;left:12px;width:auto;bottom:88px;}.notification-popover{position:fixed;right:12px;left:12px;top:76px;width:auto;}}
     `;
@@ -370,6 +387,56 @@
       app.data.user.dailyStudyGoalHours = Math.max(2, Math.min(8, Number(app.data.user.horasMaximas) || 3));
     }
     if (!Array.isArray(app.data.user.achievements)) app.data.user.achievements = [];
+    const game = app.data.user.gamification = app.data.user.gamification || {};
+    if (!Number.isFinite(Number(game.xp))) game.xp = 0;
+    if (!Number.isFinite(Number(game.level))) game.level = 1;
+    if (!Array.isArray(game.history)) game.history = [];
+    if (!Array.isArray(game.achievementsUnlocked)) game.achievementsUnlocked = [];
+    if (!game.awardedRefs || typeof game.awardedRefs !== 'object') game.awardedRefs = {};
+    if (!game.lastLevelAnimation) game.lastLevelAnimation = 1;
+  }
+
+
+  function getAchievementCatalog(app) {
+    const sessionsDone = (app?.data?.sessions || []).filter(s => s?.concluida || s?.status === 'concluida');
+    const tasksDone = (app?.data?.tasks || []).filter(t => t?.concluida).length;
+    const reviewsDone = (app?.data?.reviews || []).filter(r => r?.concluida).length;
+    const totalMinutes = sessionsDone.reduce((acc, s) => acc + (Number(s?.duracao) || 0), 0);
+    const streak = Number(app?.data?.user?.streak || 0);
+    const xp = Number(app?.data?.user?.gamification?.xp || 0);
+    return [
+      { id: 'first_task', icon: 'fa-check-circle', title: 'Primeira entrega', text: 'Concluiu a primeira tarefa no sistema.', unlocked: tasksDone >= 1 },
+      { id: 'reviewer', icon: 'fa-rotate', title: 'Revisor nato', text: 'Fez 5 revisões concluídas.', unlocked: reviewsDone >= 5 },
+      { id: 'focus_10h', icon: 'fa-brain', title: 'Mente blindada', text: 'Acumulou 10 horas válidas de estudo.', unlocked: totalMinutes >= 600 },
+      { id: 'streak_3', icon: 'fa-fire', title: 'Constância', text: 'Manteve streak de 3 dias.', unlocked: streak >= 3 },
+      { id: 'xp_300', icon: 'fa-bolt', title: 'Subiu de patamar', text: 'Chegou aos 300 XP totais.', unlocked: xp >= 300 },
+      { id: 'task_10', icon: 'fa-list-check', title: 'Executor', text: 'Concluiu 10 tarefas.', unlocked: tasksDone >= 10 }
+    ];
+  }
+
+  function computeLevelFromXP(xp) {
+    return Math.max(1, Math.floor((Number(xp) || 0) / 300) + 1);
+  }
+
+  function ensureLevelUpFX() {
+    let fx = el('level-up-fx');
+    if (fx) return fx;
+    fx = document.createElement('div');
+    fx.id = 'level-up-fx';
+    fx.className = 'level-up-fx';
+    fx.innerHTML = '<div class="level-up-card"><div class="level-up-burst"></div><div class="level-up-label">LEVEL UP</div><div class="level-up-value" id="level-up-value">Nível 2</div><div class="level-up-copy">Você subiu de nível. Bora manter o ritmo.</div></div>';
+    document.body.appendChild(fx);
+    return fx;
+  }
+
+  function playLevelUpAnimation(level) {
+    const fx = ensureLevelUpFX();
+    const value = el('level-up-value');
+    if (value) value.textContent = `Nível ${level}`;
+    fx.classList.remove('show');
+    requestAnimationFrame(() => fx.classList.add('show'));
+    clearTimeout(window.__slcLevelUpTimer);
+    window.__slcLevelUpTimer = setTimeout(() => fx.classList.remove('show'), 2600);
   }
 
   function patchLaunchMethods() {
@@ -400,20 +467,20 @@
 
     proto.getGamificationSnapshot = function () {
       ensureLaunchData(this);
+      const game = this.data.user.gamification || {};
       const sessions = (this.data.sessions || []).filter(s => s?.concluida || s?.status === 'concluida');
       const tasksDone = (this.data.tasks || []).filter(t => t?.concluida).length;
       const reviewsDone = (this.data.reviews || []).filter(r => r?.concluida).length;
       const minutes = sessions.reduce((acc, s) => acc + (Number(s?.duracao) || 0), 0);
-      const xp = Math.round(minutes + (tasksDone * 35) + (reviewsDone * 20) + ((Number(this.data.user?.streak) || 0) * 12));
-      const level = Math.max(1, Math.floor(xp / 300) + 1);
+      const xp = Math.max(0, Math.round(Number(game.xp) || 0));
+      const level = computeLevelFromXP(xp);
       const currentBase = (level - 1) * 300;
       const nextBase = level * 300;
       const progress = Math.min(100, Math.round(((xp - currentBase) / Math.max(1, nextBase - currentBase)) * 100));
-      const achievements = [];
-      if (xp >= 150) achievements.push({ icon: 'fa-bolt', title: 'Primeiro gás', text: 'Você já passou dos 150 XP totais.' });
-      if ((Number(this.data.user?.streak) || 0) >= 3) achievements.push({ icon: 'fa-fire', title: 'Constância', text: `Streak atual de ${this.data.user?.streak || 0} dias.` });
-      if (tasksDone >= 5) achievements.push({ icon: 'fa-check-circle', title: 'Executor', text: `${tasksDone} tarefas concluídas.` });
-      if (minutes >= 600) achievements.push({ icon: 'fa-brain', title: 'Mente blindada', text: `${Math.round(minutes / 60)}h estudadas no total.` });
+      const allAchievements = getAchievementCatalog(this);
+      const unlockedIds = new Set(game.achievementsUnlocked || []);
+      const achievements = allAchievements.filter(item => unlockedIds.has(item.id));
+      const history = (game.history || []).slice().sort((a, b) => new Date(b.at || 0) - new Date(a.at || 0)).slice(0, 6);
       return {
         xp,
         level,
@@ -423,8 +490,58 @@
         reviewsDone,
         totalHours: +(minutes / 60).toFixed(1),
         streak: Number(this.data.user?.streak || 0),
-        achievements: achievements.slice(0, 4)
+        achievements,
+        allAchievements,
+        history
       };
+    };
+
+    proto.syncGamificationAchievements = async function () {
+      ensureLaunchData(this);
+      const game = this.data.user.gamification;
+      const unlocked = new Set(game.achievementsUnlocked || []);
+      const newlyUnlocked = getAchievementCatalog(this).filter(item => item.unlocked && !unlocked.has(item.id));
+      if (!newlyUnlocked.length) return [];
+      newlyUnlocked.forEach(item => unlocked.add(item.id));
+      game.achievementsUnlocked = Array.from(unlocked);
+      newlyUnlocked.forEach(item => {
+        game.history.unshift({ id: generateId(), type: 'achievement', label: `Conquista desbloqueada: ${item.title}`, xp: 0, at: new Date().toISOString(), meta: item.id });
+        showToast(`🏆 ${item.title}`, 'success');
+      });
+      game.history = game.history.slice(0, 40);
+      await dbService.saveData('user', this.data.user);
+      return newlyUnlocked;
+    };
+
+    proto.awardXP = async function (payload = {}) {
+      ensureLaunchData(this);
+      const game = this.data.user.gamification;
+      const ref = payload.ref || payload.refId || '';
+      if (ref && game.awardedRefs?.[ref]) return { awarded: false, level: Number(game.level || 1), xp: Number(game.xp || 0) };
+      const xpValue = Math.max(0, Math.round(Number(payload.xp) || 0));
+      const beforeXP = Number(game.xp || 0);
+      const beforeLevel = computeLevelFromXP(beforeXP);
+      game.xp = beforeXP + xpValue;
+      game.level = computeLevelFromXP(game.xp);
+      if (ref) game.awardedRefs[ref] = true;
+      game.history.unshift({
+        id: generateId(),
+        type: payload.type || 'xp',
+        label: payload.label || 'XP ganho',
+        xp: xpValue,
+        at: new Date().toISOString(),
+        meta: payload.meta || ''
+      });
+      game.history = game.history.slice(0, 40);
+      await this.syncGamificationAchievements();
+      await dbService.saveData('user', this.data.user);
+      if (game.level > beforeLevel) {
+        playLevelUpAnimation(game.level);
+        showToast(`Level up! Você chegou no nível ${game.level}.`, 'success');
+      } else if (xpValue > 0) {
+        showToast(`+${xpValue} XP • ${payload.label || 'progresso registrado'}`, 'success');
+      }
+      return { awarded: true, level: game.level, xp: game.xp };
     };
 
     proto.getLaunchNotifications = function () {
@@ -547,7 +664,7 @@
   function renderGamificationSection(view) {
     const game = view.app.getGamificationSnapshot?.();
     if (!game) return '';
-    return `<div class="gamification-grid"><div class="gamification-card"><div class="xp-progress-head"><div><h3><i class="fas fa-trophy"></i> Gamificação</h3><small>XP só conta ações marcadas como concluídas dentro do sistema.</small></div><div class="today-badge">Nível ${game.level}</div></div><div class="impact-kpis"><div class="impact-kpi"><span>XP total</span><strong>${game.xp}</strong></div><div class="impact-kpi"><span>Streak</span><strong>${game.streak} dias</strong></div><div class="impact-kpi"><span>Tarefas feitas</span><strong>${game.tasksDone}</strong></div><div class="impact-kpi"><span>Horas validadas</span><strong>${game.totalHours}h</strong></div></div><div class="xp-progress-copy">Faltam ${game.nextLevelIn} XP para o próximo nível.</div><div class="xp-proof-note">Para ganhar XP, marque sessão, tarefa ou revisão como concluída. Nada sobe sozinho.</div><div class="achievement-list">${game.achievements.length ? game.achievements.map(item => `<div class="achievement-item"><div><strong><i class="fas ${item.icon}"></i> ${view.esc(item.title)}</strong><small>${view.esc(item.text)}</small></div></div>`).join('') : '<p class="text-secondary">Conclua mais sessões para desbloquear conquistas.</p>'}</div></div></div>`;
+    return `<div class="gamification-grid"><div class="gamification-card"><div class="xp-progress-head"><div><h3><i class="fas fa-trophy"></i> Gamificação</h3><small>XP só cai ao concluir sessão, tarefa ou revisão dentro do sistema.</small></div><div class="today-badge">Nível ${game.level}</div></div><div class="impact-kpis"><div class="impact-kpi"><span>XP total</span><strong>${game.xp}</strong></div><div class="impact-kpi"><span>Streak</span><strong>${game.streak} dias</strong></div><div class="impact-kpi"><span>Tarefas feitas</span><strong>${game.tasksDone}</strong></div><div class="impact-kpi"><span>Horas validadas</span><strong>${game.totalHours}h</strong></div></div><div class="xp-progress-copy">Faltam ${game.nextLevelIn} XP para o próximo nível.</div><div class="xp-proof-note">Tudo que gera XP fica salvo no histórico abaixo.</div><div class="history-title"><strong>Histórico de XP</strong></div><div class="history-list">${game.history.length ? game.history.map(item => `<div class="history-item"><div><strong>${view.esc(item.label)}</strong><small>${view.esc(formatarData(item.at || new Date().toISOString()))}</small></div><span class="history-xp ${Number(item.xp) > 0 ? 'gain' : 'neutral'}">${Number(item.xp) > 0 ? '+' : ''}${Number(item.xp) || 0} XP</span></div>`).join('') : '<p class="text-secondary">Ainda não houve ganho de XP nesta conta.</p>'}</div><div class="history-title" style="margin-top:16px"><strong>Conquistas desbloqueadas</strong></div><div class="achievement-list">${game.achievements.length ? game.achievements.map(item => `<div class="achievement-item unlocked"><div><strong><i class="fas ${item.icon}"></i> ${view.esc(item.title)}</strong><small>${view.esc(item.text)}</small></div><span class="today-badge">desbloqueada</span></div>`).join('') : '<p class="text-secondary">Conclua mais ações para desbloquear conquistas reais.</p>'}</div></div></div>`;
   }
 
   function ensureFloatingAIDom() {
@@ -927,12 +1044,75 @@
     }
   }
 
+
+  function patchGamificationRuntime() {
+    if (window.StudyLifeControl && !window.StudyLifeControl.prototype.__xpRuntimePatched) {
+      const proto = window.StudyLifeControl.prototype;
+      const originalConcluirSessao = proto.concluirSessao;
+      proto.concluirSessao = async function (id) {
+        const session = (this.data.sessions || []).find(s => s.id === id);
+        const alreadyDone = !!(session?.concluida || session?.status === 'concluida');
+        const result = await originalConcluirSessao.call(this, id);
+        if (session && !alreadyDone && (session.concluida || session.status === 'concluida')) {
+          const xp = Math.max(10, Math.round(Number(session.duracao) || 25));
+          await this.awardXP({ ref: `session:${id}`, xp, type: 'session', label: `Sessão concluída: ${session.materia || 'Estudo'}`, meta: session.tipo || '' });
+          setTimeout(() => { this.loadView?.(this.currentView); updateSidebarLevelRing(this); }, 80);
+        }
+        return result;
+      };
+
+      const originalConcluirTarefa = proto.concluirTarefa;
+      proto.concluirTarefa = async function (id) {
+        const task = (this.data.tasks || []).find(t => t.id === id);
+        const alreadyDone = !!task?.concluida;
+        const result = await originalConcluirTarefa.call(this, id);
+        if (task && !alreadyDone && task.concluida) {
+          await this.awardXP({ ref: `task:${id}`, xp: 35, type: 'task', label: `Tarefa concluída: ${task.titulo || 'Tarefa'}`, meta: task.materia || '' });
+          setTimeout(() => { this.loadView?.(this.currentView); updateSidebarLevelRing(this); }, 80);
+        }
+        return result;
+      };
+
+      const originalTimerComplete = proto.timerComplete;
+      proto.timerComplete = async function () {
+        const beforeIds = new Set((this.data.sessions || []).map(s => s.id));
+        const result = await originalTimerComplete.call(this);
+        const session = (this.data.sessions || []).find(s => !beforeIds.has(s.id) && (s.concluida || s.status === 'concluida') && String(s.tipo || '').toLowerCase() === 'foco');
+        if (session) {
+          const xp = Math.max(15, Math.round(Number(session.duracao) || 25));
+          await this.awardXP({ ref: `session:${session.id}`, xp, type: 'focus', label: `Sessão foco concluída`, meta: `${session.duracao || 25} min` });
+          setTimeout(() => { this.loadView?.(this.currentView); updateSidebarLevelRing(this); }, 80);
+        }
+        return result;
+      };
+      proto.__xpRuntimePatched = true;
+    }
+
+    if (window.reviewSystem && !window.reviewSystem.__xpRuntimePatched) {
+      const originalConcluirRevisao = window.reviewSystem.concluirRevisao.bind(window.reviewSystem);
+      window.reviewSystem.concluirRevisao = async function (revisaoId) {
+        const review = (this.revisoes || []).find(r => r.id === revisaoId);
+        const alreadyDone = !!review?.concluida;
+        const result = await originalConcluirRevisao(revisaoId);
+        const app = window.app;
+        const latest = (app?.data?.reviews || []).find(r => r.id === revisaoId) || review;
+        if (result && app && latest && !alreadyDone && latest.concluida) {
+          await app.awardXP({ ref: `review:${revisaoId}`, xp: 20, type: 'review', label: `Revisão concluída: ${latest.topico || latest.materia || 'Revisão'}`, meta: latest.materia || '' });
+          setTimeout(() => { app.loadView?.(app.currentView); updateSidebarLevelRing(app); }, 80);
+        }
+        return result;
+      };
+      window.reviewSystem.__xpRuntimePatched = true;
+    }
+  }
+
   function install() {
     injectStyles();
     patchDbService();
     patchSubmitGuards();
     patchFocusTimer();
     patchLaunchMethods();
+    patchGamificationRuntime();
     patchViewRenderer();
     patchLoadView();
     if (window.app) {
@@ -942,6 +1122,8 @@
       bindCalendarFilters();
       bindFloatingAI(window.app);
       syncFloatingAIVisibility();
+      window.app.syncGamificationAchievements?.().catch?.(()=>{});
+      window.app.syncGamificationAchievements?.().catch?.(()=>{});
       setupNotificationCenter(window.app);
       updateSidebarLevelRing(window.app);
       if (window.app.currentView === 'foco') bindFocusButtons(window.app);
@@ -970,6 +1152,7 @@
           window.scheduleManager.ALTURA_POR_HORA = calculateCompactHourHeight(window.scheduleManager);
         }
       }, 100);
+      window.app.syncGamificationAchievements?.().catch?.(()=>{});
       setupNotificationCenter(window.app);
       updateSidebarLevelRing(window.app);
       syncFloatingAIVisibility();
