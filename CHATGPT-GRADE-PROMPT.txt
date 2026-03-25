@@ -36,3 +36,5 @@ FORMATO EXATO DE SAÍDA:
     }
   ]
 }
+
+me mande em arquivo .json
