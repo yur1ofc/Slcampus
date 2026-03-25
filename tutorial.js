@@ -224,10 +224,14 @@
 
     bindControls() {
       const overlay = ensureOverlay();
-      el('tutorial-next')?.addEventListener('click', () => this.next(), { once: true });
-      el('tutorial-prev')?.addEventListener('click', () => this.prev(), { once: true });
-      el('tutorial-skip')?.addEventListener('click', () => this.stop(true), { once: true });
-      overlay.querySelector('.tutorial-backdrop')?.addEventListener('click', () => this.stop(true), { once: true });
+      const nextBtn = el('tutorial-next');
+      const prevBtn = el('tutorial-prev');
+      const skipBtn = el('tutorial-skip');
+      const backdrop = overlay.querySelector('.tutorial-backdrop');
+      if (nextBtn) nextBtn.onclick = () => this.next();
+      if (prevBtn) prevBtn.onclick = () => this.prev();
+      if (skipBtn) skipBtn.onclick = () => this.stop(true);
+      if (backdrop) backdrop.onclick = () => this.stop(true);
     },
 
     next() {
@@ -254,19 +258,26 @@
       const step = steps[this.index];
       step?.pre?.();
       if (step?.id) markNavActive(step.id);
-      await new Promise(resolve => setTimeout(resolve, 220));
+      await new Promise(resolve => setTimeout(resolve, 260));
       const target = document.querySelector(step.selector);
       const overlay = ensureOverlay();
       const spotlight = overlay.querySelector('.tutorial-spotlight');
       document.querySelectorAll('.tutorial-target-active').forEach(node => node.classList.remove('tutorial-target-active'));
+      if (!target) {
+        if (this.index < steps.length - 1) {
+          this.index += 1;
+          this.showStep();
+          return;
+        }
+      }
       if (target) {
         target.classList.add('tutorial-target-active');
         target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
         const rect = target.getBoundingClientRect();
-        spotlight.style.top = `${rect.top - 10 + window.scrollY}px`;
-        spotlight.style.left = `${rect.left - 10 + window.scrollX}px`;
-        spotlight.style.width = `${rect.width + 20}px`;
-        spotlight.style.height = `${rect.height + 20}px`;
+        spotlight.style.top = `${Math.max(8, rect.top - 10)}px`;
+        spotlight.style.left = `${Math.max(8, rect.left - 10)}px`;
+        spotlight.style.width = `${Math.max(80, rect.width + 20)}px`;
+        spotlight.style.height = `${Math.max(40, rect.height + 20)}px`;
       }
       el('tutorial-title').textContent = step.title;
       el('tutorial-text').textContent = step.text;
