@@ -27,5 +27,3 @@ Regras:
 - Se algum dado não aparecer, use string vazia ou 0.
 - Não invente disciplinas que não existirem no arquivo.
 - Se houver disciplinas optativas/eletivas, em "tipo" use "optativa".
-
-me mande em arquivo .json

@@ -3215,8 +3215,23 @@ Física I - 60h"></textarea>
     document.getElementById('semestre')?.addEventListener('change', syncPreview);
 
     document.getElementById('btn-detectar-template-setup')?.addEventListener('click', () => {
-        const match = this.matchTemplateByProfile(document.getElementById('universidade')?.value, document.getElementById('curso')?.value);
+        const selectedTemplateId = document.getElementById('setup-template-id')?.value || this.pendingSetupTemplateId || '';
+        const selectedTemplate = this.getCourseTemplateById(selectedTemplateId);
+        if (selectedTemplate) {
+            this.pendingSetupTemplateId = selectedTemplate.id;
+            syncPreview();
+            showToast(`Modelo já selecionado: ${selectedTemplate.universidade} • ${selectedTemplate.curso}`, 'success');
+            return;
+        }
+
+        const universidadeAtual = document.getElementById('universidade')?.value || '';
+        const cursoAtual = document.getElementById('curso')?.value || '';
+        const match = this.matchTemplateByProfile(universidadeAtual, cursoAtual);
         if (!match) {
+            if (Array.isArray(this.pendingSetupImportedCurriculum) && this.pendingSetupImportedCurriculum.length) {
+                showToast('Você já tem uma grade importada nesta configuração. Ajuste o semestre ou preencha as matérias agora.', 'info');
+                return;
+            }
             showToast('Ainda não achei um modelo pronto para esse curso. Você pode colar a grade em texto.', 'warning');
             return;
         }
@@ -3224,29 +3239,53 @@ Física I - 60h"></textarea>
         if (templateSelect) templateSelect.value = match.id;
         this.pendingSetupTemplateId = match.id;
         syncPreview();
-        showToast(`Modelo encontrado: ${match.universidade} • ${match.curso}`);
+        showToast(`Modelo encontrado: ${match.universidade} • ${match.curso}`, 'success');
+        return;
     });
 
     document.getElementById('btn-aplicar-template-setup')?.addEventListener('click', () => {
-        const templateId = document.getElementById('setup-template-id')?.value || this.pendingSetupTemplateId;
+        const templateId = document.getElementById('setup-template-id')?.value || this.pendingSetupTemplateId || '';
         const template = this.getCourseTemplateById(templateId);
-        const semester = document.getElementById('semestre')?.value || '';
-        if (!template) {
-            showToast('Selecione um modelo primeiro ou cole a grade em texto.', 'warning');
+        const semester = String(document.getElementById('semestre')?.value || '').trim();
+
+        if (template) {
+            document.getElementById('universidade').value = document.getElementById('universidade').value || template.universidade;
+            document.getElementById('curso').value = document.getElementById('curso').value || template.curso;
+            const semesterSubjects = this.getTemplateCurrentSemesterSubjects(template, semester);
+            this.pendingSetupTemplateId = template.id;
+            this.pendingSetupImportedCurriculum = this.buildCurriculumFromTemplate(template);
+            syncPreview();
+            if (!semesterSubjects.length) {
+                showToast('Esse modelo não trouxe matérias para o semestre escolhido. Mesmo assim a grade curricular será salva no fim do setup.', 'info');
+                return;
+            }
+            this.populateSetupSubjects(semesterSubjects);
+            showToast(`${semesterSubjects.length} matéria(s) do semestre foram preenchidas.`, 'success');
             return;
         }
-        document.getElementById('universidade').value = document.getElementById('universidade').value || template.universidade;
-        document.getElementById('curso').value = document.getElementById('curso').value || template.curso;
-        const semesterSubjects = this.getTemplateCurrentSemesterSubjects(template, semester);
-        if (!semesterSubjects.length) {
-            showToast('Esse modelo não trouxe matérias para o semestre escolhido. Mesmo assim a grade curricular será salva no fim do setup.', 'info');
-        } else {
+
+        if (Array.isArray(this.pendingSetupImportedCurriculum) && this.pendingSetupImportedCurriculum.length) {
+            const semesterSubjects = this.pendingSetupImportedCurriculum
+                .filter(item => String(item.semestre || '').trim() === semester)
+                .map(item => ({
+                    id: generateId(),
+                    nome: item.nome,
+                    dificuldade: this.extractCourseLevel(item.nome) >= 3 ? 4 : 3,
+                    peso: item.tipo === 'obrigatoria' ? 4 : 3,
+                    notaDesejada: 7
+                }));
+            syncPreview();
+            if (!semesterSubjects.length) {
+                showToast('A grade foi importada, mas não encontrei matérias para o semestre escolhido.', 'info');
+                return;
+            }
             this.populateSetupSubjects(semesterSubjects);
-            showToast(`${semesterSubjects.length} matéria(s) do semestre foram preenchidas.`);
+            showToast(`${semesterSubjects.length} matéria(s) do semestre foram preenchidas com a grade importada.`, 'success');
+            return;
         }
-        this.pendingSetupTemplateId = template.id;
-        this.pendingSetupImportedCurriculum = this.buildCurriculumFromTemplate(template);
-        syncPreview();
+
+        showToast('Selecione um modelo primeiro ou cole a grade em texto.', 'warning');
+        return;
     });
 
     document.getElementById('btn-processar-grade-texto')?.addEventListener('click', () => {
@@ -3709,48 +3748,35 @@ StudyLifeControl.prototype.parseCurriculumImportJson = function(raw = '') {
 };
 
 StudyLifeControl.prototype.getChatGPTCurriculumPrompt = function() {
-    return `Você vai receber um PDF, imagem ou print de um fluxograma/grade curricular universitária.
+    return `Leia o arquivo da grade curricular/fluxograma que vou anexar e devolva SOMENTE um JSON válido, sem texto antes ou depois.
 
-TAREFA:
-Leia o arquivo e devolva SOMENTE um JSON válido, puro, sem markdown, sem explicação, sem frase antes e sem frase depois.
-
-FORMATO OBRIGATÓRIO:
+Formato obrigatório:
 {
   "faculdade": "Nome da faculdade",
   "curso": "Nome do curso",
   "versao": "Opcional",
   "disciplinas": [
     {
-      "nome": "Nome exato da disciplina",
+      "nome": "Nome da disciplina",
       "codigo": "Opcional",
       "semestre": 1,
       "cargaHoraria": 60,
-      "creditos": 0,
-      "prerequisitos": [],
+      "creditos": 4,
+      "prerequisitos": ["Disciplina anterior"],
       "tipo": "obrigatoria"
     }
   ]
 }
 
-REGRAS IMPORTANTES:
-- Responda APENAS com JSON válido.
-- Use exatamente a chave "disciplinas".
-- Inclua TODAS as disciplinas que estiverem visíveis no arquivo.
-- Não pare no 4º, 6º ou 8º semestre se o fluxograma continuar.
-- Se houver 9º, 10º, 11º e 12º semestre, inclua também.
-- Em "semestre", use número inteiro sem º ou texto.
-- Em "cargaHoraria" e "creditos", use apenas número.
-- Se crédito não aparecer, use 0.
-- Se código não aparecer, use string vazia.
-- Se pré-requisito não aparecer claramente, use lista vazia [].
-- Se a disciplina for optativa/eletiva, use "tipo": "optativa".
-- Não resuma nomes. Mantenha o nome mais completo possível.
-- Não invente disciplina, código, pré-requisito ou crédito.
-- Se o arquivo tiver blocos tipo internato, módulos ou oficinas, eles também devem entrar em "disciplinas" quando forem componentes curriculares.
-- Antes de responder, revise se o JSON está válido e completo.
-
-EXEMPLO DE RESPOSTA CORRETA:
-{"faculdade":"UFOB","curso":"Medicina","versao":"2014.2","disciplinas":[{"nome":"Oficina de Leitura e Produção Textual","codigo":"CHU0001","semestre":1,"cargaHoraria":60,"creditos":0,"prerequisitos":[],"tipo":"obrigatoria"}]}`;
+Regras:
+- Retorne apenas JSON puro.
+- Use a chave "disciplinas".
+- Em "semestre", use número quando estiver claro.
+- Em "cargaHoraria" e "creditos", use número sem texto.
+- Em "prerequisitos", use lista de nomes das disciplinas.
+- Se algum dado não aparecer, use string vazia ou 0.
+- Não invente disciplinas que não existirem no arquivo.
+- Se houver disciplinas optativas/eletivas, em "tipo" use "optativa".`;
 };
 
 StudyLifeControl.prototype.showChatGPTImportHelper = function() {
