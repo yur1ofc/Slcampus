@@ -54,7 +54,7 @@ body{background:linear-gradient(180deg,#08111f 0%,#0a1222 100%)}
 .modal-content{max-height:min(88vh,920px);display:flex;flex-direction:column;overflow:hidden}
 .modal-header{position:sticky;top:0;z-index:2;background:linear-gradient(180deg,#0f172a,#111827);border-bottom:1px solid var(--soft-border)}
 .modal-form,.modal-body{overflow:auto;padding-bottom:20px}
-.form-actions{position:sticky;bottom:0;z-index:3;background:linear-gradient(180deg,rgba(10,15,31,.55),#0f172a 34%);padding:14px 0 2px;margin-top:18px;display:flex;justify-content:flex-end;gap:12px;flex-wrap:wrap}
+.form-actions{position:static;background:transparent;padding:0;margin-top:18px;display:flex;justify-content:flex-end;gap:12px;flex-wrap:wrap;border-top:none}
 .form-actions .btn-primary,.form-actions .btn-secondary,.form-actions .btn-danger{min-width:150px}
 .aula-smart-section{margin-top:16px;padding:16px;border-radius:18px;background:rgba(59,130,246,.08);border:1px solid rgba(96,165,250,.22)}
 .aula-days-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:10px}
