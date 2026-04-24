@@ -15,6 +15,60 @@
         { nome: 'Geometria Analítica', codigo: 'MAT002', semestre: '1', cargaHoraria: 60, creditos: 4, tipo: 'obrigatoria', prerequisitosLista: [] },
         { nome: 'Introdução ao Desenho Técnico', codigo: 'DTE001', semestre: '1', cargaHoraria: 60, creditos: 4, tipo: 'obrigatoria', prerequisitosLista: [] }
       ]
+    },
+    'ufob__bacharelado-interdisciplinar-em-ciencia-e-tecnologia': {
+      key: 'ufob__bacharelado-interdisciplinar-em-ciencia-e-tecnologia',
+      faculdade: 'UFOB',
+      curso: 'Bacharelado Interdisciplinar em Ciência e Tecnologia',
+      source: 'bootstrap',
+      version: '2023.1',
+      confidence: 0.95,
+      subjects: [
+        // Semestre 1
+        { nome: 'Ciências do Ambiente', codigo: 'CET0034', semestre: '1', cargaHoraria: 30, creditos: 2, tipo: 'obrigatoria', prerequisitosLista: [] },
+        { nome: 'Oficina de Leitura e Produção Textual', codigo: 'CHU0001', semestre: '1', cargaHoraria: 60, creditos: 4, tipo: 'obrigatoria', prerequisitosLista: [] },
+        { nome: 'Elaboração de Documentos em Propriedade Intelectual e Inovação', codigo: 'CET5180', semestre: '1', cargaHoraria: 60, creditos: 4, tipo: 'obrigatoria', prerequisitosLista: [] },
+        { nome: 'Introdução ao Desenho Técnico', codigo: 'CET0176', semestre: '1', cargaHoraria: 60, creditos: 4, tipo: 'obrigatoria', prerequisitosLista: [] },
+        { nome: 'Fundamentos de Física', codigo: 'CET5029', semestre: '1', cargaHoraria: 60, creditos: 4, tipo: 'obrigatoria', prerequisitosLista: [] },
+        { nome: 'Geometria Analítica', codigo: 'CET5115', semestre: '1', cargaHoraria: 90, creditos: 6, tipo: 'obrigatoria', prerequisitosLista: [] },
+        // Semestre 2
+        { nome: 'Lógica e Conjuntos', codigo: 'CET5052', semestre: '2', cargaHoraria: 60, creditos: 4, tipo: 'obrigatoria', prerequisitosLista: [] },
+        { nome: 'Tecnologia de Informação e Comunicação', codigo: 'CET0289', semestre: '2', cargaHoraria: 90, creditos: 6, tipo: 'obrigatoria', prerequisitosLista: [] },
+        { nome: 'Pesquisa e Desenvolvimento I', codigo: 'CET0031', semestre: '2', cargaHoraria: 150, creditos: 10, tipo: 'obrigatoria', prerequisitosLista: [] },
+        { nome: 'Cálculo Diferencial I', codigo: 'CET5139', semestre: '2', cargaHoraria: 60, creditos: 4, tipo: 'obrigatoria', prerequisitosLista: [] },
+        { nome: 'Ciência, Tecnologia e Sociedade', codigo: '', semestre: '2', cargaHoraria: 60, creditos: 4, tipo: 'obrigatoria', prerequisitosLista: [] },
+        // Semestre 3
+        { nome: 'Fundamentos de Química Geral e Inorgânica', codigo: 'CET0124', semestre: '3', cargaHoraria: 60, creditos: 4, tipo: 'obrigatoria', prerequisitosLista: [] },
+        { nome: 'Fundamentos de Química Geral Experimental', codigo: 'CET0125', semestre: '3', cargaHoraria: 30, creditos: 2, tipo: 'obrigatoria', prerequisitosLista: [] },
+        { nome: 'Álgebra Linear I', codigo: 'CET5119', semestre: '3', cargaHoraria: 60, creditos: 4, tipo: 'obrigatoria', prerequisitosLista: [] },
+        { nome: 'Física I', codigo: 'CET5030', semestre: '3', cargaHoraria: 60, creditos: 4, tipo: 'obrigatoria', prerequisitosLista: [] },
+        { nome: 'Programação de Computadores I', codigo: 'CET5116', semestre: '3', cargaHoraria: 60, creditos: 4, tipo: 'obrigatoria', prerequisitosLista: [] },
+        // Semestre 4
+        { nome: 'Física II', codigo: 'CET5031', semestre: '4', cargaHoraria: 60, creditos: 4, tipo: 'obrigatoria', prerequisitosLista: ['Física I'] },
+        { nome: 'Física Experimental I', codigo: '', semestre: '4', cargaHoraria: 30, creditos: 2, tipo: 'obrigatoria', prerequisitosLista: [] },
+        { nome: 'Programação de Computadores II', codigo: 'CET5085', semestre: '4', cargaHoraria: 60, creditos: 4, tipo: 'obrigatoria', prerequisitosLista: ['Programação de Computadores I'] },
+        { nome: 'Oficina de Leitura e Produção de Textos Acadêmicos', codigo: 'CHU0003', semestre: '4', cargaHoraria: 60, creditos: 4, tipo: 'obrigatoria', prerequisitosLista: [] },
+        { nome: 'Filosofia e História das Ciências', codigo: 'CHU0002', semestre: '4', cargaHoraria: 60, creditos: 4, tipo: 'obrigatoria', prerequisitosLista: [] },
+        // Semestre 5
+        { nome: 'Física Experimental II', codigo: '', semestre: '5', cargaHoraria: 30, creditos: 2, tipo: 'obrigatoria', prerequisitosLista: [] },
+        { nome: 'Métodos Estatísticos', codigo: '', semestre: '5', cargaHoraria: 60, creditos: 4, tipo: 'obrigatoria', prerequisitosLista: [] },
+        { nome: 'Introdução à Administração', codigo: 'CHU2005', semestre: '5', cargaHoraria: 60, creditos: 4, tipo: 'obrigatoria', prerequisitosLista: [] },
+        { nome: 'Propriedade Intelectual', codigo: 'CET0251', semestre: '5', cargaHoraria: 60, creditos: 4, tipo: 'obrigatoria', prerequisitosLista: [] },
+        { nome: 'Indicadores e Legislação em Ciência e Tecnologia', codigo: 'CET5181', semestre: '5', cargaHoraria: 60, creditos: 4, tipo: 'obrigatoria', prerequisitosLista: [] },
+        // Semestre 6
+        { nome: 'Pesquisa e Desenvolvimento II', codigo: '', semestre: '6', cargaHoraria: 150, creditos: 10, tipo: 'obrigatoria', prerequisitosLista: ['Pesquisa e Desenvolvimento I'] },
+        // Optativa
+        { nome: 'Optativa Livre', codigo: '', semestre: '0', cargaHoraria: 60, creditos: 4, tipo: 'optativa', prerequisitosLista: [] }
+      ]
+    },
+    // Aliases para variações de digitação do BICT
+    'ufob__bict': {
+      key: 'ufob__bacharelado-interdisciplinar-em-ciencia-e-tecnologia',
+      _alias: true
+    },
+    'ufob__bacharelado-interdisciplinar-em-ciencias-e-tecnologia': {
+      key: 'ufob__bacharelado-interdisciplinar-em-ciencia-e-tecnologia',
+      _alias: true
     }
   };
 
@@ -369,7 +423,12 @@
   }
 
   function currentCatalogTemplate(faculdade, curso) {
-    return COMMUNITY_BOOTSTRAP[catalogKey(faculdade, curso)] || null;
+    const key = catalogKey(faculdade, curso);
+    const entry = COMMUNITY_BOOTSTRAP[key];
+    if (!entry) return null;
+    // Resolve aliases
+    if (entry._alias) return COMMUNITY_BOOTSTRAP[entry.key] || null;
+    return entry;
   }
 
   function getDbInstance() { return window.db || (typeof db !== 'undefined' ? db : null); }
