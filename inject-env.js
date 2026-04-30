@@ -1,8 +1,7 @@
-// inject-env.js — Script de build que gera o env-config.js a partir das variáveis de ambiente do Vercel.
-// Adicione no package.json: "build": "node inject-env.js && vercel --prod"
-// Ou use como vercel.json → buildCommand.
+// inject-env.js — Roda durante o build do Vercel.
+// Lê as variáveis de ambiente e gera o env-config.js com window.__ENV.
 
-const fs   = require('fs');
+const fs = require('fs');
 const path = require('path');
 
 const keys = [
@@ -16,17 +15,16 @@ const keys = [
 
 const missing = keys.filter(k => !process.env[k]);
 if (missing.length) {
-  console.error('[inject-env] ERRO: variáveis de ambiente faltando:', missing.join(', '));
-  console.error('[inject-env] Configure no Vercel: Settings → Environment Variables');
+  console.error('[inject-env] ERRO: variáveis faltando:', missing.join(', '));
+  console.error('[inject-env] Configure em: Vercel → Settings → Environment Variables');
   process.exit(1);
 }
 
-const envObj = keys.reduce((acc, k) => {
-  acc[k] = process.env[k];
-  return acc;
-}, {});
+const envObj = {};
+keys.forEach(k => { envObj[k] = process.env[k]; });
 
-const content = `// Gerado automaticamente pelo inject-env.js — NÃO EDITE\nwindow.__ENV = ${JSON.stringify(envObj, null, 2)};\n`;
+const content = `// Gerado automaticamente no build — NÃO EDITE e NÃO COMMITE este arquivo\nwindow.__ENV = ${JSON.stringify(envObj, null, 2)};\n`;
 
 fs.writeFileSync(path.join(__dirname, 'env-config.js'), content, 'utf8');
-console.log('[inject-env] env-config.js gerado com sucesso.');
+console.log('[inject-env] env-config.js gerado com sucesso!');
+keys.forEach(k => console.log(`  ${k}: ${process.env[k].slice(0, 8)}...`));
