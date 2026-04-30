@@ -137,14 +137,29 @@ function showToast(msg, type = 'success') {
     }, 3200);
 }
 
-function showLoading() {
+let _loadingTimeout = null;
+
+function showLoading(msg) {
     const loadingScreen = document.getElementById('loading-screen');
+    const loadingText = document.getElementById('loading-text');
     if (loadingScreen) loadingScreen.style.display = 'flex';
+    if (loadingText && msg) loadingText.textContent = msg;
+
+    // Timeout: se demorar mais de 8s mostra opção de recarregar
+    if (_loadingTimeout) clearTimeout(_loadingTimeout);
+    _loadingTimeout = setTimeout(() => {
+        if (loadingText && loadingScreen && loadingScreen.style.display !== 'none') {
+            loadingText.innerHTML = 'Isso está demorando mais que o normal...<br><button onclick="location.reload()" style="margin-top:12px;padding:8px 18px;background:#3b82f6;border:none;border-radius:8px;color:#fff;font-weight:700;cursor:pointer;font-size:.9rem;">Recarregar página</button>';
+        }
+    }, 8000);
 }
 
 function hideLoading() {
     const loadingScreen = document.getElementById('loading-screen');
+    const loadingText = document.getElementById('loading-text');
     if (loadingScreen) loadingScreen.style.display = 'none';
+    if (loadingText) loadingText.innerHTML = 'Carregando seu painel acadêmico...';
+    if (_loadingTimeout) { clearTimeout(_loadingTimeout); _loadingTimeout = null; }
 }
 
 function updateSyncStatus(success) {

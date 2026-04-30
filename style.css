@@ -3953,3 +3953,27 @@ body.sidebar-open .mobile-nav-overlay {
     color: white;
     font-weight: 600;
 }
+
+/* ── Login button loading state ── */
+.btn-google:disabled {
+    opacity: .7;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* ── Modal mobile overflow fix ── */
+@media (max-width: 768px) {
+    .modal-content {
+        overflow-y: auto;
+        max-height: 90vh;
+        margin: 5vw;
+        width: calc(100% - 10vw);
+    }
+    .modal-form {
+        max-height: none;
+    }
+    /* Setup wizard footer não sobrepor conteúdo no mobile */
+    .wiz-body {
+        padding-bottom: 140px;
+    }
+}

@@ -64,25 +64,62 @@ auth.onAuthStateChanged(async (user) => {
 });
 
 async function loginWithGoogle() {
+  const btn = getEl('login-google');
+  const errorEl = getEl('login-error-msg');
+
+  // Estado: carregando
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Entrando...';
+  }
+  if (errorEl) errorEl.style.display = 'none';
+
   try {
-    window.showLoading?.();
     await auth.signInWithPopup(googleProvider);
   } catch (error) {
     console.error('Erro no login:', error);
     const code = error?.code || '';
-    if (code === 'auth/popup-blocked' || code === 'auth/cancelled-popup-request' || code === 'auth/popup-closed-by-user') {
+
+    // Popup fechado pelo usuário — não é erro real, só reseta o botão
+    if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fab fa-google"></i> Entrar com Google';
+      }
+      return;
+    }
+
+    // Popup bloqueado pelo navegador — tenta redirect
+    if (code === 'auth/popup-blocked') {
       try {
-        window.showToast?.('Popup bloqueado. Tentando login por redirecionamento...', 'warning');
+        window.showToast?.('Popup bloqueado. Abrindo em tela cheia...', 'warning');
         await auth.signInWithRedirect(googleProvider);
         return;
       } catch (redirectError) {
-        console.error('Erro no login por redirecionamento:', redirectError);
+        console.error('Erro no redirect:', redirectError);
       }
     }
-    const message = error && error.message ? error.message : 'Falha ao entrar com Google';
-    window.showToast?.('Erro ao fazer login: ' + message, 'error');
+
+    // Erro real — mostrar na tela
+    const msgs = {
+      'auth/network-request-failed': 'Sem conexão com a internet. Verifique sua rede.',
+      'auth/too-many-requests': 'Muitas tentativas. Aguarde alguns minutos.',
+      'auth/user-disabled': 'Esta conta foi desativada.',
+    };
+    const friendlyMsg = msgs[code] || 'Não foi possível entrar. Tente novamente.';
+
+    if (errorEl) {
+      errorEl.textContent = friendlyMsg;
+      errorEl.style.display = 'block';
+    } else {
+      window.showToast?.(friendlyMsg, 'error');
+    }
   } finally {
-    window.hideLoading?.();
+    // Resetar botão se ainda na tela de login
+    if (btn && getEl('login-screen')?.style.display !== 'none') {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fab fa-google"></i> Entrar com Google';
+    }
   }
 }
 
