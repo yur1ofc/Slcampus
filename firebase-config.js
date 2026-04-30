@@ -1,27 +1,36 @@
 // firebase-config.js
+// As credenciais são injetadas pelo Vercel via variáveis de ambiente.
+// NUNCA commite valores reais aqui. Configure no painel do Vercel:
+// Settings → Environment Variables → adicione cada FIREBASE_* abaixo.
+
 const firebaseConfig = {
-  apiKey: "AIzaSyDDnc3vmJTAJg8ZQwYw-W9DeT5HLmCUPDc",
-  authDomain: "study-life-control.firebaseapp.com",
-  projectId: "study-life-control",
-  storageBucket: "study-life-control.appspot.com",
-  messagingSenderId: "42112044749",
-  appId: "1:42112044749:web:52bde99cc356016832e384"
+  apiKey:            window.__ENV?.FIREBASE_API_KEY             || '',
+  authDomain:        window.__ENV?.FIREBASE_AUTH_DOMAIN         || '',
+  projectId:         window.__ENV?.FIREBASE_PROJECT_ID          || '',
+  storageBucket:     window.__ENV?.FIREBASE_STORAGE_BUCKET      || '',
+  messagingSenderId: window.__ENV?.FIREBASE_MESSAGING_SENDER_ID || '',
+  appId:             window.__ENV?.FIREBASE_APP_ID              || ''
 };
 
-// Inicializar Firebase
+// Avisa em desenvolvimento se alguma variável estiver faltando
+if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+  const missing = Object.entries(firebaseConfig).filter(([, v]) => !v).map(([k]) => k);
+  if (missing.length) {
+    console.warn('[SLC] Firebase: variáveis de ambiente faltando →', missing);
+    console.warn('[SLC] Crie env-config.js com window.__ENV = { ... } para desenvolvimento local.');
+  }
+}
+
 firebase.initializeApp(firebaseConfig);
 
 const auth = firebase.auth();
-const db = firebase.firestore();
+const db   = firebase.firestore();
 
 const googleProvider = new firebase.auth.GoogleAuthProvider();
-googleProvider.setCustomParameters({
-  prompt: "select_account"
-});
+googleProvider.setCustomParameters({ prompt: 'select_account' });
 
-// Disponibilizar globalmente
-window.auth = auth;
-window.db = db;
+window.auth           = auth;
+window.db             = db;
 window.googleProvider = googleProvider;
 
 auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch((error) => {
