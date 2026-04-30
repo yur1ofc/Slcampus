@@ -332,6 +332,7 @@ ${[
   /* ── Patch do App ───────────────────────────────────────────── */
   function patchApp(app) {
     if (app.__lrPatched) return;
+    if (!app || typeof app.loadView !== 'function') return; // guard: app ainda não pronto
     app.__lrPatched = true;
 
     const _orig = app.loadView.bind(app);
