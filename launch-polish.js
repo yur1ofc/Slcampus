@@ -222,7 +222,7 @@
           </div>
           <div class="batch-help-card" style="margin-top:10px"><div class="notification-item-main"><strong>Dica</strong><small>Separadores aceitos: ponto e vírgula ou barra vertical. Dias aceitos: seg, ter, qua, qui, sex, sab, dom.</small></div></div>
         </div>`;
-      colorGroup.parentElement.insertAdjacentElement('afterend', block);
+      colorGroup.insertAdjacentElement('beforebegin', block);
     }
     $('#btn-aula-batch-exemplo')?.addEventListener('click',()=>{
       $('#aula-batch-text').value='Cálculo I; seg qua; 08:00; 10:00; Sala 12; Prof. Ana; Bloco A\nFísica I; ter qui; 10:00; 12:00; Lab 2; Prof. Carlos';

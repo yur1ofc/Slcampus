@@ -121,12 +121,12 @@ class StudyLifeControl {
                     <option value="4">Dificuldade 4</option>
                     <option value="5">Dificuldade 5</option>
                 </select>
-                <select class="materia-peso">
-                    <option value="1">Peso 1</option>
-                    <option value="2">Peso 2</option>
-                    <option value="3" selected>Peso 3</option>
-                    <option value="4">Peso 4</option>
-                    <option value="5">Peso 5</option>
+                <select class="materia-peso" title="Peso: quanto essa matéria exige de você em relação às outras">
+                    <option value="1">⚡ Peso 1 — pouco esforço</option>
+                    <option value="2">⚡ Peso 2 — esforço leve</option>
+                    <option value="3" selected>⚡ Peso 3 — esforço médio</option>
+                    <option value="4">⚡ Peso 4 — exige bastante</option>
+                    <option value="5">⚡ Peso 5 — prioridade máxima</option>
                 </select>
                 <input type="number" class="materia-nota-desejada" placeholder="Nota desejada" min="0" max="10" step="0.1" value="7">
             </div>
