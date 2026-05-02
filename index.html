@@ -22,7 +22,7 @@
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- Credenciais injetadas no build pelo inject-env.js -->
@@ -56,19 +56,38 @@
         </div>
 
         <div id="login-screen" class="login-container">
-            <div class="login-card">
-                <div class="login-header">
+            <!-- Painel esquerdo: features -->
+            <div class="login-features-panel">
+                <div class="login-brand">
                     <i class="fas fa-brain"></i>
-                    <h1>Study Life Control</h1>
-                    <p>Sistema Inteligente para Universitários</p>
+                    <span>Study Life Control</span>
                 </div>
-                <div class="login-body">
-                    <button class="btn-google" id="login-google">
-                        <i class="fab fa-google"></i>
-                        Entrar com Google
-                    </button>
-                    <div id="login-error-msg" style="display:none;margin-top:14px;padding:10px 14px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);border-radius:10px;color:#ef4444;font-size:.88rem;text-align:center;"></div>
-                    <p style="margin-top:16px;font-size:.78rem;color:#475569;text-align:center;">Ao entrar, você concorda com o uso dos dados para fins acadêmicos pessoais.</p>
+                <h1 class="login-headline">Organize sua vida<br><span>acadêmica</span> de verdade.</h1>
+                <p class="login-subline">Tudo que um universitário precisa em um painel inteligente.</p>
+                <ul class="login-features-list">
+                    <li><div class="feat-icon">🤖</div><span>Mentor IA que analisa seus dados e sugere o que estudar agora</span></li>
+                    <li><div class="feat-icon">📊</div><span>Dashboard com gráficos de horas, notas e atividade</span></li>
+                    <li><div class="feat-icon">📅</div><span>Grade horária, provas, tarefas e sessões de estudo</span></li>
+                    <li><div class="feat-icon">🎯</div><span>Modo Foco com timer Pomodoro integrado</span></li>
+                    <li><div class="feat-icon">☁️</div><span>Sincronização em tempo real entre dispositivos</span></li>
+                </ul>
+            </div>
+            <!-- Painel direito: login -->
+            <div class="login-right-panel">
+                <div class="login-card">
+                    <div class="login-header">
+                        <i class="fas fa-brain"></i>
+                        <h1>Bem-vindo de volta</h1>
+                        <p>Entre para acessar seu painel acadêmico</p>
+                    </div>
+                    <div class="login-body">
+                        <button class="btn-google" id="login-google">
+                            <i class="fab fa-google"></i>
+                            Entrar com Google
+                        </button>
+                        <div id="login-error-msg" style="display:none;margin-top:14px;padding:10px 14px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);border-radius:10px;color:#ef4444;font-size:.88rem;text-align:center;"></div>
+                        <p style="margin-top:16px;font-size:.78rem;color:#475569;text-align:center;">Ao entrar, você concorda com o uso dos dados para fins acadêmicos pessoais.</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -232,26 +251,82 @@
                     </div>
 
                     <nav class="sidebar-nav" id="sidebar-nav">
+                        <div class="ctrl-k-hint" onclick="document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true}))">
+                            <i class="fas fa-search"></i>
+                            <span>Busca rápida</span>
+                            <kbd>Ctrl K</kbd>
+                        </div>
+                        <!-- Busca rápida Ctrl+K -->
+                        <div class="nav-search-wrap">
+                            <button class="nav-search-btn" id="nav-search-btn" title="Buscar (Ctrl+K)">
+                                <i class="fas fa-search"></i><span>Buscar...</span><kbd>Ctrl K</kbd>
+                            </button>
+                        </div>
+
                         <a href="#" class="nav-item active" data-view="dashboard"><i class="fas fa-chart-pie"></i><span>Dashboard</span></a>
                         <a href="#" class="nav-item" data-view="mentor-ia"><i class="fas fa-robot"></i><span>Mentor IA</span><span class="badge">IA</span></a>
-                        <a href="#" class="nav-item" data-view="grade-horaria"><i class="fas fa-calendar-week"></i><span>Grade Horária</span></a>
-                        <a href="#" class="nav-item" data-view="materias"><i class="fas fa-book"></i><span>Matérias</span></a>
-                        <a href="#" class="nav-item" data-view="grade-curricular"><i class="fas fa-sitemap"></i><span>Grade Curricular</span></a>
-                        <a href="#" class="nav-item" data-view="cursos-extras"><i class="fas fa-language"></i><span>Cursos Extras</span></a>
-                        <a href="#" class="nav-item" data-view="sessoes"><i class="fas fa-clock"></i><span>Sessões de Estudo</span></a>
-                        <a href="#" class="nav-item" data-view="tarefas"><i class="fas fa-tasks"></i><span>Tarefas</span></a>
-                        <a href="#" class="nav-item" data-view="provas"><i class="fas fa-graduation-cap"></i><span>Provas e Trabalhos</span></a>
-                        <a href="#" class="nav-item" data-view="mapa-aprendizado"><i class="fas fa-map"></i><span>Mapa de Aprendizado</span></a>
-                        <a href="#" class="nav-item" data-view="materiais"><i class="fas fa-folder"></i><span>Materiais</span></a>
-                        <a href="#" class="nav-item" data-view="calendario"><i class="fas fa-calendar-alt"></i><span>Calendário</span></a>
-                        <a href="#" class="nav-item" data-view="situacao-academica"><i class="fas fa-heartbeat"></i><span>Situação Acadêmica</span></a>
-                        <a href="#" class="nav-item" data-view="previsao-notas"><i class="fas fa-chart-line"></i><span>Previsão de Notas</span></a>
-                        <a href="#" class="nav-item" data-view="habitos"><i class="fas fa-heart"></i><span>Hábitos</span></a>
-                        <a href="#" class="nav-item" data-view="estatisticas"><i class="fas fa-chart-bar"></i><span>Estatísticas</span></a>
-                        <a href="#" class="nav-item" data-view="foco"><i class="fas fa-clock"></i><span>Modo Foco</span></a>
+
+                        <!-- Grupo: Acadêmico -->
+                        <div class="nav-group">
+                            <button class="nav-group-header" data-group="academico">
+                                <span><i class="fas fa-graduation-cap"></i> Acadêmico</span>
+                                <i class="fas fa-chevron-down nav-group-arrow"></i>
+                            </button>
+                            <div class="nav-group-items" id="group-academico">
+                                <a href="#" class="nav-item" data-view="materias"><i class="fas fa-book"></i><span>Matérias</span></a>
+                                <a href="#" class="nav-item" data-view="grade-horaria"><i class="fas fa-calendar-week"></i><span>Grade Horária</span></a>
+                                <a href="#" class="nav-item" data-view="grade-curricular"><i class="fas fa-sitemap"></i><span>Grade Curricular</span></a>
+                                <a href="#" class="nav-item" data-view="cursos-extras"><i class="fas fa-language"></i><span>Cursos Extras</span></a>
+                                <a href="#" class="nav-item" data-view="situacao-academica"><i class="fas fa-heartbeat"></i><span>Situação Acadêmica</span></a>
+                                <a href="#" class="nav-item" data-view="previsao-notas"><i class="fas fa-chart-line"></i><span>Previsão de Notas</span></a>
+                            </div>
+                        </div>
+
+                        <!-- Grupo: Organização -->
+                        <div class="nav-group">
+                            <button class="nav-group-header" data-group="organizacao">
+                                <span><i class="fas fa-tasks"></i> Organização</span>
+                                <i class="fas fa-chevron-down nav-group-arrow"></i>
+                            </button>
+                            <div class="nav-group-items" id="group-organizacao">
+                                <a href="#" class="nav-item" data-view="tarefas"><i class="fas fa-tasks"></i><span>Tarefas</span></a>
+                                <a href="#" class="nav-item" data-view="provas"><i class="fas fa-graduation-cap"></i><span>Provas e Trabalhos</span></a>
+                                <a href="#" class="nav-item" data-view="sessoes"><i class="fas fa-clock"></i><span>Sessões de Estudo</span></a>
+                                <a href="#" class="nav-item" data-view="calendario"><i class="fas fa-calendar-alt"></i><span>Calendário</span></a>
+                                <a href="#" class="nav-item" data-view="habitos"><i class="fas fa-heart"></i><span>Hábitos</span></a>
+                                <a href="#" class="nav-item" data-view="foco"><i class="fas fa-bullseye"></i><span>Modo Foco</span></a>
+                            </div>
+                        </div>
+
+                        <!-- Grupo: Análise -->
+                        <div class="nav-group">
+                            <button class="nav-group-header" data-group="analise">
+                                <span><i class="fas fa-chart-bar"></i> Análise</span>
+                                <i class="fas fa-chevron-down nav-group-arrow"></i>
+                            </button>
+                            <div class="nav-group-items" id="group-analise">
+                                <a href="#" class="nav-item" data-view="mapa-aprendizado"><i class="fas fa-map"></i><span>Mapa de Aprendizado</span></a>
+                                <a href="#" class="nav-item" data-view="materiais"><i class="fas fa-folder"></i><span>Materiais</span></a>
+                                <a href="#" class="nav-item" data-view="estatisticas"><i class="fas fa-chart-bar"></i><span>Estatísticas</span></a>
+                            </div>
+                        </div>
+
                         <a href="#" class="nav-item" data-view="configuracoes"><i class="fas fa-cog"></i><span>Configurações</span></a>
                         <a href="#" class="nav-item" data-view="ajuda"><i class="fas fa-question-circle"></i><span>Ajuda</span></a>
                     </nav>
+
+                    <!-- Modal busca rápida -->
+                    <div id="nav-search-modal" class="nav-search-modal" hidden>
+                        <div class="nav-search-overlay" id="nav-search-overlay"></div>
+                        <div class="nav-search-dialog">
+                            <div class="nav-search-input-wrap">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="nav-search-input" placeholder="Buscar seção..." autocomplete="off">
+                                <kbd>Esc</kbd>
+                            </div>
+                            <div class="nav-search-results" id="nav-search-results"></div>
+                        </div>
+                    </div>
 
                     <div class="sidebar-footer">
                         <div class="user-info" id="user-info">
@@ -290,6 +365,7 @@
                             <h1 id="page-title">Dashboard</h1>
                         </div>
                         <div class="header-actions">
+                            <button class="theme-toggle btn-icon" id="theme-toggle" title="Alternar tema" aria-label="Alternar tema claro/escuro"><i class="fas fa-moon icon-moon"></i><i class="fas fa-sun icon-sun"></i></button>
                             <div class="sync-status" id="sync-status">
                                 <i class="fas fa-sync-alt"></i>
                             </div>
@@ -1076,5 +1152,6 @@
     <script src="app-enhancements.js"></script>
     <link rel="stylesheet" href="launch-polish.css">
     <script src="launch-polish.js"></script>
+    <script src="improvements.js" defer></script>
 </body>
 </html>
