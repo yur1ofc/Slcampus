@@ -142,19 +142,23 @@
   }
 
   function ensureNotificationPanel(){
-    if($('#notification-panel')) return;
-    const header=$('.content-header .header-actions');
-    if(!header) return;
-    const panel=document.createElement('div');
-    panel.id='notification-panel';
-    panel.className='notification-panel';
-    panel.hidden=true;
-    panel.innerHTML=`<div class="notification-panel-header"><h3>Lembretes internos</h3><button class="btn-secondary" id="mark-all-notifications-read">Marcar como visto</button></div><div class="notification-list" id="notification-list"></div>`;
-    header.appendChild(panel);
+    // Reutiliza o popover do script.js em vez de criar um segundo painel
+    let panel=$('#notification-panel');
+    if(!panel){
+      panel=document.createElement('div');
+      panel.id='notification-panel';
+      panel.className='notification-panel';
+      panel.hidden=true;
+      panel.innerHTML=`<div class="notification-panel-header"><h3>Lembretes internos</h3><button class="btn-secondary" id="mark-all-notifications-read">Marcar como visto</button></div><div class="notification-list" id="notification-list"></div>`;
+      // Injeta DENTRO do popover existente, não ao lado
+      const existingPopover=$('#notification-popover-list');
+      if(existingPopover){ existingPopover.appendChild(panel); panel.hidden=false; }
+      else { const header=$('.content-header .header-actions'); if(header) header.appendChild(panel); }
+    }
+    return panel;
 
-    $('#notification-badge')?.addEventListener('click', (e)=>{e.stopPropagation(); panel.hidden=!panel.hidden; if(!panel.hidden) markNotificationsRead();});
-    $('#mark-all-notifications-read')?.addEventListener('click', ()=>{markNotificationsRead(); renderNotifications();});
-    document.addEventListener('click',(e)=>{ if(panel.hidden) return; if(!panel.contains(e.target) && !e.target.closest('#notification-badge')) panel.hidden=true; });
+    // Evento do badge gerenciado pelo script.js — apenas o botão interno
+    $('#mark-all-notifications-read')?.addEventListener('click', ()=>{markNotificationsRead(); panel.hidden=true; renderNotifications();});
   }
 
   function buildNotifications(){

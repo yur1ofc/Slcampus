@@ -1179,7 +1179,6 @@
   function ensureGamificationNavItem() {
     const nav = el('sidebar-nav');
     if (!nav || nav.querySelector('[data-view="gamificacao"]')) return;
-    const target = nav.querySelector('[data-view="situacao-academica"]') || nav.lastElementChild;
     const item = document.createElement('a');
     item.href = '#';
     item.className = 'nav-item';
@@ -1193,7 +1192,15 @@
       const pageTitle = el('page-title');
       if (pageTitle) pageTitle.textContent = 'Gamificação';
     });
-    if (target) nav.insertBefore(item, target); else nav.appendChild(item);
+    // Insere no grupo Acadêmico se existir, senão appenda ao nav
+    const academicGroup = el('group-academico');
+    if (academicGroup) {
+      const situacao = academicGroup.querySelector('[data-view="situacao-academica"]');
+      if (situacao) academicGroup.insertBefore(item, situacao);
+      else academicGroup.appendChild(item);
+    } else {
+      nav.appendChild(item);
+    }
   }
 
   function trackXPSourceClicks() {
@@ -1222,10 +1229,7 @@
       });
       el('notification-close-btn')?.addEventListener('click', closeNotificationPopover);
     }
-    if (!window.__slcNotifAutoOpened && (app.getLaunchNotifications?.() || []).length) {
-      window.__slcNotifAutoOpened = true;
-      setTimeout(openNotificationPopover, 120);
-    }
+    // Auto-open removido: usuário abre manualmente clicando no sino
   }
 
 
