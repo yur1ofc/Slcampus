@@ -1427,3 +1427,299 @@ ${report.monthly}`;
 
   proto.__coachSessionPatched = true;
 })();
+
+
+// __mentor_upgrade_v6_smart__
+// Upgrade: IA mais inteligente — previsão de reprovação, plano semanal real,
+// análise de padrão de estudo, diagnóstico completo e conselhos práticos
+(function () {
+  if (!window.AIAssistant || window.AIAssistant.prototype.__mentorV6Patched) return;
+  const proto = window.AIAssistant.prototype;
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+
+  function horasEstudadasPorMateria(ctx, nomeMat) {
+    return (ctx.sessions || [])
+      .filter(s => s.concluida && norm(s.materia) === norm(nomeMat))
+      .reduce((acc, s) => acc + (parseInt(s.duracao) || 0) / 60, 0);
+  }
+
+  function mediaNotas(ctx, nomeMat) {
+    const notas = (ctx.grades || []).filter(g => norm(g.materia) === norm(nomeMat) && g.nota != null);
+    if (!notas.length) return null;
+    const pesoTotal = notas.reduce((a, g) => a + (g.peso || 1), 0);
+    return notas.reduce((a, g) => a + g.nota * (g.peso || 1), 0) / pesoTotal;
+  }
+
+  function tarefasAtrasadas(ctx, nomeMat) {
+    const hoje = new Date();
+    return (ctx.tasks || []).filter(t =>
+      !t.concluida && norm(t.materia) === norm(nomeMat) &&
+      t.dataLimite && new Date(t.dataLimite + 'T23:59') < hoje
+    ).length;
+  }
+
+  function proximaProva(ctx, nomeMat) {
+    const hoje = new Date();
+    const provas = (ctx.exams || [])
+      .filter(e => !e.concluida && norm(e.materia) === norm(nomeMat) && new Date(e.data) >= hoje)
+      .sort((a, b) => new Date(a.data) - new Date(b.data));
+    return provas[0] || null;
+  }
+
+  function diasAte(dataStr) {
+    if (!dataStr) return null;
+    const d = new Date(dataStr);
+    const hoje = new Date();
+    const a = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+    const b = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    return Math.round((b - a) / 86400000);
+  }
+
+  function riscoReprovacao(ctx, subject) {
+    const media = mediaNotas(ctx, subject.nome);
+    const horas = horasEstudadasPorMateria(ctx, subject.nome);
+    const atr = tarefasAtrasadas(ctx, subject.nome);
+    const dif = parseInt(subject.dificuldade) || 3;
+    let score = 0;
+    if (media !== null) { if (media < 5) score += 40; else if (media < 6.5) score += 20; }
+    if (horas < 2) score += 25; else if (horas < 8) score += 10;
+    if (atr >= 2) score += 20; else if (atr >= 1) score += 8;
+    if (dif >= 4) score += 10;
+    return score; // 0-100+
+  }
+
+  function nivelRisco(score) {
+    if (score >= 55) return { nivel: 'ALTO', emoji: '🔴', cor: 'danger' };
+    if (score >= 28) return { nivel: 'MÉDIO', emoji: '🟡', cor: 'warning' };
+    return { nivel: 'BAIXO', emoji: '🟢', cor: 'success' };
+  }
+
+  // ── Diagnóstico completo ──────────────────────────────────────────────────
+  proto._buildSmartDiagnosis = function () {
+    const ctx = this.context;
+    const subjects = ctx.subjects || [];
+    if (!subjects.length) return 'Cadastre suas matérias primeiro para eu poder te ajudar de verdade.';
+
+    const linhas = ['📊 **Diagnóstico completo das suas matérias:**\n'];
+
+    const ordenadas = [...subjects].sort((a, b) => riscoReprovacao(ctx, b) - riscoReprovacao(ctx, a));
+
+    for (const s of ordenadas) {
+      const score = riscoReprovacao(ctx, s);
+      const { nivel, emoji } = nivelRisco(score);
+      const media = mediaNotas(ctx, s.nome);
+      const horas = horasEstudadasPorMateria(ctx, s.nome);
+      const atr = tarefasAtrasadas(ctx, s.nome);
+      const prova = proximaProva(ctx, s.nome);
+      const diasProva = prova ? diasAte(prova.data) : null;
+
+      linhas.push(`${emoji} **${s.nome}** — Risco: ${nivel}`);
+      if (media !== null) linhas.push(`   Média atual: ${media.toFixed(1)}`);
+      else linhas.push('   Média: sem notas cadastradas');
+      linhas.push(`   Horas estudadas: ${horas.toFixed(1)}h`);
+      if (atr) linhas.push(`   ⚠️ ${atr} tarefa(s) atrasada(s)`);
+      if (diasProva !== null) linhas.push(`   📝 Prova em ${diasProva === 0 ? 'HOJE' : diasProva + ' dias'}`);
+      linhas.push('');
+    }
+
+    // Conselho geral
+    const emRisco = ordenadas.filter(s => riscoReprovacao(ctx, s) >= 55);
+    if (emRisco.length) {
+      linhas.push(`⚡ **Prioridade agora:** Foca em ${emRisco.map(s => s.nome).join(', ')}. ${emRisco.length > 1 ? 'Essas matérias têm maior risco de reprovação.' : 'Essa matéria precisa de atenção urgente.'}`);
+    } else {
+      linhas.push('✅ Nenhuma matéria em risco crítico no momento. Mantenha a constância!');
+    }
+
+    return linhas.join('\n');
+  };
+
+  // ── Plano de estudo semanal real ──────────────────────────────────────────
+  proto._buildWeeklyPlan = function () {
+    const ctx = this.context;
+    const subjects = ctx.subjects || [];
+    if (!subjects.length) return 'Cadastre suas matérias e rotina para eu montar um plano real.';
+
+    const user = ctx.user || {};
+    const diasPref = Array.isArray(user.diasPreferidos) && user.diasPreferidos.length
+      ? user.diasPreferidos
+      : ['seg','ter','qua','qui','sex'];
+    const horasMax = parseInt(user.horasMaximas) || 4;
+    const turno = user.turnoPrincipal || 'noite';
+
+    const diasPT = { seg:'Segunda', ter:'Terça', qua:'Quarta', qui:'Quinta', sex:'Sexta', sab:'Sábado', dom:'Domingo' };
+
+    // Ordenar por risco (maior risco = mais tempo)
+    const ordenadas = [...subjects]
+      .map(s => ({ ...s, score: riscoReprovacao(ctx, s), horas: horasEstudadasPorMateria(ctx, s.nome) }))
+      .sort((a, b) => (b.score * 2 + b.dificuldade) - (a.score * 2 + a.dificuldade));
+
+    const linhas = [`📅 **Plano de estudo para essa semana** (${horasMax}h/dia, turno: ${turno}):\n`];
+
+    let materiaIdx = 0;
+    for (const dia of diasPref.slice(0, 6)) {
+      const diaLabel = diasPT[dia] || dia;
+      const materiaDia = ordenadas[materiaIdx % ordenadas.length];
+      const materia2 = ordenadas[(materiaIdx + 1) % ordenadas.length];
+      materiaIdx++;
+
+      const h1 = Math.min(horasMax - 1, Math.ceil(horasMax * 0.6));
+      const h2 = horasMax - h1;
+
+      const prova = proximaProva(ctx, materiaDia.nome);
+      const diasP = prova ? diasAte(prova.data) : null;
+      const urgencia = diasP !== null && diasP <= 3 ? ' ⚠️ PROVA PRÓXIMA!' : '';
+
+      linhas.push(`**${diaLabel}** (${horasMax}h)`);
+      linhas.push(`  • ${h1}h → ${materiaDia.nome}${urgencia}`);
+      if (materia2 && materia2.nome !== materiaDia.nome) {
+        linhas.push(`  • ${h2}h → ${materia2.nome}`);
+      }
+      linhas.push('');
+    }
+
+    const totalH = diasPref.slice(0,6).length * horasMax;
+    linhas.push(`Total estimado: ${totalH}h na semana.`);
+    linhas.push('Ajuste conforme as provas se aproximarem!');
+
+    return linhas.join('\n');
+  };
+
+  // ── Previsão de reprovação ────────────────────────────────────────────────
+  proto._buildReprovacaoForecast = function () {
+    const ctx = this.context;
+    const subjects = ctx.subjects || [];
+    if (!subjects.length) return 'Sem matérias cadastradas.';
+
+    const emRisco = subjects
+      .map(s => ({ s, score: riscoReprovacao(ctx, s) }))
+      .filter(({ score }) => score >= 28)
+      .sort((a, b) => b.score - a.score);
+
+    if (!emRisco.length) {
+      return '✅ Nenhuma matéria com risco de reprovação detectado agora. Continue assim!';
+    }
+
+    const linhas = ['⚠️ **Previsão de risco de reprovação:**\n'];
+    for (const { s, score } of emRisco) {
+      const { nivel, emoji } = nivelRisco(score);
+      const media = mediaNotas(ctx, s.nome);
+      const horas = horasEstudadasPorMateria(ctx, s.nome);
+      const prova = proximaProva(ctx, s.nome);
+      linhas.push(`${emoji} **${s.nome}** — Risco ${nivel}`);
+      if (media !== null) linhas.push(`   Média: ${media.toFixed(1)} ${media < 5 ? '(abaixo da mínima!)' : media < 6 ? '(precisa melhorar)' : ''}`);
+      linhas.push(`   Horas: ${horas.toFixed(1)}h estudadas`);
+      if (prova) linhas.push(`   Próxima prova: ${diasAte(prova.data)} dias`);
+
+      // Conselho específico
+      if (score >= 55) {
+        linhas.push(`   💡 Conselho: Estude pelo menos ${Math.max(2, Math.ceil((5.5 - (media || 3)) * 3))}h por dia nessa matéria até a próxima prova.`);
+      } else {
+        linhas.push('   💡 Conselho: Mantenha a constância e não deixe tarefas acumularem.');
+      }
+      linhas.push('');
+    }
+    return linhas.join('\n');
+  };
+
+  // ── Análise de padrão de estudo ───────────────────────────────────────────
+  proto._buildStudyPattern = function () {
+    const ctx = this.context;
+    const sessions = (ctx.sessions || []).filter(s => s.concluida);
+    if (sessions.length < 3) return 'Preciso de pelo menos 3 sessões de estudo para analisar seu padrão. Continue registrando!';
+
+    const totalH = sessions.reduce((a, s) => a + (parseInt(s.duracao) || 0) / 60, 0);
+    const mediaH = totalH / sessions.length;
+    const maisDe1h = sessions.filter(s => (parseInt(s.duracao) || 0) >= 60).length;
+    const diasUnicos = new Set(sessions.map(s => s.data || s.timestamp?.split?.('T')?.[0])).size;
+    const consistencia = diasUnicos >= 5 ? 'alta' : diasUnicos >= 3 ? 'moderada' : 'baixa';
+
+    const horasPorMateria = {};
+    for (const s of sessions) {
+      horasPorMateria[s.materia] = (horasPorMateria[s.materia] || 0) + (parseInt(s.duracao) || 0) / 60;
+    }
+    const topMateria = Object.entries(horasPorMateria).sort((a,b) => b[1]-a[1])[0];
+    const neglected = (ctx.subjects || []).filter(s => !horasPorMateria[s.nome] || horasPorMateria[s.nome] < 1);
+
+    const linhas = ['📈 **Análise do seu padrão de estudo:**\n'];
+    linhas.push(`Total: ${totalH.toFixed(1)}h em ${sessions.length} sessões (${diasUnicos} dias diferentes)`);
+    linhas.push(`Média por sessão: ${mediaH.toFixed(1)}h`);
+    linhas.push(`Sessões acima de 1h: ${maisDe1h} de ${sessions.length}`);
+    linhas.push(`Consistência: ${consistencia === 'alta' ? '🟢 Alta' : consistencia === 'moderada' ? '🟡 Moderada' : '🔴 Baixa'}`);
+    if (topMateria) linhas.push(`\nMatéria mais estudada: ${topMateria[0]} (${topMateria[1].toFixed(1)}h)`);
+    if (neglected.length) {
+      linhas.push(`\n⚠️ Matérias com menos de 1h estudada: ${neglected.map(s => s.nome).join(', ')}`);
+    }
+
+    // Conselho
+    if (consistencia === 'baixa') {
+      linhas.push('\n💡 Dica: Você estuda em poucos dias. Tente distribuir melhor durante a semana — sessões curtas todo dia valem mais do que longas sessões esparsas.');
+    } else if (mediaH < 0.5) {
+      linhas.push('\n💡 Dica: Suas sessões são bem curtas. Tente blocos de pelo menos 45 minutos para entrar em ritmo de concentração.');
+    } else {
+      linhas.push('\n✅ Padrão razoável. Mantenha a consistência e varie as matérias!');
+    }
+
+    return linhas.join('\n');
+  };
+
+  // ── Patch do ask() ────────────────────────────────────────────────────────
+  const _origAsk = proto.ask;
+  proto.ask = async function (pergunta) {
+    const p = norm(pergunta);
+
+    // Diagnóstico completo / raio-x de todas matérias
+    if (p.match(/diagnostico|raio.?x|completo|todas.*materias|materias.*todas|visao geral|situacao geral|como estou em tudo/)) {
+      return this._buildSmartDiagnosis();
+    }
+
+    // Plano semanal
+    if (p.match(/plano.*semana|semana.*plano|organiza.*semana|planejar.*semana|horario.*semana|rotina.*semana/)) {
+      return this._buildWeeklyPlan();
+    }
+
+    // Risco de reprovação
+    if (p.match(/risco.*reprov|reprov|vou reprovar|chance.*reprovar|perigo.*reprovar|vai mal/)) {
+      return this._buildReprovacaoForecast();
+    }
+
+    // Padrão de estudo
+    if (p.match(/padrao|pattern|como estou estudando|meu estilo|minhas sessoes|quantas horas.*total|total.*horas/)) {
+      return this._buildStudyPattern();
+    }
+
+    // Prioridade agora — melhorada
+    if (p.match(/prioridade|priorizar|o que estudar|estudar agora|o que fazer agora|comecar por|comecar agora/)) {
+      const ctx = this.context;
+      const subjects = ctx.subjects || [];
+      if (!subjects.length) return 'Cadastre suas matérias para eu poder indicar a prioridade.';
+
+      const ordenadas = [...subjects]
+        .map(s => {
+          const score = riscoReprovacao(ctx, s);
+          const prova = proximaProva(ctx, s.nome);
+          const diasP = prova ? diasAte(prova.data) : 99;
+          return { s, score, diasP };
+        })
+        .sort((a, b) => (b.score + (a.diasP < 7 ? 30 : 0)) - (a.score + (b.diasP < 7 ? 30 : 0)));
+
+      const top = ordenadas[0];
+      const { nivel, emoji } = nivelRisco(top.score);
+      const prova = proximaProva(ctx, top.s.nome);
+
+      let resp = `${emoji} **Prioridade agora: ${top.s.nome}**\n`;
+      resp += `Risco: ${nivel} | Horas estudadas: ${horasEstudadasPorMateria(ctx, top.s.nome).toFixed(1)}h\n`;
+      if (prova && top.diasP <= 7) resp += `⚠️ Prova em ${top.diasP} dias! Foco total.\n`;
+
+      if (ordenadas.length > 1) {
+        resp += `\nEm seguida: ${ordenadas.slice(1, 3).map(o => o.s.nome).join(' → ')}`;
+      }
+      return resp;
+    }
+
+    return _origAsk.call(this, pergunta);
+  };
+
+  proto.__mentorV6Patched = true;
+})();

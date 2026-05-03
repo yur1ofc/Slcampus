@@ -1267,76 +1267,166 @@ class ViewRenderer {
         `;
     }
 
-    renderConfiguracoes() {
+    renderConfiguracoes(aba = 'geral') {
+        const s = this.app.data.settings || {};
+        const user = this.app.data.user || {};
+        const email = this.esc(auth.currentUser?.email || 'Não conectado');
+
+        const abas = [
+            { id: 'geral',    icon: 'fa-sliders-h',  label: 'Geral' },
+            { id: 'perfil',   icon: 'fa-user',        label: 'Perfil' },
+            { id: 'tema',     icon: 'fa-palette',     label: 'Tema' },
+            { id: 'dados',    icon: 'fa-database',    label: 'Dados' },
+            { id: 'sobre',    icon: 'fa-info-circle', label: 'Sobre' },
+        ];
+
+        const navAbas = abas.map(a => `
+            <button class="config-nav-item ${aba === a.id ? 'active' : ''}" data-config-aba="${a.id}">
+                <i class="fas ${a.icon}"></i>
+                <span>${a.label}</span>
+            </button>`).join('');
+
+        let conteudo = '';
+
+        if (aba === 'geral') {
+            conteudo = `
+            <div class="config-section-title">⚙️ Preferências gerais</div>
+            <div class="config-item">
+                <div class="config-info"><h4>Notificações</h4><p>Receber alertas e lembretes</p></div>
+                <label class="toggle-switch">
+                    <input type="checkbox" ${s.notifications ? 'checked' : ''} id="config-notificacoes">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div class="config-item">
+                <div class="config-info"><h4>Planejamento automático</h4><p>Gerar recomendações automaticamente</p></div>
+                <label class="toggle-switch">
+                    <input type="checkbox" ${s.autoPlan ? 'checked' : ''} id="config-auto-plan">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div class="config-item">
+                <div class="config-info"><h4>Modo Faculdade Pesada</h4><p>Priorizar matérias difíceis e aumentar alertas</p></div>
+                <label class="toggle-switch">
+                    <input type="checkbox" ${s.heavyMode ? 'checked' : ''} id="config-heavy-mode">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>`;
+        }
+
+        if (aba === 'perfil') {
+            conteudo = `
+            <div class="config-section-title">👤 Informações do perfil</div>
+            <div class="config-item" style="flex-direction:column;align-items:flex-start;gap:10px;">
+                <div class="wiz-field" style="width:100%"><label>Nome</label>
+                    <input type="text" id="config-nome" value="${this.esc(user.nome || '')}" placeholder="Seu nome">
+                </div>
+                <div class="wiz-field" style="width:100%"><label>Universidade</label>
+                    <input type="text" id="config-universidade" value="${this.esc(user.universidade || '')}" placeholder="Ex: UFOB">
+                </div>
+                <div class="wiz-field" style="width:100%"><label>Curso</label>
+                    <input type="text" id="config-curso" value="${this.esc(user.curso || '')}" placeholder="Ex: Engenharia Civil">
+                </div>
+                <div class="wiz-field" style="width:100%"><label>Semestre atual</label>
+                    <select id="config-semestre">
+                        ${[1,2,3,4,5,6,7,8,9,10].map(n => `<option value="${n}" ${parseInt(user.semestre) === n ? 'selected' : ''}>${n}º semestre</option>`).join('')}
+                    </select>
+                </div>
+                <button class="btn-primary" id="btn-salvar-perfil" style="margin-top:8px;">
+                    <i class="fas fa-save"></i> Salvar alterações
+                </button>
+            </div>`;
+        }
+
+        if (aba === 'tema') {
+            const temaAtual = localStorage.getItem('slc-theme') || 'dark';
+            const temas = [
+                { id: 'dark',   nome: 'Escuro',        emoji: '🌑' },
+                { id: 'ocean',  nome: 'Ocean',         emoji: '🌊' },
+                { id: 'forest', nome: 'Floresta',      emoji: '🌲' },
+                { id: 'sunset', nome: 'Pôr do Sol',    emoji: '🌅' },
+                { id: 'light',  nome: 'Claro',         emoji: '☀️' },
+            ];
+            conteudo = `
+            <div class="config-section-title">🎨 Aparência</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:24px;">
+                ${temas.map(t => `
+                <button class="config-tema-btn ${temaAtual === t.id ? 'active' : ''}" data-tema="${t.id}" style="
+                    padding:14px 10px;border-radius:12px;border:2px solid ${temaAtual === t.id ? 'var(--accent-primary)' : 'var(--border)'};
+                    background:var(--bg-tertiary);cursor:pointer;color:var(--text-primary);font-size:.88rem;font-weight:600;
+                    display:flex;flex-direction:column;align-items:center;gap:8px;transition:all .2s;">
+                    <span style="font-size:1.6rem">${t.emoji}</span>
+                    <span>${t.nome}</span>
+                    ${temaAtual === t.id ? '<span style="font-size:.75rem;color:var(--accent-primary)">✓ Ativo</span>' : ''}
+                </button>`).join('')}
+            </div>
+            <div class="config-section-title" style="margin-top:20px">🔠 Tamanho da fonte</div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                ${['small','normal','large'].map(sz => `
+                <button class="config-font-btn" data-size="${sz}" style="
+                    padding:10px 18px;border-radius:10px;border:1.5px solid var(--border);
+                    background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;
+                    font-size:${sz === 'small' ? '.82rem' : sz === 'large' ? '1.05rem' : '.9rem'};font-weight:600;">
+                    ${sz === 'small' ? 'Pequena' : sz === 'large' ? 'Grande' : 'Normal'}
+                </button>`).join('')}
+            </div>`;
+        }
+
+        if (aba === 'dados') {
+            conteudo = `
+            <div class="config-section-title">📦 Backup e restauração</div>
+            <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px;">
+                <button class="btn-secondary" id="exportar-dados" style="justify-content:flex-start;">
+                    <i class="fas fa-download"></i> Exportar todos os dados (JSON)
+                </button>
+                <button class="btn-secondary" id="importar-dados" style="justify-content:flex-start;">
+                    <i class="fas fa-upload"></i> Importar backup
+                </button>
+                <button class="btn-secondary" id="carregar-demo-publica" style="justify-content:flex-start;">
+                    <i class="fas fa-flask"></i> Carregar dados de demonstração
+                </button>
+            </div>
+            <div class="config-section-title" style="color:var(--accent-danger)">⚠️ Zona de perigo</div>
+            <p style="font-size:.88rem;color:var(--text-secondary);margin-bottom:12px;">
+                Essas ações são irreversíveis. Faça um backup antes.
+            </p>
+            <button class="btn-danger" id="limpar-dados">
+                <i class="fas fa-trash"></i> Limpar todos os dados
+            </button>`;
+        }
+
+        if (aba === 'sobre') {
+            conteudo = `
+            <div class="config-section-title">ℹ️ Sobre o app</div>
+            <div style="display:flex;flex-direction:column;gap:12px;">
+                <div class="card" style="padding:18px;">
+                    <strong style="font-size:1.1rem">Study Life Control</strong>
+                    <p style="color:var(--text-secondary);margin-top:4px">Sistema inteligente de planejamento acadêmico para universitários</p>
+                    <p style="margin-top:8px;font-size:.88rem;color:var(--text-tertiary)">Versão 3.0.0 • Open Source</p>
+                </div>
+                <div class="card" style="padding:18px;">
+                    <strong>Conta conectada</strong>
+                    <p style="color:var(--text-secondary);margin-top:4px;font-size:.9rem">${email}</p>
+                </div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;">
+                    <a href="https://github.com/yur1ofc/study-life-control" target="_blank" class="btn-secondary" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px;">
+                        <i class="fab fa-github"></i> GitHub
+                    </a>
+                    <button class="btn-secondary" id="btn-relatar-problema">
+                        <i class="fas fa-bug"></i> Relatar problema
+                    </button>
+                </div>
+            </div>`;
+        }
+
         return `
+        <div class="view-header">
             <h2><i class="fas fa-cog"></i> Configurações</h2>
-
-            <div class="card">
-                <div class="card-header"><h3>⚙️ Preferências</h3></div>
-                <div class="card-body">
-                    <div class="config-item">
-                        <div class="config-info">
-                            <h4>Notificações</h4>
-                            <p>Receber alertas e lembretes</p>
-                        </div>
-                        <label class="toggle-switch">
-                            <input type="checkbox" ${this.app.data.settings.notifications ? 'checked' : ''} id="config-notificacoes">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="config-item">
-                        <div class="config-info">
-                            <h4>Planejamento automático</h4>
-                            <p>Gerar recomendações automaticamente</p>
-                        </div>
-                        <label class="toggle-switch">
-                            <input type="checkbox" ${this.app.data.settings.autoPlan ? 'checked' : ''} id="config-auto-plan">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="config-item">
-                        <div class="config-info">
-                            <h4>Modo Faculdade Pesada</h4>
-                            <p>Priorizar matérias difíceis e aumentar alertas</p>
-                        </div>
-                        <label class="toggle-switch">
-                            <input type="checkbox" ${this.app.data.settings.heavyMode ? 'checked' : ''} id="config-heavy-mode">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-header"><h3>📊 Gerenciar Dados</h3></div>
-                <div class="card-body">
-                    <button class="btn-secondary" id="exportar-dados">
-                        <i class="fas fa-download"></i> Exportar dados
-                    </button>
-                    <button class="btn-secondary" id="importar-dados">
-                        <i class="fas fa-upload"></i> Importar backup
-                    </button>
-                    <button class="btn-secondary" id="carregar-demo-publica">
-                        <i class="fas fa-flask"></i> Carregar demo
-                    </button>
-                    <button class="btn-danger" id="limpar-dados">
-                        <i class="fas fa-trash"></i> Limpar todos os dados
-                    </button>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-header"><h3>ℹ️ Sobre</h3></div>
-                <div class="card-body">
-                    <p><strong>Study Life Control</strong></p>
-                    <p>Versão: 3.0.0</p>
-                    <p>Sistema inteligente para estudantes universitários</p>
-                    <p>Conectado como: ${this.esc(auth.currentUser?.email || 'Não conectado')}</p>
-                </div>
-            </div>
-        `;
+        </div>
+        <div class="config-layout">
+            <nav class="config-nav">${navAbas}</nav>
+            <div class="config-content">${conteudo}</div>
+        </div>`;
     }
 
     renderMaterias() {

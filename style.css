@@ -4327,3 +4327,107 @@ body.sidebar-open .mobile-nav-overlay {
 .toast {
   animation-duration: 0.3s;
 }
+
+/* ── Configurações em abas ───────────────────────────────────────────── */
+.config-layout {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 20px;
+    align-items: start;
+}
+@media (max-width: 640px) {
+    .config-layout {
+        grid-template-columns: 1fr;
+    }
+    .config-nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+}
+.config-nav {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    position: sticky;
+    top: 80px;
+}
+.config-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: .9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s;
+    text-align: left;
+    width: 100%;
+}
+.config-nav-item:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+.config-nav-item.active {
+    background: var(--accent-primary);
+    color: #fff;
+}
+.config-nav-item i {
+    width: 18px;
+    text-align: center;
+    flex-shrink: 0;
+}
+.config-content {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 24px;
+    min-height: 300px;
+}
+.config-section-title {
+    font-size: .78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--accent-primary);
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+}
+.config-tema-btn.active {
+    border-color: var(--accent-primary) !important;
+    background: rgba(59,130,246,.08) !important;
+}
+.wiz-field label {
+    display: block;
+    font-size: .82rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+.wiz-field input,
+.wiz-field select {
+    width: 100%;
+    background: var(--bg-tertiary);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: 1rem;
+    padding: 10px 14px;
+    outline: none;
+    font-family: inherit;
+}
+.wiz-field input:focus,
+.wiz-field select:focus {
+    border-color: var(--accent-primary);
+}

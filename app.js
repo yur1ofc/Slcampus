@@ -564,24 +564,66 @@ class StudyLifeControl {
         }
 
         if (view === 'configuracoes') {
+            // Navegação entre abas
+            document.querySelectorAll('[data-config-aba]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const aba = btn.dataset.configAba;
+                    const container = document.getElementById('view-container');
+                    if (container) {
+                        container.innerHTML = this.viewRenderer.renderConfiguracoes(aba);
+                        this.setupViewEvents('configuracoes');
+                    }
+                });
+            });
+
+            // Aba Geral
             document.getElementById('config-notificacoes')?.addEventListener('change', async e => {
                 this.data.settings.notifications = e.target.checked;
                 await dbService.saveData('settings', this.data.settings);
             });
-
             document.getElementById('config-auto-plan')?.addEventListener('change', async e => {
                 this.data.settings.autoPlan = e.target.checked;
                 await dbService.saveData('settings', this.data.settings);
             });
-
             document.getElementById('config-heavy-mode')?.addEventListener('change', async e => {
                 this.data.settings.heavyMode = e.target.checked;
                 await dbService.saveData('settings', this.data.settings);
-                this.applyHeavyMode();
+                this.applyHeavyMode?.();
             });
 
+            // Aba Perfil
+            document.getElementById('btn-salvar-perfil')?.addEventListener('click', async () => {
+                const nome = document.getElementById('config-nome')?.value?.trim();
+                const universidade = document.getElementById('config-universidade')?.value?.trim();
+                const curso = document.getElementById('config-curso')?.value?.trim();
+                const semestre = document.getElementById('config-semestre')?.value;
+                if (nome) this.data.user.nome = nome;
+                if (universidade) this.data.user.universidade = universidade;
+                if (curso) this.data.user.curso = curso;
+                if (semestre) this.data.user.semestre = semestre;
+                await dbService.saveData('user', this.data.user);
+                window.showToast?.('Perfil atualizado!', 'success');
+            });
+
+            // Aba Tema
+            document.querySelectorAll('.config-tema-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const tema = btn.dataset.tema;
+                    localStorage.setItem('slc-theme', tema);
+                    window.applyTheme?.(tema);
+                    document.querySelectorAll('.config-tema-btn').forEach(b => {
+                        b.style.borderColor = b.dataset.tema === tema ? 'var(--accent-primary)' : 'var(--border)';
+                    });
+                    window.showToast?.('Tema aplicado!', 'success');
+                });
+            });
+
+            // Aba Dados
             document.getElementById('exportar-dados')?.addEventListener('click', () => this.exportarDados());
             document.getElementById('limpar-dados')?.addEventListener('click', () => this.limparDados());
+            document.getElementById('btn-relatar-problema')?.addEventListener('click', () => {
+                window.open('https://github.com/yur1ofc/study-life-control/issues/new', '_blank');
+            });
         }
 
         if (view === 'materias') {

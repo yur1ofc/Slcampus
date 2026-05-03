@@ -469,34 +469,51 @@
       const normalizedSubjects = dedupeCurriculum(subjects).map(neutralizeForCatalog);
       const authRef = getAuthInstance();
       const user = authRef ? authRef.currentUser : null;
+
+      // Sem usuário logado não podemos salvar — Firestore exige auth
+      if (!user || !user.uid) {
+        console.warn('[catalog] saveCommunityCatalog: usuário não autenticado, ignorando.');
+        return null;
+      }
+
       const now = new Date().toISOString();
-      const payload = {
-        key, faculdade, curso,
-        subjects: normalizedSubjects,
-        createdAt: meta?.createdAt || now,
-        updatedAt: now,
-        createdBy: meta?.createdBy || user?.uid || null,
-        updatedBy: user?.uid || meta?.updatedBy || null,
-        version: meta?.version || '',
-        confidence: Number(meta?.confidence || 0.55),
-        stats: {
-          usersCount: Number(meta?.usersCount || 1),
-          componentsCount: normalizedSubjects.length
-        }
-      };
       const dbRef = getDbInstance();
-      if (!dbRef) return payload;
+      if (!dbRef) return null;
+
       try {
         const ref = dbRef.collection('community_catalogs').doc(key);
         const existing = await ref.get().catch(() => null);
-        if (existing?.exists) {
-          const data = existing.data() || {};
-          payload.createdAt = data.createdAt || payload.createdAt;
-          payload.createdBy = data.createdBy || payload.createdBy;
+        const existingData = existing && existing.exists ? (existing.data() || {}) : null;
+
+        const payload = {
+          key, faculdade, curso,
+          subjects: normalizedSubjects,
+          updatedAt: now,
+          updatedBy: user.uid,
+          version: meta?.version || (existingData && existingData.version) || '',
+          confidence: Number(meta?.confidence || (existingData && existingData.confidence) || 0.55),
+          stats: {
+            usersCount: Number((existingData && existingData.stats && existingData.stats.usersCount) || 0) + 1,
+            componentsCount: normalizedSubjects.length
+          }
+        };
+
+        if (existingData) {
+          // Atualização — preservar campos imutáveis do documento original
+          payload.createdAt = existingData.createdAt || now;
+          await ref.set(payload, { merge: true });
+        } else {
+          // Criação — definir campos imutáveis
+          payload.createdAt = now;
+          payload.createdBy = user.uid;
+          await ref.set(payload);
         }
-        await ref.set(payload, { merge: true });
-      } catch (error) { console.error('Erro ao salvar catálogo comunitário:', error); }
-      return payload;
+        return payload;
+      } catch (error) {
+        console.error('[catalog] Erro ao salvar catálogo comunitário:', error);
+        window.showToast && window.showToast('Erro ao compartilhar grade. Verifique sua conexão.', 'error');
+        return null;
+      }
     };
 
     dbService.submitCommunityContribution = async function (faculdade, curso, subjects, extra) {
