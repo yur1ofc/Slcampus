@@ -5,7 +5,7 @@
 
 if (typeof window.__ENV === 'undefined') {
   window.__ENV = {
-    FIREBASE_API_KEY:             'AIzaSyDDnc3vmJTAJg8ZQwYw-W9DeT5HLmCUPDc',
+    FIREBASE_API_KEY:             'AIzaSyCbXt4z-vncncAoZjNXGMYBrvxRFHyUbDo',
     FIREBASE_AUTH_DOMAIN:         'study-life-control.firebaseapp.com',
     FIREBASE_PROJECT_ID:          'study-life-control',
     FIREBASE_STORAGE_BUCKET:      'study-life-control.appspot.com',
