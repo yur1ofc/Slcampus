@@ -1,11 +1,8 @@
-// env-config.js
-// Este arquivo é gerado automaticamente pelo inject-env.js no build do Vercel.
-// Para desenvolvimento local: copie env-config.example.js, renomeie para env-config.js
-// e preencha com suas credenciais Firebase.
-// NUNCA commite este arquivo com credenciais reais — está no .gitignore.
+// env-config.js — configuração de ambiente
+// Este arquivo pode ser sobrescrito pelo inject-env.js no build do Vercel
+// se as variáveis de ambiente estiverem configuradas no painel do Vercel.
+// Sem buildCommand configurado, este fallback garante que o site funcione.
 
-// Fallback: se o Vercel não gerou este arquivo (env vars não configuradas),
-// o firebase-config.js usa os valores diretos hardcoded abaixo como fallback.
 if (typeof window.__ENV === 'undefined') {
   window.__ENV = {
     FIREBASE_API_KEY:             'AIzaSyDDnc3vmJTAJg8ZQwYw-W9DeT5HLmCUPDc',
