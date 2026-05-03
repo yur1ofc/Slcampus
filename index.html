@@ -25,6 +25,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
+    <!-- Motor de tema: carrega antes de tudo para evitar flash -->
+    <script src="theme-engine.js"></script>
     <!-- Credenciais injetadas no build pelo inject-env.js -->
     <script src="env-config.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
@@ -256,13 +258,6 @@
                             <span>Busca rápida</span>
                             <kbd>Ctrl K</kbd>
                         </div>
-                        <!-- Busca rápida Ctrl+K -->
-                        <div class="nav-search-wrap">
-                            <button class="nav-search-btn" id="nav-search-btn" title="Buscar (Ctrl+K)">
-                                <i class="fas fa-search"></i><span>Buscar...</span><kbd>Ctrl K</kbd>
-                            </button>
-                        </div>
-
                         <a href="#" class="nav-item active" data-view="dashboard"><i class="fas fa-chart-pie"></i><span>Dashboard</span></a>
                         <a href="#" class="nav-item" data-view="mentor-ia"><i class="fas fa-robot"></i><span>Mentor IA</span><span class="badge">IA</span></a>
 
@@ -365,7 +360,7 @@
                             <h1 id="page-title">Dashboard</h1>
                         </div>
                         <div class="header-actions">
-                            <button class="theme-toggle btn-icon" id="theme-toggle" title="Alternar tema" aria-label="Alternar tema claro/escuro"><i class="fas fa-moon icon-moon"></i><i class="fas fa-sun icon-sun"></i></button>
+
                             <div class="sync-status" id="sync-status">
                                 <i class="fas fa-sync-alt"></i>
                             </div>

@@ -2,25 +2,9 @@
 (function () {
   'use strict';
 
-  // ── 1. TEMA CLARO / ESCURO ────────────────────────────────────────────────
-  function initTheme() {
-    const saved = localStorage.getItem('slc-theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const theme = saved || (prefersDark ? 'dark' : 'light');
-    applyTheme(theme);
-  }
+  // ── 1. TEMA — gerenciado por theme-engine.js ────────────────────────────
 
-  function applyTheme(theme) {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('slc-theme', theme);
-  }
-
-  function toggleTheme() {
-    const current = document.documentElement.getAttribute('data-theme') || 'dark';
-    applyTheme(current === 'dark' ? 'light' : 'dark');
-  }
-
-  // ── 2. SIDEBAR: grupos colapsáveis ────────────────────────────────────────
+  // ── 2. SIDEBAR: grupos colapsáveis ───────────────────────────────────────
   function initSidebarGroups() {
     const headers = document.querySelectorAll('.nav-group-header');
     if (!headers.length) return;
@@ -425,12 +409,6 @@
 
   // ── INIT ──────────────────────────────────────────────────────────────────
   function init() {
-    initTheme();
-
-    // Botão de toggle no header
-    const toggleBtn = document.getElementById('theme-toggle');
-    if (toggleBtn) toggleBtn.addEventListener('click', toggleTheme);
-
     initSidebarGroups();
     initNavSearch();
     initExport();
@@ -452,4 +430,74 @@
   } else {
     init();
   }
+})();
+
+// ── BÔNUS: Painel de atalhos de teclado (tecla ?) ──────────────────────────
+(function () {
+  const SHORTCUTS = [
+    { key: 'Ctrl K',   desc: 'Busca rápida' },
+    { key: '?',        desc: 'Mostrar atalhos' },
+    { key: 'Ctrl S',   desc: 'Salvar dados' },
+    { key: 'Esc',      desc: 'Fechar painéis' },
+    { key: 'Alt 1-9',  desc: 'Navegar entre views' },
+  ];
+
+  function showShortcutsModal() {
+    let modal = document.getElementById('shortcuts-modal');
+    if (modal) { modal.hidden = false; return; }
+
+    modal = document.createElement('div');
+    modal.id = 'shortcuts-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9998;display:flex;align-items:center;justify-content:center;';
+    modal.innerHTML = `
+      <div style="position:absolute;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);" id="shortcuts-overlay"></div>
+      <div style="
+        position:relative;background:var(--bg-secondary);border:1px solid var(--border);
+        border-radius:var(--radius-lg);padding:28px;min-width:320px;max-width:420px;width:90%;
+        box-shadow:0 25px 50px rgba(0,0,0,0.4);animation:slideUp 0.18s ease;
+      ">
+        <h3 style="margin:0 0 20px;font-size:16px;display:flex;align-items:center;gap:8px;">
+          <i class="fas fa-keyboard" style="color:var(--accent-primary);"></i> Atalhos de teclado
+        </h3>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          ${SHORTCUTS.map(s => `
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg-tertiary);border-radius:var(--radius-sm);">
+              <span style="font-size:13px;color:var(--text-secondary);">${s.desc}</span>
+              <kbd style="background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-size:12px;font-family:monospace;color:var(--text-primary);">${s.key}</kbd>
+            </div>
+          `).join('')}
+        </div>
+        <p style="margin-top:16px;font-size:12px;color:var(--text-tertiary);text-align:center;">Pressione Esc ou clique fora para fechar</p>
+      </div>`;
+    document.body.appendChild(modal);
+    document.getElementById('shortcuts-overlay').addEventListener('click', () => modal.hidden = true);
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === '?' && !e.ctrlKey && !e.metaKey) {
+      const active = document.activeElement;
+      if (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA') return;
+      e.preventDefault();
+      showShortcutsModal();
+    }
+    if (e.key === 'Escape') {
+      const m = document.getElementById('shortcuts-modal');
+      if (m) m.hidden = true;
+    }
+    // Alt+1-9 navegação rápida
+    if (e.altKey && e.key >= '1' && e.key <= '9') {
+      const views = ['dashboard','mentor-ia','materias','tarefas','provas','sessoes','estatisticas','configuracoes','ajuda'];
+      const view = views[parseInt(e.key) - 1];
+      if (view && window.app?.loadView) { e.preventDefault(); window.app.loadView(view); }
+    }
+    // Ctrl+S salva dados
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      const active = document.activeElement;
+      if (active.tagName !== 'INPUT' && active.tagName !== 'TEXTAREA') {
+        e.preventDefault();
+        window.dbService?.saveAllData?.();
+        if (window.showToast) window.showToast('Dados salvos!', 'success');
+      }
+    }
+  });
 })();
