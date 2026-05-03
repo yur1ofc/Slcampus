@@ -134,7 +134,7 @@ function showToast(msg, type = 'success') {
     setTimeout(() => {
         toast.classList.remove('show');
         setTimeout(() => toast.remove(), 300);
-    }, 3200);
+    }, 4500);
 }
 
 let _loadingTimeout = null;

@@ -4278,3 +4278,52 @@ body.sidebar-open .mobile-nav-overlay {
     margin-bottom: 16px;
     display: block;
 }
+
+
+/* ===========================
+   UX IMPROVEMENTS
+=========================== */
+
+/* Animação do modal de confirmação */
+@keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
+
+/* Quick Add menu hover */
+#slc-quick-menu div { cursor: pointer; }
+#slc-quick-menu div span:hover { background: var(--bg-tertiary) !important; }
+
+/* Bottom nav mobile */
+#slc-bottom-nav {
+  display: none;
+}
+@media (max-width: 768px) {
+  #slc-bottom-nav {
+    display: flex;
+  }
+  /* Esconde quick add padrão em mobile (usa bottom nav) */
+  #slc-quick-add-btn {
+    bottom: 90px;
+    right: 20px;
+    width: 46px;
+    height: 46px;
+    font-size: 18px;
+  }
+}
+
+/* Briefing card IA */
+#slc-briefing-card {
+  animation: slideUp 0.3s ease;
+}
+#slc-briefing-card i.fa-spinner {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Meu Dia — card hover */
+#view-container .card[onmouseover] {
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+
+/* Toast mais lento (4s em vez de 3s) */
+.toast {
+  animation-duration: 0.3s;
+}
