@@ -1723,3 +1723,172 @@ ${report.monthly}`;
 
   proto.__mentorV6Patched = true;
 })();
+
+// ══════════════════════════════════════════════════════
+// MENTOR IA v7 — IA realmente inteligente com Anthropic API
+// Usa Claude claude-sonnet-4-20250514 para respostas ricas e contextuais
+// ══════════════════════════════════════════════════════
+(function () {
+  if (!window.AIAssistant || window.AIAssistant.prototype.__mentorV7Patched) return;
+  const proto = window.AIAssistant.prototype;
+
+  // ── Constrói contexto completo em texto para o Claude ──────────────────────
+  proto._buildRichContext = function () {
+    const ctx = this.context;
+    const hoje = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+    const user = ctx.user || {};
+
+    // Matérias com stats
+    const materias = (ctx.subjects || []).map(s => {
+      const horasTotal = this.getHorasEstudadasMateria(s.nome);
+      const minutos7d = this.getMinutosEstudadosUltimosDias(s.nome, 7);
+      const notas = (ctx.grades || []).filter(g => g.materia === s.nome);
+      const media = notas.length
+        ? (notas.reduce((a, g) => a + (Number(g.nota) * (Number(g.peso) || 1)), 0) / notas.reduce((a, g) => a + (Number(g.peso) || 1), 0)).toFixed(1)
+        : null;
+      const provaProxima = (ctx.exams || [])
+        .filter(e => e.materia === s.nome && !e.concluida && e.data >= new Date().toISOString().slice(0,10))
+        .sort((a,b) => a.data.localeCompare(b.data))[0];
+      const tarefas = (ctx.tasks || []).filter(t => t.materia === s.nome && !t.concluida).length;
+
+      return {
+        nome: s.nome,
+        dificuldade: s.dificuldade || 3,
+        horasTotal: horasTotal.toFixed(1),
+        horas7d: (minutos7d/60).toFixed(1),
+        media: media || 'sem nota',
+        provaEm: provaProxima ? `${Math.round((new Date(provaProxima.data) - new Date()) / 86400000)} dias (${provaProxima.titulo})` : null,
+        tarefasPendentes: tarefas
+      };
+    });
+
+    // Provas próximas
+    const provas = (ctx.exams || [])
+      .filter(e => !e.concluida && e.data)
+      .sort((a,b) => a.data.localeCompare(b.data))
+      .slice(0, 8)
+      .map(e => {
+        const dias = Math.round((new Date(e.data) - new Date()) / 86400000);
+        return `${e.titulo} (${e.materia}) — ${dias > 0 ? 'em ' + dias + ' dias' : dias === 0 ? 'HOJE' : Math.abs(dias) + ' dias atrás'}`;
+      });
+
+    // Tarefas pendentes
+    const tarefas = (ctx.tasks || [])
+      .filter(t => !t.concluida)
+      .sort((a,b) => (a.dataLimite||'').localeCompare(b.dataLimite||''))
+      .slice(0, 8)
+      .map(t => {
+        const dias = t.dataLimite ? Math.round((new Date(t.dataLimite) - new Date()) / 86400000) : null;
+        return `${t.titulo} (${t.materia || 'sem matéria'})${dias !== null ? ' — ' + (dias < 0 ? Math.abs(dias) + ' dias atrasada' : dias === 0 ? 'vence hoje' : 'vence em ' + dias + ' dias') : ''}`;
+      });
+
+    // Sessões recentes
+    const sessoes7d = (ctx.sessions || [])
+      .filter(s => s.completada && s.data >= new Date(Date.now() - 7*86400000).toISOString().slice(0,10))
+      .slice(0, 10)
+      .map(s => `${s.materia} — ${s.duracao}min (${s.tipo || 'estudo'}) em ${s.data}`);
+
+    // Grade horária hoje
+    const diaSemana = new Date().getDay();
+    const aulasHoje = (ctx.classSchedule || [])
+      .filter(a => Number(a.dia) === diaSemana)
+      .map(a => `${a.materia} ${a.inicio}-${a.fim}${a.sala ? ' sala '+a.sala : ''}`);
+
+    return `
+=== HOJE: ${hoje} ===
+
+=== ALUNO ===
+Nome: ${user.nome || 'não informado'}
+Curso: ${user.curso || 'não informado'} | Semestre: ${user.semestre || '?'}
+Universidade: ${user.universidade || user.faculdade || 'não informada'}
+Meta diária de estudo: ${user.horasMaximas || 4}h
+
+=== MATÉRIAS (${materias.length}) ===
+${materias.map(m =>
+  `• ${m.nome}: ${m.horasTotal}h total (${m.horas7d}h esta semana), média ${m.media}, dificuldade ${m.dificuldade}/5${m.provaEm ? ', PROVA EM '+m.provaEm : ''}${m.tarefasPendentes ? ', '+m.tarefasPendentes+' tarefa(s) pendente(s)' : ''}`
+).join('\n')}
+
+=== AULAS HOJE ===
+${aulasHoje.length ? aulasHoje.join('\n') : 'Nenhuma aula hoje'}
+
+=== PROVAS/TRABALHOS PRÓXIMOS ===
+${provas.length ? provas.join('\n') : 'Nenhuma prova próxima cadastrada'}
+
+=== TAREFAS PENDENTES ===
+${tarefas.length ? tarefas.join('\n') : 'Nenhuma tarefa pendente'}
+
+=== SESSÕES DE ESTUDO (últimos 7 dias) ===
+${sessoes7d.length ? sessoes7d.join('\n') : 'Nenhuma sessão registrada esta semana'}
+
+=== REVISÕES PENDENTES HOJE ===
+${this.getRevisoesPendentes().map(r => `${r.materia}: ${r.topico || 'geral'}`).join('\n') || 'Nenhuma'}
+`.trim();
+  };
+
+  // ── Chama a API do Claude para respostas inteligentes ──────────────────────
+  proto._askClaude = async function (pergunta, extraContext = '') {
+    const context = this._buildRichContext();
+    const systemPrompt = `Você é o Mentor IA do Study Life Control, um assistente acadêmico altamente inteligente e direto ao ponto.
+
+Seu papel é ser como um tutor pessoal que conhece tudo sobre a vida acadêmica do aluno: matérias, notas, provas, tarefas, horas de estudo e rotina.
+
+REGRAS IMPORTANTES:
+- Seja específico e use os dados reais do aluno nas suas respostas
+- Nunca seja genérico. Se sabe o nome da prova, usa. Se sabe a nota, menciona
+- Respostas curtas e diretas (máx 250 palavras salvo quando pede plano detalhado)
+- Use emojis moderadamente (1-3 por resposta)
+- Quando detectar risco acadêmico real, seja claro e direto sobre isso
+- Sugira ações concretas: "estude X por 30 min hoje" não "você deveria estudar mais"
+- Lembre que o aluno está usando um app de estudos — ele quer praticidade
+
+DADOS DO ALUNO:
+${context}
+${extraContext ? '\nCONTEXTO ADICIONAL:\n' + extraContext : ''}`;
+
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: pergunta }]
+        })
+      });
+
+      if (!response.ok) throw new Error(`API error: ${response.status}`);
+      const data = await response.json();
+      return data.content?.[0]?.text || null;
+    } catch (err) {
+      console.warn('[MentorIA v7] Falha na API do Claude, usando modo local:', err.message);
+      return null; // fallback para modo local
+    }
+  };
+
+  // ── Patch do ask() — tenta Claude primeiro, fallback local ─────────────────
+  const _origAskV7 = proto.ask;
+  proto.ask = async function (pergunta) {
+    if (!pergunta || typeof pergunta !== 'string') return _origAskV7.call(this, pergunta);
+
+    // Tenta Claude API
+    const claudeResp = await this._askClaude(pergunta);
+    if (claudeResp) return claudeResp;
+
+    // Fallback: modo local (todas as respostas anteriores)
+    return _origAskV7.call(this, pergunta);
+  };
+
+  // ── askRich também usa Claude ───────────────────────────────────────────────
+  const _origAskRichV7 = proto.askRich;
+  proto.askRich = async function (pergunta) {
+    const claudeResp = await this._askClaude(pergunta);
+    if (claudeResp) {
+      return { text: claudeResp, actions: [], memory: [] };
+    }
+    return _origAskRichV7 ? _origAskRichV7.call(this, pergunta) : { text: await _origAskV7.call(this, pergunta), actions: [], memory: [] };
+  };
+
+  proto.__mentorV7Patched = true;
+  console.info('[MentorIA v7] IA com Claude API ativada.');
+})();

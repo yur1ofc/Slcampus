@@ -448,6 +448,11 @@
         if (!snap.exists) return bootstrap;
         const data = snap.data() || {};
         const subjects = ensureArray(data.subjects).map(neutralizeForCatalog);
+        // FIX: Não concatena com bootstrap — Firestore tem prioridade total
+        // Bootstrap só é usado se Firestore estiver vazio
+        const finalSubjects = subjects.length > 0
+          ? dedupeCurriculum(subjects).map(neutralizeForCatalog)
+          : (bootstrap ? dedupeCurriculum(bootstrap.subjects).map(neutralizeForCatalog) : []);
         return {
           key,
           faculdade: data.faculdade || faculdade,
@@ -455,7 +460,7 @@
           confidence: Number(data.confidence || 0),
           version: data.version || '',
           source: 'firestore',
-          subjects: dedupeCurriculum(bootstrap ? bootstrap.subjects.concat(subjects) : subjects).map(neutralizeForCatalog),
+          subjects: finalSubjects,
           stats: data.stats || {}
         };
       } catch (error) {

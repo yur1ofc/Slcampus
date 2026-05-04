@@ -573,6 +573,20 @@ Regras:
     return `
 <div class="wiz-card" id="wiz-step-2">
   <div class="wiz-card-title">📚 Grade Curricular</div>
+  <button id="wiz-buscar-grade-pronta" style="
+    width:100%;display:flex;align-items:center;justify-content:center;gap:10px;
+    padding:12px 16px;border-radius:var(--radius-md);border:1.5px dashed var(--accent-primary);
+    background:rgba(59,130,246,.06);color:var(--accent-primary);cursor:pointer;
+    font-size:13px;font-weight:500;font-family:inherit;margin-bottom:16px;
+    transition:background .15s;
+  " onmouseover="this.style.background='rgba(59,130,246,.12)'" onmouseout="this.style.background='rgba(59,130,246,.06)'">
+    <i class="fas fa-search"></i> Buscar grade pronta da comunidade
+  </button>
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+    <div style="flex:1;height:1px;background:var(--border);"></div>
+    <span style="font-size:11px;color:var(--text-tertiary);">ou importe manualmente abaixo</span>
+    <div style="flex:1;height:1px;background:var(--border);"></div>
+  </div>
   <div class="wiz-card-sub">Importe todas as disciplinas do seu curso de uma vez. Você pode pular e fazer depois.</div>
 
   <div class="wiz-import-tabs">

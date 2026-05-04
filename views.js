@@ -1273,6 +1273,800 @@ class ViewRenderer {
         const email = this.esc(auth.currentUser?.email || 'Não conectado');
 
         const abas = [
+            { id: 'geral',        icon: 'fa-sliders-h',     label: 'Preferências',   desc: 'Notificações e comportamento' },
+            { id: 'perfil',       icon: 'fa-user',           label: 'Perfil',         desc: 'Dados pessoais e acadêmicos' },
+            { id: 'tema',         icon: 'fa-palette',        label: 'Tema',           desc: 'Aparência e personalização' },
+            { id: 'dados',        icon: 'fa-database',       label: 'Dados',          desc: 'Backup, export e importação' },
+            { id: 'grade',        icon: 'fa-graduation-cap', label: 'Grade Curricular', desc: 'Importar e gerenciar grade' },
+            { id: 'sobre',        icon: 'fa-info-circle',    label: 'Sobre',          desc: 'Versão e informações' },
+        ];
+
+        const navAbas = abas.map(a => `
+            <button class="config-sidebar-item ${aba === a.id ? 'active' : ''}" data-config-aba="${a.id}">
+                <div class="config-sidebar-icon"><i class="fas ${a.icon}"></i></div>
+                <div class="config-sidebar-text">
+                    <span class="config-sidebar-label">${a.label}</span>
+                    <span class="config-sidebar-desc">${a.desc}</span>
+                </div>
+                <i class="fas fa-chevron-right config-sidebar-arrow"></i>
+            </button>`).join('');
+
+        let conteudo = '';
+        const abaAtual = abas.find(a => a.id === aba) || abas[0];
+
+
+        if (aba === 'geral') {
+            conteudo = `
+            <div class="config-section-title">⚙️ Preferências gerais</div>
+            <div class="config-item">
+                <div class="config-info"><h4>Notificações</h4><p>Receber alertas e lembretes</p></div>
+                <label class="toggle-switch">
+                    <input type="checkbox" ${s.notifications ? 'checked' : ''} id="config-notificacoes">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div class="config-item">
+                <div class="config-info"><h4>Planejamento automático</h4><p>Gerar recomendações automaticamente</p></div>
+                <label class="toggle-switch">
+                    <input type="checkbox" ${s.autoPlan ? 'checked' : ''} id="config-auto-plan">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div class="config-item">
+                <div class="config-info"><h4>Modo Faculdade Pesada</h4><p>Priorizar matérias difíceis e aumentar alertas</p></div>
+                <label class="toggle-switch">
+                    <input type="checkbox" ${s.heavyMode ? 'checked' : ''} id="config-heavy-mode">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div class="config-item">
+                <div class="config-info"><h4>Meta diária de estudo</h4><p>Horas por dia que você planeja estudar</p></div>
+                <select id="config-horas-meta" style="padding:6px 12px;border-radius:8px;background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-primary);">
+                    ${[1,2,3,4,5,6,7,8].map(h => `<option value="${h}" ${parseInt(user.horasMaximas||4)===h?'selected':''}>${h}h/dia</option>`).join('')}
+                </select>
+            </div>`;
+        }
+
+        if (aba === 'perfil') {
+            conteudo = `
+            <div class="config-section-title">👤 Informações do perfil</div>
+            <div style="display:flex;align-items:center;gap:16px;margin-bottom:24px;padding:16px;background:var(--bg-tertiary);border-radius:var(--radius-md);">
+                <img src="${auth.currentUser?.photoURL || ''}" onerror="this.style.display='none'" style="width:56px;height:56px;border-radius:50%;object-fit:cover;" alt="">
+                <div>
+                    <div style="font-weight:600;font-size:15px;">${this.esc(user.nome || auth.currentUser?.displayName || 'Usuário')}</div>
+                    <div style="font-size:13px;color:var(--text-secondary);">${email}</div>
+                </div>
+            </div>
+            <div class="config-item" style="flex-direction:column;align-items:flex-start;gap:12px;">
+                <div class="wiz-field" style="width:100%"><label>Nome</label>
+                    <input type="text" id="config-nome" value="${this.esc(user.nome || '')}" placeholder="Seu nome">
+                </div>
+                <div class="wiz-field" style="width:100%"><label>Universidade</label>
+                    <input type="text" id="config-universidade" value="${this.esc(user.universidade || '')}" placeholder="Ex: UFOB">
+                </div>
+                <div class="wiz-field" style="width:100%"><label>Curso</label>
+                    <input type="text" id="config-curso" value="${this.esc(user.curso || '')}" placeholder="Ex: Medicina">
+                </div>
+                <div class="wiz-field" style="width:100%"><label>Semestre atual</label>
+                    <select id="config-semestre">
+                        ${[1,2,3,4,5,6,7,8,9,10,11,12].map(n => `<option value="${n}" ${parseInt(user.semestre)===n?'selected':''}>${n}º semestre</option>`).join('')}
+                    </select>
+                </div>
+                <button class="btn-primary" id="btn-salvar-perfil" style="margin-top:4px;">
+                    <i class="fas fa-save"></i> Salvar alterações
+                </button>
+            </div>`;
+        }
+
+        if (aba === 'tema') {
+            conteudo = `<div id="theme-panel-inline">
+                <div class="config-section-title">🎨 Tema e personalização</div>
+                <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;">O painel de personalização completo está carregando...</p>
+            </div>`;
+        }
+
+        if (aba === 'dados') {
+            conteudo = `
+            <div class="config-section-title">📥 Exportar dados</div>
+            <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:28px;">
+                <button class="btn-secondary" id="exportar-dados" style="justify-content:flex-start;">
+                    <i class="fas fa-file-code"></i> Exportar JSON completo (backup)
+                </button>
+                <button class="btn-secondary" id="btn-export-csv" style="justify-content:flex-start;">
+                    <i class="fas fa-file-csv"></i> Exportar CSV (planilha)
+                </button>
+                <button class="btn-secondary" id="btn-export-pdf" style="justify-content:flex-start;">
+                    <i class="fas fa-file-pdf"></i> Exportar relatório PDF
+                </button>
+            </div>
+            <div class="config-section-title">📤 Importar dados</div>
+            <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:28px;">
+                <button class="btn-secondary" id="importar-dados" style="justify-content:flex-start;">
+                    <i class="fas fa-upload"></i> Importar backup JSON
+                </button>
+                <button class="btn-secondary" id="carregar-demo-publica" style="justify-content:flex-start;">
+                    <i class="fas fa-flask"></i> Carregar dados de demonstração
+                </button>
+            </div>
+            <div class="config-section-title" style="color:var(--accent-danger)">⚠️ Zona de perigo</div>
+            <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">Essas ações são irreversíveis. Faça um backup antes.</p>
+            <button class="btn-danger" id="limpar-dados">
+                <i class="fas fa-trash"></i> Apagar todos os dados
+            </button>`;
+        }
+
+        if (aba === 'grade') {
+            const curr = (this.app.data.curriculum || []);
+            const semAtual = String(this.app.data.user?.semestre || '1');
+            const porSem = {};
+            curr.forEach(c => {
+                const s = String(c.semestre || 'Sem semestre');
+                if (!porSem[s]) porSem[s] = [];
+                porSem[s].push(c);
+            });
+            conteudo = `
+            <div class="config-section-title">🎓 Sua grade curricular</div>
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+                <div style="padding:12px 20px;background:var(--bg-tertiary);border-radius:var(--radius-md);text-align:center;">
+                    <div style="font-size:24px;font-weight:700;color:var(--accent-primary);">${curr.length}</div>
+                    <div style="font-size:12px;color:var(--text-secondary);">componentes</div>
+                </div>
+                <button class="btn-primary" onclick="window.app?.loadView?.('grade-curricular')">
+                    <i class="fas fa-external-link-alt"></i> Abrir grade completa
+                </button>
+                <button class="btn-secondary" onclick="window.app?.loadView?.('catalogo-curricular')">
+                    <i class="fas fa-cloud-download-alt"></i> Importar/Buscar grade
+                </button>
+            </div>
+            ${Object.keys(porSem).sort((a,b) => Number(a)-Number(b)).slice(0,4).map(sem => `
+                <div style="margin-bottom:12px;">
+                    <div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;">${sem}º SEMESTRE</div>
+                    <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                        ${porSem[sem].slice(0,6).map(c => `
+                            <span style="font-size:11px;padding:3px 10px;border-radius:999px;
+                                background:${c.status==='concluida'?'rgba(16,185,129,.15)':sem===semAtual?'rgba(59,130,246,.15)':'var(--bg-tertiary)'};
+                                color:${c.status==='concluida'?'var(--accent-success)':sem===semAtual?'var(--accent-primary)':'var(--text-secondary)'};
+                                border:1px solid ${c.status==='concluida'?'rgba(16,185,129,.3)':sem===semAtual?'rgba(59,130,246,.3)':'var(--border)'}">
+                                ${c.nome.length > 30 ? c.nome.slice(0,28)+'…' : c.nome}
+                            </span>`).join('')}
+                        ${porSem[sem].length > 6 ? `<span style="font-size:11px;color:var(--text-tertiary);padding:3px 8px;">+${porSem[sem].length-6} mais</span>` : ''}
+                    </div>
+                </div>`).join('')}`;
+        }
+
+        if (aba === 'sobre') {
+            conteudo = `
+            <div class="config-section-title">ℹ️ Sobre o Study Life Control</div>
+            <div style="text-align:center;padding:20px 0 28px;">
+                <i class="fas fa-brain" style="font-size:48px;background:linear-gradient(135deg,var(--accent-primary),var(--accent-secondary));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:12px;display:block;"></i>
+                <h2 style="margin-bottom:4px;">Study Life Control</h2>
+                <p style="color:var(--text-secondary);font-size:13px;">Sistema Inteligente para Universitários</p>
+                <div style="display:inline-flex;align-items:center;gap:8px;margin-top:8px;padding:4px 14px;background:var(--bg-tertiary);border-radius:999px;font-size:12px;color:var(--text-secondary);">
+                    <i class="fas fa-code-branch"></i> v2.0 • Mentor IA v7
+                </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+                <div class="config-item"><div class="config-info"><h4>Firebase</h4><p>Banco de dados em tempo real</p></div><span style="color:var(--accent-success);font-size:12px;"><i class="fas fa-circle"></i> Conectado</span></div>
+                <div class="config-item"><div class="config-info"><h4>Mentor IA</h4><p>Motor de inteligência artificial</p></div><span style="color:var(--accent-success);font-size:12px;"><i class="fas fa-circle"></i> Ativo v7</span></div>
+                <div class="config-item"><div class="config-info"><h4>Modo offline</h4><p>Cache local via IndexedDB</p></div><span style="color:var(--accent-success);font-size:12px;"><i class="fas fa-circle"></i> Ativo</span></div>
+            </div>`;
+        }
+
+        return `
+        <div class="config-layout">
+            <!-- Sidebar de configurações -->
+            <div class="config-sidebar">
+                <div class="config-sidebar-header">
+                    <i class="fas fa-cog"></i>
+                    <span>Configurações</span>
+                </div>
+                ${navAbas}
+            </div>
+            <!-- Conteúdo principal -->
+            <div class="config-main">
+                <div class="config-main-header">
+                    <i class="fas ${abaAtual.icon}" style="color:var(--accent-primary);font-size:18px;"></i>
+                    <div>
+                        <h2 style="font-size:17px;font-weight:600;margin:0 0 2px;">${abaAtual.label}</h2>
+                        <p style="font-size:12px;color:var(--text-secondary);margin:0;">${abaAtual.desc}</p>
+                    </div>
+                </div>
+                <div class="config-main-body">
+                    ${conteudo}
+                </div>
+            </div>
+        </div>`;
+    }
+
+        renderTarefas() {
+        const pendentes = this.app.data.tasks
+            .filter(t => !t.concluida)
+            .sort((a, b) => new Date(a.dataLimite) - new Date(b.dataLimite));
+
+        const concluidas = this.app.data.tasks
+            .filter(t => t.concluida)
+            .sort((a, b) => new Date(b.dataLimite) - new Date(a.dataLimite));
+
+        return `
+            <div class="view-header">
+                <h2><i class="fas fa-tasks"></i> Tarefas</h2>
+                <button class="btn-primary" id="btn-nova-tarefa"><i class="fas fa-plus"></i> Nova Tarefa</button>
+            </div>
+
+            <div class="dashboard-grid">
+                <div class="card">
+                    <div class="card-header"><h3>📋 Pendentes (${pendentes.length})</h3></div>
+                    <div class="card-body">
+                        <ul class="item-list">
+                            ${pendentes.map(t => `
+                                <li>
+                                    <div>
+                                        <strong>${this.esc(t.titulo)}</strong>
+                                        <small>${this.esc(t.materia)} • até ${formatarData(t.dataLimite)}</small>
+                                    </div>
+                                    <div style="display:flex; gap:8px;">
+                                        <span class="tag ${this.esc(t.prioridade)}">${this.esc(t.prioridade)}</span>
+                                        <button class="btn-icon btn-editar-tarefa" data-id="${this.esc(t.id)}" title="Editar tarefa">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn-icon btn-concluir-tarefa" data-id="${this.esc(t.id)}" title="Concluir tarefa">
+                                            <i class="fas fa-check-circle"></i>
+                                        </button>
+                                        <button class="btn-icon btn-excluir-tarefa" data-id="${this.esc(t.id)}" title="Excluir tarefa" style="color: var(--accent-danger);">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </li>
+                            `).join('')}
+                            ${!pendentes.length ? '<li>Nenhuma tarefa pendente</li>' : ''}
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header"><h3>✅ Concluídas (${concluidas.length})</h3></div>
+                    <div class="card-body">
+                        <ul class="item-list">
+                            ${concluidas.slice(0, 10).map(t => `
+                                <li>
+                                    <div>
+                                        <strong>${this.esc(t.titulo)}</strong>
+                                        <small>${this.esc(t.materia)}</small>
+                                    </div>
+                                    <div style="display:flex; gap:8px;">
+                                        <i class="fas fa-check" style="color: var(--accent-success);"></i>
+                                        <button class="btn-icon btn-editar-tarefa" data-id="${this.esc(t.id)}" title="Editar tarefa">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn-icon btn-excluir-tarefa" data-id="${this.esc(t.id)}" title="Excluir tarefa" style="color: var(--accent-danger);">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </li>
+                            `).join('')}
+                            ${!concluidas.length ? '<li>Nenhuma tarefa concluída</li>' : ''}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    renderProvas() {
+        const agora = toDateOnly(new Date());
+
+        const proximas = this.app.data.exams
+            .filter(e => toDateOnly(e.data) >= agora && !e.concluida)
+            .sort((a, b) => new Date(a.data) - new Date(b.data));
+
+        const passadas = this.app.data.exams
+            .filter(e => toDateOnly(e.data) < agora || e.concluida)
+            .sort((a, b) => new Date(b.data) - new Date(a.data))
+            .slice(0, 10);
+
+        return `
+            <div class="view-header">
+                <h2><i class="fas fa-graduation-cap"></i> Provas e Trabalhos</h2>
+                <button class="btn-primary" id="btn-nova-prova"><i class="fas fa-plus"></i> Novo Evento</button>
+            </div>
+
+            <div class="dashboard-grid">
+                <div class="card">
+                    <div class="card-header"><h3>📅 Próximos (${proximas.length})</h3></div>
+                    <div class="card-body">
+                        <ul class="item-list">
+                            ${proximas.map(e => `
+                                <li>
+                                    <div>
+                                        <strong>${this.esc(e.titulo)}</strong>
+                                        <small>${this.esc(e.materia)} • ${this.esc(e.tipo)} • ${formatarData(e.data)}</small>
+                                    </div>
+                                    <div style="display:flex; gap:8px;">
+                                        <span class="tag ${this.app.getExamRiskClass(e)}">${diasAte(e.data)} dias</span>
+                                        <button class="btn-icon btn-editar-prova" data-id="${this.esc(e.id)}" title="Editar evento">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn-icon btn-excluir-prova" data-id="${this.esc(e.id)}" title="Excluir evento" style="color: var(--accent-danger);">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </li>
+                            `).join('')}
+                            ${!proximas.length ? '<li>Nenhum evento próximo</li>' : ''}
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header"><h3>📜 Eventos Passados</h3></div>
+                    <div class="card-body">
+                        <ul class="item-list">
+                            ${passadas.map(e => `
+                                <li>
+                                    <div>
+                                        <strong>${this.esc(e.titulo)}</strong>
+                                        <small>${this.esc(e.materia)} • ${formatarData(e.data)}</small>
+                                    </div>
+                                    <div style="display:flex; gap:8px;">
+                                        <span class="tag success">Concluído</span>
+                                        <button class="btn-icon btn-editar-prova" data-id="${this.esc(e.id)}" title="Editar evento">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn-icon btn-excluir-prova" data-id="${this.esc(e.id)}" title="Excluir evento" style="color: var(--accent-danger);">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </li>
+                            `).join('')}
+                            ${!passadas.length ? '<li>Nenhum evento passado</li>' : ''}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    renderMapaAprendizado() {
+        return `
+            <div class="view-header">
+                <h2><i class="fas fa-map"></i> Mapa de Aprendizado</h2>
+                <button class="btn-primary" id="btn-novo-topico"><i class="fas fa-plus"></i> Novo Tópico</button>
+            </div>
+
+            <div class="mapa-grid">
+                ${this.app.data.subjects.map(s => {
+                    const topicos = this.app.data.learningMap.filter(t => t.materia === s.nome);
+                    return `
+                        <div class="card materia-map">
+                            <div class="card-header">
+                                <h3>${this.esc(s.nome)}</h3>
+                                <span class="badge">${topicos.length} tópicos</span>
+                            </div>
+                            <div class="card-body">
+                                ${topicos.map(t => `
+                                    <div class="topico-item">
+                                        <div class="topico-info">
+                                            <strong>${this.esc(t.nome)}</strong>
+                                            <span class="tag ${this.esc(t.status)}">${this.esc(t.status)}</span>
+                                        </div>
+                                        <div class="topico-meta">
+                                            <span>📊 ${this.esc(t.dificuldade)}/5</span>
+                                            <span>🎯 ${this.esc(t.confianca)}/5</span>
+                                            <span>🔄 ${t.ultimaRevisao ? diasDesde(t.ultimaRevisao) : 0}d</span>
+                                        </div>
+                                        <div style="margin-top:10px; display:flex; justify-content:flex-end; gap:8px;">
+                                            <button class="btn-icon btn-editar-topico" data-id="${this.esc(t.id)}" title="Editar tópico">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn-icon btn-excluir-topico" data-id="${this.esc(t.id)}" title="Excluir tópico" style="color: var(--accent-danger);">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                                ${!topicos.length ? '<p class="text-secondary">Nenhum tópico cadastrado</p>' : ''}
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+    }
+
+    renderMateriais() {
+        return `
+            <div class="view-header">
+                <h2><i class="fas fa-folder"></i> Materiais de Estudo</h2>
+                <button class="btn-primary" id="btn-novo-material"><i class="fas fa-plus"></i> Novo Material</button>
+            </div>
+
+            <div class="materiais-grid">
+                ${this.app.data.subjects.map(s => {
+                    const materiais = this.app.data.materials.filter(m => m.materia === s.nome);
+                    return `
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>${this.esc(s.nome)}</h3>
+                                <span>${materiais.length} itens</span>
+                            </div>
+                            <div class="card-body">
+                                <ul class="item-list">
+                                    ${materiais.map(m => {
+                                        const isExternal = ['link', 'pdf', 'video'].includes(m.tipo);
+                                        const contentPreview = m.tipo === 'anotacao'
+                                            ? `<small>${this.esc(String(m.conteudo || '').slice(0, 80))}${String(m.conteudo || '').length > 80 ? '...' : ''}</small>`
+                                            : `<small>${this.esc(m.tipo)}</small>`;
+
+                                        return `
+                                            <li>
+                                                <div style="display:flex; align-items:center; gap:8px;">
+                                                    <i class="fas ${this.getMaterialIcon(m.tipo)}"></i>
+                                                    <div>
+                                                        <strong>${this.esc(m.titulo)}</strong><br>
+                                                        ${contentPreview}
+                                                    </div>
+                                                </div>
+                                                <div style="display:flex; gap:8px;">
+                                                    ${isExternal ? `
+                                                        <a href="${this.esc(m.conteudo)}" target="_blank" rel="noopener noreferrer" class="btn-icon" title="Abrir material">
+                                                            <i class="fas fa-external-link-alt"></i>
+                                                        </a>
+                                                    ` : ''}
+                                                    <button class="btn-icon btn-editar-material" data-id="${this.esc(m.id)}" title="Editar material">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button class="btn-icon btn-excluir-material" data-id="${this.esc(m.id)}" title="Excluir material" style="color: var(--accent-danger);">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </li>
+                                        `;
+                                    }).join('')}
+                                    ${!materiais.length ? '<li>Nenhum material cadastrado</li>' : ''}
+                                </ul>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+    }
+
+    renderCalendario() {
+        const hoje = new Date();
+        const primeiroDia = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+        const ultimoDia = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+        const diasNoMes = ultimoDia.getDate();
+        const primeiroDiaSemana = primeiroDia.getDay();
+
+        const dias = [];
+        for (let i = 0; i < primeiroDiaSemana; i++) dias.push(null);
+        for (let i = 1; i <= diasNoMes; i++) dias.push(i);
+
+        const eventos = [
+            ...this.app.data.sessions.map(s => ({ ...s, tipo: 'sessao', data: s.data, label: s.topico || s.materia })),
+            ...this.app.data.tasks.map(t => ({ ...t, tipo: 'tarefa', data: t.dataLimite, label: t.titulo })),
+            ...this.app.data.exams.map(e => ({ ...e, tipo: 'exame', data: e.data, label: e.titulo }))
+        ];
+
+        return `
+            <h2><i class="fas fa-calendar"></i> Calendário</h2>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>${hoje.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</h3>
+                </div>
+                <div class="card-body">
+                    <div class="calendar-grid">
+                        <div class="calendar-weekdays">
+                            <div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div>
+                        </div>
+                        <div class="calendar-days">
+                            ${dias.map(d => {
+                                if (!d) return '<div class="calendar-day empty"></div>';
+
+                                const eventosDia = eventos.filter(e => {
+                                    const data = new Date(e.data);
+                                    return data.getDate() === d &&
+                                        data.getMonth() === hoje.getMonth() &&
+                                        data.getFullYear() === hoje.getFullYear();
+                                });
+
+                                return `
+                                    <div class="calendar-day ${eventosDia.length ? 'has-events' : ''}">
+                                        <span class="day-number">${d}</span>
+                                        ${eventosDia.length ? `
+                                            <div class="day-events">
+                                                ${eventosDia.slice(0, 3).map(e => `
+                                                    <div class="event-indicator" title="${this.esc(e.label)}">
+                                                        <i class="fas ${this.getEventIcon(e.tipo)}"></i>
+                                                    </div>
+                                                `).join('')}
+                                                ${eventosDia.length > 3 ? `<span class="more-events">+${eventosDia.length - 3}</span>` : ''}
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    renderPrevisaoNotas() {
+        return `
+            <div class="view-header">
+                <h2><i class="fas fa-chart-line"></i> Previsão de Notas</h2>
+                <button class="btn-primary" id="btn-registrar-nota"><i class="fas fa-plus"></i> Registrar Nota</button>
+            </div>
+
+            <div class="dashboard-grid">
+                ${this.app.data.subjects.map(s => {
+                    const notas = this.app.data.grades.filter(g => g.materia === s.nome);
+                    const media = this.app.calcularMedia(notas);
+                    const previsao = this.app.calcularPrevisaoNota(s, notas);
+
+                    return `
+                        <div class="card subject-grade-card">
+                            <div class="card-header">
+                                <h3>${this.esc(s.nome)}</h3>
+                                <span class="risk-indicator risk-${this.esc(previsao.risco)}">${this.esc(previsao.risco)}</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="grade-stats">
+                                    <div class="grade-item">
+                                        <span class="grade-label">Média atual</span>
+                                        <span class="grade-value">${media.toFixed(1)}</span>
+                                    </div>
+                                    <div class="grade-item">
+                                        <span class="grade-label">Nota desejada</span>
+                                        <span class="grade-value">${this.esc(s.notaDesejada)}</span>
+                                    </div>
+                                    <div class="grade-item">
+                                        <span class="grade-label">Necessário</span>
+                                        <span class="grade-value">${this.esc(previsao.notaNecessaria)}</span>
+                                    </div>
+                                </div>
+                                <div class="progress-container">
+                                    <div class="progress-label">
+                                        <span>Chance de aprovação</span>
+                                        <span>${previsao.chance}%</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: ${previsao.chance}%"></div>
+                                    </div>
+                                </div>
+                                <p class="previsao-motivo">💡 ${this.esc(previsao.motivo)}</p>
+                                
+                                <div style="margin-top:16px;">
+                                    <h4>Notas Registradas</h4>
+                                    <ul class="item-list">
+                                        ${notas.map(n => `
+                                            <li>
+                                                <div>
+                                                    <strong>${this.esc(n.avaliacao)}</strong>
+                                                    <small>Nota: ${this.esc(n.valor)} • Peso: ${this.esc(n.peso)}%</small>
+                                                </div>
+                                                <div style="display:flex; gap:8px;">
+                                                    <button class="btn-icon btn-editar-nota" data-id="${this.esc(n.id)}" title="Editar nota">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button class="btn-icon btn-excluir-nota" data-id="${this.esc(n.id)}" title="Excluir nota" style="color: var(--accent-danger);">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </li>
+                                        `).join('')}
+                                        ${!notas.length ? '<li>Nenhuma nota registrada</li>' : ''}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+    }
+
+    renderHabitos() {
+        const habitos = [
+            { id: 'estudar', nome: 'Estudar', icone: 'fa-book' },
+            { id: 'revisar', nome: 'Revisar conteúdo', icone: 'fa-sync-alt' },
+            { id: 'dormir', nome: 'Dormir bem', icone: 'fa-bed' },
+            { id: 'aula', nome: 'Ir para aula', icone: 'fa-university' },
+            { id: 'exercicio', nome: 'Fazer exercícios', icone: 'fa-dumbbell' },
+            { id: 'agua', nome: 'Beber água', icone: 'fa-tint' },
+            { id: 'anotacoes', nome: 'Ler anotações', icone: 'fa-sticky-note' }
+        ];
+
+        const hoje = toDateString();
+
+        return `
+            <h2><i class="fas fa-heart"></i> Hábitos e Rotina</h2>
+
+            <div class="dashboard-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>📋 Hábitos Diários</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="habitos-list">
+                            ${habitos.map(h => {
+                                const feito = this.app.data.habits.some(hb => hb.id === h.id && toDateString(hb.data) === hoje);
+                                return `
+                                    <div class="habito-item">
+                                        <div class="habito-info">
+                                            <i class="fas ${h.icone}"></i>
+                                            <span>${this.esc(h.nome)}</span>
+                                        </div>
+                                        <button class="btn-icon toggle-habito ${feito ? 'active' : ''}" data-habito="${this.esc(h.id)}">
+                                            <i class="fas ${feito ? 'fa-check-circle' : 'fa-circle'}"></i>
+                                        </button>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3>📊 Consistência Semanal</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="consistency-chart">
+                            ${this.renderConsistencyChart()}
+                        </div>
+                        <div class="consistency-stats">
+                            <div class="stat-item">
+                                <span class="stat-value">${this.app.calcularConsistencia()}%</span>
+                                <span class="stat-label">esta semana</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value">${this.esc(this.app.data.user?.streak || 0)}</span>
+                                <span class="stat-label">dias seguidos</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    renderEstatisticas() {
+        const horasPorMateria = this.app.calcularHorasPorMateria();
+        const horasPorTipo = this.app.calcularHorasPorTipo();
+        const total = this.app.data.sessions.filter(s => s.concluida)
+            .reduce((a, s) => a + s.duracao / 60, 0);
+
+        const maxHorasMateria = horasPorMateria.length ? Math.max(...horasPorMateria.map(h => h.horas)) : 1;
+        const maxHorasTipo = horasPorTipo.length ? Math.max(...horasPorTipo.map(t => t.horas)) : 1;
+
+        return `
+            <h2><i class="fas fa-chart-bar"></i> Estatísticas</h2>
+
+            <div class="dashboard-grid">
+                <div class="card">
+                    <div class="card-header"><h3>⏱️ Total Estudado</h3></div>
+                    <div class="card-body text-center">
+                        <div class="big-number">${total.toFixed(1)}</div>
+                        <p>horas no total</p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header"><h3>📊 Média Diária</h3></div>
+                    <div class="card-body text-center">
+                        <div class="big-number">${this.app.calcularMediaDiaria()}</div>
+                        <p>horas por dia</p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header"><h3>🔥 Melhor Dia</h3></div>
+                    <div class="card-body text-center">
+                        <div class="big-number">${this.esc(this.app.calcularMelhorDia())}</div>
+                        <p>${this.app.calcularMelhorDiaHoras()}h</p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header"><h3>✅ Tarefas</h3></div>
+                    <div class="card-body text-center">
+                        <div class="big-number">${this.app.calcularTaxaConclusaoTarefas()}%</div>
+                        <p>concluídas</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><h3>📚 Horas por Matéria</h3></div>
+                <div class="card-body">
+                    ${horasPorMateria.map(item => `
+                        <div class="stat-row">
+                            <div class="stat-label">${this.esc(item.materia)}</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${(item.horas / maxHorasMateria) * 100}%"></div>
+                            </div>
+                            <div class="stat-value">${item.horas.toFixed(1)}h</div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><h3>📖 Tipos de Estudo</h3></div>
+                <div class="card-body">
+                    <div class="tipos-grid">
+                        ${horasPorTipo.map(t => `
+                            <div class="tipo-item">
+                                <div class="tipo-header">
+                                    <span>${this.esc(t.tipo)}</span>
+                                    <span>${t.horas.toFixed(1)}h</span>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: ${(t.horas / maxHorasTipo) * 100}%"></div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    renderModoFoco() {
+        return `
+            <h2><i class="fas fa-clock"></i> Modo Foco</h2>
+
+            <div class="card timer-card">
+                <div class="card-body text-center">
+                    <div class="timer-display" id="timer-display">25:00</div>
+
+                    <div class="timer-settings">
+                        <select id="timer-duracao" class="timer-select">
+                            <option value="25">Pomodoro (25 min)</option>
+                            <option value="50">Estudo longo (50 min)</option>
+                            <option value="90">Bloco pesado (90 min)</option>
+                            <option value="15">Pausa curta (15 min)</option>
+                        </select>
+                    </div>
+
+                    <div class="timer-controls">
+                        <button class="timer-btn start" id="timer-start">
+                            <i class="fas fa-play"></i> Iniciar
+                        </button>
+                        <button class="timer-btn pause" id="timer-pause" style="display: none;">
+                            <i class="fas fa-pause"></i> Pausar
+                        </button>
+                        <button class="timer-btn reset" id="timer-reset">
+                            <i class="fas fa-undo"></i> Reset
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3>📊 Sessões de Foco Hoje</h3>
+                </div>
+                <div class="card-body">
+                    <ul class="item-list" id="sessoes-foco-hoje">
+                        ${this.renderSessoesFocoHoje()}
+                    </ul>
+                </div>
+            </div>
+        `;
+    }
+
+    renderConfiguracoes(aba = 'geral') {
+        const s = this.app.data.settings || {};
+        const user = this.app.data.user || {};
+        const email = this.esc(auth.currentUser?.email || 'Não conectado');
+
+        const abas = [
             { id: 'geral',    icon: 'fa-sliders-h',  label: 'Geral' },
             { id: 'perfil',   icon: 'fa-user',        label: 'Perfil' },
             { id: 'tema',     icon: 'fa-palette',     label: 'Tema' },

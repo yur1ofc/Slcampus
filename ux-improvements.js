@@ -413,10 +413,10 @@
     btn.innerHTML = '<i class="fas fa-plus"></i>';
     btn.setAttribute('title', 'Adicionar rápido (Q)');
     btn.style.cssText = `
-      position:fixed;bottom:28px;right:28px;z-index:999;
-      width:52px;height:52px;border-radius:50%;
+      position:fixed;bottom:28px;right:88px;z-index:997;
+      width:48px;height:48px;border-radius:50%;
       background:var(--accent-primary);color:#fff;border:none;
-      font-size:20px;cursor:pointer;
+      font-size:18px;cursor:pointer;
       box-shadow:0 8px 24px rgba(59,130,246,.4);
       display:flex;align-items:center;justify-content:center;
       transition:transform .2s,box-shadow .2s;
@@ -431,7 +431,7 @@
     menu.id = 'slc-quick-menu';
     menu.hidden = true;
     menu.style.cssText = `
-      position:fixed;bottom:92px;right:28px;z-index:998;
+      position:fixed;bottom:88px;right:88px;z-index:996;
       display:flex;flex-direction:column;align-items:flex-end;gap:10px;
     `;
 
