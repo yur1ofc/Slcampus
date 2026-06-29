@@ -1,46 +1,35 @@
 // api/gemini.js — Vercel Function (proxy seguro para o Google Gemini)
-// A chave GEMINI_API_KEY fica nas variáveis de ambiente do Vercel, nunca no código.
-// O front-end chama /api/gemini em vez de chamar o Gemini diretamente.
+// A chave GEMINI_API_KEY fica nas variáveis de ambiente do Vercel, nunca no browser.
 
-export default async function handler(req, res) {
-  // Só aceita POST
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+module.exports = async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  // Pega a chave das variáveis de ambiente do Vercel (nunca exposta ao browser)
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return res.status(500).json({ error: 'GEMINI_API_KEY não configurada no Vercel. Vá em Settings → Environment Variables.' });
   }
 
   try {
-    const body = req.body;
-
-    // Limita tamanho para evitar abuso (10MB)
-    const bodyStr = JSON.stringify(body);
-    if (bodyStr.length > 10 * 1024 * 1024) {
+    const body = JSON.stringify(req.body);
+    if (body.length > 10 * 1024 * 1024) {
       return res.status(413).json({ error: 'Arquivo muito grande. Use PDFs com menos de 10MB.' });
     }
 
     const geminiRes = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: bodyStr
-      }
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }
     );
 
     const data = await geminiRes.json();
-
-    if (!geminiRes.ok) {
-      return res.status(geminiRes.status).json({ error: data?.error?.message || 'Erro no Gemini' });
-    }
+    if (!geminiRes.ok) return res.status(geminiRes.status).json({ error: data?.error?.message || 'Erro no Gemini' });
 
     return res.status(200).json(data);
-
   } catch (err) {
     return res.status(500).json({ error: err.message || 'Erro interno' });
   }
-}
+};
