@@ -1,41 +1,46 @@
-# Segredos e variáveis de ambiente — NUNCA commitar
-.env
-.env.local
-.env.production
-.env.*.local
-*.pem
-*.key
-serviceAccount*.json
-service-account*.json
-*-firebase-adminsdk*.json
+// api/gemini.js — Vercel Function (proxy seguro para o Google Gemini)
+// A chave GEMINI_API_KEY fica nas variáveis de ambiente do Vercel, nunca no código.
+// O front-end chama /api/gemini em vez de chamar o Gemini diretamente.
 
-# Dependências
-node_modules/
-.pnp
-.pnp.js
+export default async function handler(req, res) {
+  // Só aceita POST
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
-# Build
-dist/
-build/
-.next/
-out/
+  // Pega a chave das variáveis de ambiente do Vercel (nunca exposta ao browser)
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({ error: 'GEMINI_API_KEY não configurada no Vercel. Vá em Settings → Environment Variables.' });
+  }
 
-# Cache e logs
-.cache/
-*.log
-npm-debug.log*
-yarn-debug.log*
+  try {
+    const body = req.body;
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-.DS_Store
-Thumbs.db
+    // Limita tamanho para evitar abuso (10MB)
+    const bodyStr = JSON.stringify(body);
+    if (bodyStr.length > 10 * 1024 * 1024) {
+      return res.status(413).json({ error: 'Arquivo muito grande. Use PDFs com menos de 10MB.' });
+    }
 
-# Vercel
-.vercel/
+    const geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: bodyStr
+      }
+    );
 
-# Firebase config gerado localmente — tem credentials reais
-env-config.js
+    const data = await geminiRes.json();
+
+    if (!geminiRes.ok) {
+      return res.status(geminiRes.status).json({ error: data?.error?.message || 'Erro no Gemini' });
+    }
+
+    return res.status(200).json(data);
+
+  } catch (err) {
+    return res.status(500).json({ error: err.message || 'Erro interno' });
+  }
+}

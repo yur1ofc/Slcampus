@@ -63,12 +63,8 @@ Regras:
   // ─── Chamada ao Gemini ─────────────────────────────────────────────────────
 
   async function callGemini(parts) {
-    const apiKey = window.__ENV?.GEMINI_API_KEY || '';
-    if (!apiKey) throw new Error('Chave do Gemini não configurada. Veja GEMINI_API_KEY em env-config.js.');
-
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
-
-    const response = await fetch(url, {
+    // Chama o proxy seguro no Vercel — a chave fica no servidor, nunca no browser
+    const response = await fetch('/api/gemini', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contents: [{ parts }] })

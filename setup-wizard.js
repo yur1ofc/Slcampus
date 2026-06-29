@@ -1020,12 +1020,6 @@ Regras:
       wizRunBtn?.addEventListener('click', async () => {
         if (!wizSelectedFile) { wizSetStatus('<i class="fas fa-exclamation-circle"></i> Selecione um PDF ou imagem primeiro.', 'error'); return; }
 
-        const apiKey = window.__ENV?.GEMINI_API_KEY || '';
-        if (!apiKey) {
-          wizSetStatus('<i class="fas fa-exclamation-circle"></i> Chave do Gemini não configurada. Adicione <strong>GEMINI_API_KEY</strong> no env-config.js (veja o README).', 'error');
-          return;
-        }
-
         wizRunBtn.disabled = true;
         wizRunBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processando com Gemini...';
         wizSetStatus('<i class="fas fa-spinner fa-spin"></i> Lendo o arquivo... pode levar alguns segundos.', 'loading');
@@ -1042,7 +1036,8 @@ Regras:
           const mime = wizSelectedFile.type || 'application/octet-stream';
           const gradePrompt = `Leia o conteúdo e retorne SOMENTE um JSON válido, sem texto antes ou depois, sem markdown.\n\nFormato obrigatório:\n{"faculdade":"","curso":"","disciplinas":[{"nome":"","codigo":"","semestre":1,"cargaHoraria":60,"creditos":4,"prerequisitos":[],"tipo":"obrigatoria"}]}\n\nRetorne APENAS JSON puro. Não invente disciplinas. Extraia somente o que estiver no conteúdo.`;
 
-          const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+          // Chama o proxy seguro no Vercel (a chave fica no servidor, nunca no browser)
+          const resp = await fetch('/api/gemini', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ contents: [{ parts: [{ text: gradePrompt }, { inline_data: { mime_type: mime, data: base64 } }] }] })
