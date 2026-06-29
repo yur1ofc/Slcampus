@@ -595,58 +595,31 @@ Regras:
     <button class="wiz-tab" data-tab="manual">✏️ Manual</button>
   </div>
 
-  <!-- Tab: IA (PDF/Foto) -->
+  <!-- Tab: IA (PDF/Foto) — importação direta via Google Gemini (grátis) -->
   <div class="wiz-tab-panel active" id="wiz-tab-ia">
-    <div class="wiz-ai-box">
-      <h4>🤖 Use ChatGPT ou Claude para ler o PDF/foto</h4>
-      <p>O sistema não tem como acessar o site da sua faculdade diretamente, mas você pode usar uma IA gratuita em 3 passos simples:</p>
-      <div class="wiz-ai-steps">
-        <div class="wiz-ai-step">
-          <div class="wiz-ai-step-num">1</div>
-          <div class="wiz-ai-step-text">
-            <strong>Copie o prompt abaixo</strong> — ele instrui a IA a gerar o JSON no formato certo
-          </div>
-        </div>
-        <div class="wiz-ai-step">
-          <div class="wiz-ai-step-num">2</div>
-          <div class="wiz-ai-step-text">
-            <strong>Abra o ChatGPT ou Claude</strong>, cole o prompt e <strong>anexe o PDF ou a foto</strong> da grade curricular da sua faculdade
-          </div>
-        </div>
-        <div class="wiz-ai-step">
-          <div class="wiz-ai-step-num">3</div>
-          <div class="wiz-ai-step-text">
-            <strong>Copie o JSON</strong> que a IA gerou e cole no campo abaixo
-          </div>
-        </div>
+    <div class="wiz-ai-box" id="wiz-gemini-box">
+      <h4>✨ Envie o PDF ou foto — a IA extrai tudo automaticamente</h4>
+      <p style="margin-bottom:1rem;">Powered by <strong>Google Gemini</strong> · Gratuito · Sem precisar do ChatGPT</p>
+
+      <div id="wiz-ia-dropzone" style="border:2px dashed #4f6ef7;border-radius:12px;padding:1.75rem;text-align:center;cursor:pointer;background:rgba(79,110,247,.06);transition:all .2s;margin-bottom:.75rem;">
+        <i class="fas fa-cloud-upload-alt" style="font-size:2rem;color:#4f6ef7;display:block;margin-bottom:.5rem;"></i>
+        <p style="margin:0 0 .2rem;font-weight:600;color:var(--text-primary);">Arraste o PDF ou foto do fluxograma</p>
+        <p style="margin:0;font-size:.8rem;color:var(--text-muted);">ou clique para escolher · PDF, PNG, JPG, WEBP</p>
+        <input type="file" id="wiz-ia-file" accept=".pdf,.png,.jpg,.jpeg,.webp" style="display:none;">
       </div>
 
-      <button class="wiz-copy-prompt-btn" id="wiz-copy-prompt-btn">
-        <i class="fas fa-copy"></i> Copiar Prompt
-      </button>
-
-      <span class="wiz-prompt-toggle" id="wiz-prompt-toggle">▼ Ver prompt completo</span>
-      <pre class="wiz-prompt-preview" id="wiz-prompt-preview">${esc(prompt)}</pre>
-
-      <div class="wiz-open-ai-btns">
-        <a class="wiz-open-ai-btn" href="https://chat.openai.com" target="_blank" rel="noopener">
-          <i class="fas fa-external-link-alt"></i> Abrir ChatGPT
-        </a>
-        <a class="wiz-open-ai-btn" href="https://claude.ai" target="_blank" rel="noopener">
-          <i class="fas fa-external-link-alt"></i> Abrir Claude
-        </a>
+      <div id="wiz-ia-preview" style="display:none;padding:.6rem 1rem;background:rgba(34,197,94,.1);border-radius:8px;border:1px solid rgba(34,197,94,.3);align-items:center;gap:.5rem;margin-bottom:.75rem;">
+        <i class="fas fa-file-check" style="color:#22c55e;"></i>
+        <span id="wiz-ia-fname" style="font-size:.85rem;color:var(--text-primary);flex:1;"></span>
+        <button id="wiz-ia-fremove" type="button" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:.85rem;">✕</button>
       </div>
-    </div>
 
-    <label style="display:block;font-size:.88rem;font-weight:600;color:var(--text-secondary);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em;">
-      Cole o JSON aqui
-    </label>
-    <textarea class="wiz-json-area" id="wiz-json-input" placeholder='{"faculdade":"...","disciplinas":[...]}'></textarea>
-    <div style="display:flex;gap:8px;align-items:center;">
-      <button class="wiz-import-json-btn" id="wiz-import-json-btn">
-        <i class="fas fa-file-import"></i> Importar Grade
+      <div id="wiz-ia-status" style="display:none;padding:.65rem 1rem;border-radius:8px;font-size:.83rem;margin-bottom:.75rem;"></div>
+
+      <button id="wiz-ia-run" type="button" style="width:100%;padding:.75rem;background:linear-gradient(135deg,#1a73e8,#4f46e5);color:#fff;border:none;border-radius:10px;font-size:.93rem;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.5rem;">
+        <i class="fas fa-magic"></i> Importar com IA (grátis)
       </button>
-      <span class="wiz-feedback" id="wiz-json-feedback"></span>
+      <p style="text-align:center;font-size:.72rem;color:var(--text-muted);margin:.5rem 0 0;">1.500 usos/dia gratuitos · Google Gemini · Nenhum dado armazenado além de 48h</p>
     </div>
   </div>
 
@@ -986,7 +959,7 @@ Regras:
         });
       });
 
-      // Copiar prompt
+      // Copiar prompt (mantido para compatibilidade — aba de texto ainda usa)
       q('#wiz-copy-prompt-btn')?.addEventListener('click', () => {
         const faculdade = wizardState.universidade || '';
         const curso = wizardState.curso || '';
@@ -997,14 +970,126 @@ Regras:
         });
       });
 
-      // Toggle prompt preview
-      q('#wiz-prompt-toggle')?.addEventListener('click', () => {
-        const preview = q('#wiz-prompt-preview');
-        if (!preview) return;
-        const visible = preview.style.display !== 'none' && preview.style.display !== '';
-        preview.style.display = visible ? 'none' : 'block';
-        q('#wiz-prompt-toggle').textContent = visible ? '▼ Ver prompt completo' : '▲ Ocultar prompt';
+      // ── Importação direta via Google Gemini ──────────────────────────────
+      const wizDropzone = q('#wiz-ia-dropzone');
+      const wizFileInput = q('#wiz-ia-file');
+      const wizPreview   = q('#wiz-ia-preview');
+      const wizFname     = q('#wiz-ia-fname');
+      const wizStatus    = q('#wiz-ia-status');
+      const wizRunBtn    = q('#wiz-ia-run');
+      let wizSelectedFile = null;
+
+      function wizSetFile(file) {
+        wizSelectedFile = file;
+        if (wizFname) wizFname.textContent = file.name;
+        if (wizPreview) wizPreview.style.display = 'flex';
+        if (wizDropzone) wizDropzone.style.display = 'none';
+      }
+
+      function wizClearFile() {
+        wizSelectedFile = null;
+        if (wizFileInput) wizFileInput.value = '';
+        if (wizPreview) wizPreview.style.display = 'none';
+        if (wizDropzone) wizDropzone.style.display = 'block';
+      }
+
+      function wizSetStatus(html, type) {
+        if (!wizStatus) return;
+        const cfg = {
+          loading: 'rgba(79,110,247,.12);border:1px solid rgba(79,110,247,.3);color:#4f6ef7',
+          success: 'rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:#15803d',
+          error:   'rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#b91c1c'
+        };
+        wizStatus.style.cssText = `display:block;padding:.65rem 1rem;border-radius:8px;font-size:.83rem;margin-bottom:.75rem;background:${cfg[type] || cfg.loading}`;
+        wizStatus.innerHTML = html;
+      }
+
+      if (wizDropzone) {
+        wizDropzone.addEventListener('click', () => wizFileInput?.click());
+        wizDropzone.addEventListener('dragover', e => { e.preventDefault(); wizDropzone.style.background = 'rgba(79,110,247,.15)'; });
+        wizDropzone.addEventListener('dragleave', () => { wizDropzone.style.background = 'rgba(79,110,247,.06)'; });
+        wizDropzone.addEventListener('drop', e => {
+          e.preventDefault();
+          wizDropzone.style.background = 'rgba(79,110,247,.06)';
+          if (e.dataTransfer.files[0]) wizSetFile(e.dataTransfer.files[0]);
+        });
+      }
+      wizFileInput?.addEventListener('change', () => { if (wizFileInput.files[0]) wizSetFile(wizFileInput.files[0]); });
+      q('#wiz-ia-fremove')?.addEventListener('click', wizClearFile);
+
+      wizRunBtn?.addEventListener('click', async () => {
+        if (!wizSelectedFile) { wizSetStatus('<i class="fas fa-exclamation-circle"></i> Selecione um PDF ou imagem primeiro.', 'error'); return; }
+
+        const apiKey = window.__ENV?.GEMINI_API_KEY || '';
+        if (!apiKey) {
+          wizSetStatus('<i class="fas fa-exclamation-circle"></i> Chave do Gemini não configurada. Adicione <strong>GEMINI_API_KEY</strong> no env-config.js (veja o README).', 'error');
+          return;
+        }
+
+        wizRunBtn.disabled = true;
+        wizRunBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processando com Gemini...';
+        wizSetStatus('<i class="fas fa-spinner fa-spin"></i> Lendo o arquivo... pode levar alguns segundos.', 'loading');
+
+        try {
+          // Converter arquivo para base64
+          const base64 = await new Promise((res, rej) => {
+            const reader = new FileReader();
+            reader.onload = () => res(reader.result.split(',')[1]);
+            reader.onerror = () => rej(new Error('Falha ao ler arquivo'));
+            reader.readAsDataURL(wizSelectedFile);
+          });
+
+          const mime = wizSelectedFile.type || 'application/octet-stream';
+          const gradePrompt = `Leia o conteúdo e retorne SOMENTE um JSON válido, sem texto antes ou depois, sem markdown.\n\nFormato obrigatório:\n{"faculdade":"","curso":"","disciplinas":[{"nome":"","codigo":"","semestre":1,"cargaHoraria":60,"creditos":4,"prerequisitos":[],"tipo":"obrigatoria"}]}\n\nRetorne APENAS JSON puro. Não invente disciplinas. Extraia somente o que estiver no conteúdo.`;
+
+          const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: gradePrompt }, { inline_data: { mime_type: mime, data: base64 } }] }] })
+          });
+
+          if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err?.error?.message || `Erro HTTP ${resp.status}`);
+          }
+
+          const data = await resp.json();
+          const text = (data.candidates?.[0]?.content?.parts?.[0]?.text || '').replace(/```json|```/gi, '').trim();
+          const parsed = JSON.parse(text);
+          const disciplinas = parsed?.disciplinas || [];
+
+          if (!disciplinas.length) throw new Error('Nenhuma disciplina encontrada. Tente uma imagem mais nítida ou use a aba "Colar Texto".');
+
+          // Salva no estado do wizard
+          const curriculum = disciplinas.map(d => ({
+            id: typeof generateId === 'function' ? generateId() : Math.random().toString(36).slice(2),
+            nome: d.nome || '',
+            codigo: d.codigo || '',
+            semestre: d.semestre || 0,
+            cargaHoraria: Number(d.cargaHoraria) || 0,
+            creditos: Number(d.creditos) || 0,
+            tipo: d.tipo || 'obrigatoria',
+            prerequisitosLista: Array.isArray(d.prerequisitos) ? d.prerequisitos : [],
+            prerequisitos: Array.isArray(d.prerequisitos) ? d.prerequisitos.join(' | ') : '',
+            status: 'nao-cursada',
+            observacoes: ''
+          }));
+
+          wizardState.importedCurriculum = curriculum;
+          if (typeof updateCurriculumPreview === 'function') updateCurriculumPreview();
+
+          wizSetStatus(`<i class="fas fa-check-circle"></i> <strong>${disciplinas.length} disciplinas importadas!</strong> Revise abaixo e avance.`, 'success');
+          wizRunBtn.innerHTML = '<i class="fas fa-check"></i> Importado com sucesso!';
+          wizRunBtn.style.background = '#16a34a';
+
+        } catch (err) {
+          wizSetStatus(`<i class="fas fa-exclamation-circle"></i> ${err.message}`, 'error');
+          wizRunBtn.disabled = false;
+          wizRunBtn.innerHTML = '<i class="fas fa-magic"></i> Tentar novamente';
+          wizRunBtn.style.background = 'linear-gradient(135deg,#1a73e8,#4f46e5)';
+        }
       });
+      // ── Fim importação Gemini ─────────────────────────────────────────────
 
       // Importar JSON
       q('#wiz-import-json-btn')?.addEventListener('click', () => {
