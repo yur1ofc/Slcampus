@@ -37,5 +37,5 @@ Thumbs.db
 # Vercel
 .vercel/
 
-# Firebase config gerado localmente — tem credentials reais
-env-config.js
+# env-config.js foi removido do gitignore — chaves do Firebase são públicas por design
+# Chaves secretas (Gemini, Anthropic) ficam nas variáveis de ambiente do Vercel
