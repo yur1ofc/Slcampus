@@ -1846,13 +1846,10 @@ ${context}
 ${extraContext ? '\nCONTEXTO ADICIONAL:\n' + extraContext : ''}`;
 
     try {
-      const apiKey = window.__ENV?.ANTHROPIC_API_KEY || '';
-      const headers = { 'Content-Type': 'application/json' };
-      if (apiKey) headers['x-api-key'] = apiKey;
-
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      // Chama o proxy seguro no Vercel — a chave fica no servidor, nunca no browser
+      const response = await fetch('/api/mentor', {
         method: 'POST',
-        headers,
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
           max_tokens: 1000,

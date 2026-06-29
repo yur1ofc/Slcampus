@@ -1,3 +1,8 @@
+// env-config.js — configuração de ambiente
+// Este arquivo pode ser sobrescrito pelo inject-env.js no build do Vercel
+// se as variáveis de ambiente estiverem configuradas no painel do Vercel.
+// Sem buildCommand configurado, este fallback garante que o site funcione.
+
 if (typeof window.__ENV === 'undefined') {
   window.__ENV = {
     FIREBASE_API_KEY:             'AIzaSyCbXt4z-vncncAoZjNXGMYBrvxRFHyUbDo',
@@ -8,3 +13,5 @@ if (typeof window.__ENV === 'undefined') {
     FIREBASE_APP_ID:              '1:42112044749:web:52bde99cc356016832e384'
   };
 }
+// GEMINI_API_KEY e ANTHROPIC_API_KEY ficam nas variáveis de ambiente do Vercel (seguro)
+// Vercel: Settings -> Environment Variables
