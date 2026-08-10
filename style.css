@@ -642,6 +642,7 @@ button:active,
     flex: 1;
     padding: 24px 12px;
     overflow-y: auto;
+    overscroll-behavior: contain;
 }
 
 .nav-item {
@@ -3788,6 +3789,7 @@ input:checked + .toggle-slider:before {
   inset: 0;
   background: rgba(2, 6, 23, 0.52);
   z-index: 80;
+  touch-action: none;
 }
 
 body.sidebar-open .mobile-nav-overlay {

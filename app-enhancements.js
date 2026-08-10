@@ -99,17 +99,41 @@
     });
   }
 
+  let scrollLockY = 0;
+
   function closeSidebar() {
     document.body.classList.remove('sidebar-open');
     const overlay = el('mobile-nav-overlay');
     if (overlay) overlay.hidden = true;
+
+    // Destrava o scroll do fundo (ver openSidebar)
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.left = '';
+    document.body.style.right = '';
+    document.body.style.width = '';
+    window.scrollTo(0, scrollLockY);
   }
 
   function openSidebar() {
+    // Trava o scroll do fundo enquanto o menu está aberto — sem isso, arrastar
+    // o dedo dentro do menu também rola a página por trás dele. Usa a técnica
+    // de "position:fixed" em vez de só overflow:hidden porque é a única forma
+    // confiável de bloquear o bounce/scroll em iOS Safari, e funciona igual em
+    // Android e desktop também (independe de marca/modelo de aparelho).
+    scrollLockY = window.scrollY || window.pageYOffset || 0;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollLockY}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.width = '100%';
+
     document.body.classList.add('sidebar-open');
     const overlay = el('mobile-nav-overlay');
     if (overlay) overlay.hidden = false;
   }
+
+  window.SLCSidebar = { open: openSidebar, close: closeSidebar };
 
   function setupMobileSidebar() {
     const toggle = el('mobile-nav-toggle');
