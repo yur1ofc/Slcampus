@@ -11,3 +11,7 @@ window.__ENV = {
   FIREBASE_MESSAGING_SENDER_ID: '000000000000',
   FIREBASE_APP_ID:              '1:000000000000:web:xxxx'
 };
+
+// A chave do Gemini (importação/atualização de grade com IA) NÃO vai aqui.
+// Ela é usada só no servidor: Vercel → Settings → Environment Variables → GEMINI_API_KEY
+// (gratuita em https://aistudio.google.com/apikey). Veja api/gemini.js.

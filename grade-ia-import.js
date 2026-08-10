@@ -1,21 +1,20 @@
 // grade-ia-import.js
-// Importação de grade curricular por IA usando Google Gemini (GRATUITO — 1500 req/dia)
-// Sem precisar do ChatGPT. Sem custo algum.
+// Importação e ATUALIZAÇÃO da grade curricular por IA usando Google Gemini.
+// Gratuito (chave pessoal grátis em aistudio.google.com/apikey, sem cartão).
+// O PDF/imagem é enviado direto para a IA — não precisa mais copiar prompt em outro site.
 //
 // Como ativar:
 // 1. Acesse https://aistudio.google.com/apikey e crie uma chave gratuita (só precisa de conta Google)
-// 2. Cole a chave em env-config.js no campo GEMINI_API_KEY
-// 3. No Vercel: Settings → Environment Variables → GEMINI_API_KEY
+// 2. No Vercel: Settings → Environment Variables → adicione GEMINI_API_KEY
+// 3. Garanta que o arquivo api/gemini.js está na pasta /api do projeto (é o que publica a função)
 //
-// Adicione no index.html ANTES do </body>:
+// Adicione no index.html ANTES do </body>, depois do app.js:
 //   <script src="grade-ia-import.js"></script>
 
 (function () {
   'use strict';
 
-  const GEMINI_MODEL = 'gemini-2.0-flash';
-
-  const GRADE_PROMPT = `Leia o conteúdo fornecido (PDF, imagem de fluxograma ou texto com disciplinas) e retorne SOMENTE um JSON válido, sem texto antes ou depois, sem markdown, sem blocos de código.
+  const GRADE_PROMPT = `Leia o conteúdo fornecido (PDF, imagem de fluxograma ou texto com disciplinas de uma grade curricular) e retorne SOMENTE um JSON válido, sem texto antes ou depois, sem markdown, sem blocos de código.
 
 Formato obrigatório:
 {
@@ -39,8 +38,9 @@ Regras:
 - "semestre" deve ser número inteiro. Se não encontrar, use 0.
 - "cargaHoraria" e "creditos" devem ser números. Se não encontrar, use 0.
 - "prerequisitos" é lista de nomes. Se não houver, use [].
-- "tipo" pode ser "obrigatoria", "optativa", "eletiva" ou "extensao".
-- Não invente disciplinas. Extraia somente o que estiver no conteúdo.`;
+- "tipo" deve ser "obrigatoria" para componentes obrigatórios/núcleo comum, e "optativa" para optativas/eletivas/complementares/extensão.
+- Liste TODAS as disciplinas que aparecerem no conteúdo, de todos os semestres, mesmo repetidas em versões diferentes da grade.
+- Não invente disciplinas que não estiverem no conteúdo enviado.`;
 
   // ─── Conversão de arquivo ──────────────────────────────────────────────────
 
@@ -63,10 +63,16 @@ Regras:
   // ─── Chamada ao Gemini ─────────────────────────────────────────────────────
 
   async function callGemini(parts) {
-    // Chama o proxy seguro no Vercel — a chave fica no servidor, nunca no browser
+    // Só usuários logados no app podem chamar o proxy — evita que gente de fora
+    // (ou scripts) descubra a URL e fique consumindo sua cota diária do Gemini.
+    const user = window.auth?.currentUser;
+    if (!user) throw new Error('Você precisa estar logado para usar a importação com IA.');
+    const idToken = await user.getIdToken();
+
+    // Chama o proxy seguro em /api/gemini — a chave fica só no servidor (Vercel), nunca no navegador
     const response = await fetch('/api/gemini', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
       body: JSON.stringify({ contents: [{ parts }] })
     });
 
@@ -83,87 +89,215 @@ Regras:
     try {
       return JSON.parse(clean);
     } catch {
-      throw new Error('A IA retornou um formato inesperado. Tente novamente ou use o modo texto.');
+      throw new Error('A IA retornou um formato inesperado. Tente novamente — geralmente funciona na segunda tentativa.');
     }
   }
 
-  // ─── Aplicar resultado ao app ──────────────────────────────────────────────
+  // ─── Normalização ───────────────────────────────────────────────────────────
 
-  function applyGradeResult(parsed, targetContext) {
-    const app = window.app;
-    if (!app) return { count: 0, error: 'App não encontrado.' };
+  function makeId() {
+    return typeof generateId === 'function' ? generateId() : Math.random().toString(36).slice(2, 10);
+  }
 
+  function slugKey(nome) {
+    return String(nome || '')
+      .toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove acentos
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function normalizeItem(app, d) {
+    const item = {
+      id: makeId(),
+      nome: d.nome || '',
+      codigo: d.codigo || '',
+      semestre: d.semestre || 0,
+      cargaHoraria: Number(d.cargaHoraria) || 0,
+      creditos: Number(d.creditos) || 0,
+      tipo: d.tipo || 'obrigatoria',
+      prerequisitosLista: Array.isArray(d.prerequisitos) ? d.prerequisitos : [],
+      prerequisitos: Array.isArray(d.prerequisitos) ? d.prerequisitos.join(' | ') : '',
+      status: 'nao-cursada',
+      observacoes: ''
+    };
+    return app.normalizeCurriculumItem ? app.normalizeCurriculumItem(item) : item;
+  }
+
+  // ─── Aplicar resultado: modo SETUP (primeiro cadastro) ─────────────────────
+
+  function applySetupResult(app, parsed) {
     const disciplinas = parsed?.disciplinas || [];
     if (!disciplinas.length) return { count: 0, error: 'Nenhuma disciplina encontrada no arquivo.' };
 
-    function makeId() {
-      return typeof generateId === 'function' ? generateId() : Math.random().toString(36).slice(2, 10);
+    const curriculum = disciplinas.map(d => normalizeItem(app, d));
+    app.pendingSetupImportedCurriculum = curriculum;
+
+    const semester = document.getElementById('semestre')?.value || '';
+    const semesterSubjects = curriculum
+      .filter(item => String(item.semestre || '') === String(semester))
+      .map(item => ({ id: item.id, nome: item.nome, dificuldade: 3, peso: item.tipo === 'obrigatoria' ? 4 : 3, notaDesejada: 7 }));
+
+    if (semesterSubjects.length && app.populateSetupSubjects) {
+      app.populateSetupSubjects(semesterSubjects);
     }
 
-    function normalizeItem(d) {
-      const item = {
-        id: makeId(),
-        nome: d.nome || '',
-        codigo: d.codigo || '',
-        semestre: d.semestre || 0,
-        cargaHoraria: Number(d.cargaHoraria) || 0,
-        creditos: Number(d.creditos) || 0,
-        tipo: d.tipo || 'obrigatoria',
-        prerequisitosLista: Array.isArray(d.prerequisitos) ? d.prerequisitos : [],
-        prerequisitos: Array.isArray(d.prerequisitos) ? d.prerequisitos.join(' | ') : '',
-        status: 'nao-cursada',
-        observacoes: ''
-      };
-      return app.normalizeCurriculumItem ? app.normalizeCurriculumItem(item) : item;
-    }
+    return { count: curriculum.length, semesterCount: semesterSubjects.length };
+  }
 
-    if (targetContext === 'setup') {
-      const curriculum = disciplinas.map(normalizeItem);
-      app.pendingSetupImportedCurriculum = curriculum;
+  // ─── Aplicar resultado: modo ATUALIZAÇÃO da grade existente ────────────────
+  // Mantém tudo que já existe (status/progresso/notas) nos semestres certos,
+  // atualiza dados estruturais (semestre, carga horária, créditos, obrigatória/optativa,
+  // pré-requisitos, código) a partir do novo arquivo, adiciona o que for novo e
+  // sinaliza (sem apagar sozinho) o que sumiu da grade nova.
 
-      const semester = document.getElementById('semestre')?.value || '';
-      const semesterSubjects = curriculum
-        .filter(item => String(item.semestre || '') === String(semester))
-        .map(item => ({ id: item.id, nome: item.nome, dificuldade: 3, peso: item.tipo === 'obrigatoria' ? 4 : 3, notaDesejada: 7 }));
+  function computeUpdateDiff(app, disciplinas) {
+    if (!Array.isArray(app.data.curriculum)) app.data.curriculum = [];
+    const existing = app.data.curriculum;
+    const matchedIds = new Set();
 
-      if (semesterSubjects.length && app.populateSetupSubjects) {
-        app.populateSetupSubjects(semesterSubjects);
+    const added = [];
+    const updated = [];
+
+    disciplinas.forEach(d => {
+      const key = slugKey(d.nome);
+      if (!key) return;
+
+      // 1) tenta casar por código (mais confiável quando existe)
+      let target = null;
+      const codigoNovo = String(d.codigo || '').trim().toUpperCase();
+      if (codigoNovo) {
+        target = existing.find(item => !matchedIds.has(item.id) && String(item.codigo || '').trim().toUpperCase() === codigoNovo);
+      }
+      // 2) senão, casa por nome normalizado
+      if (!target) {
+        target = existing.find(item => !matchedIds.has(item.id) && slugKey(item.nome) === key);
       }
 
-      return { count: curriculum.length, semesterCount: semesterSubjects.length };
-    }
+      if (target) {
+        matchedIds.add(target.id);
+        const changes = {};
+        const novoSemestre = d.semestre ? String(d.semestre) : target.semestre;
+        const novoTipo = d.tipo || target.tipo;
+        const novaCarga = Number(d.cargaHoraria) || target.cargaHoraria;
+        const novosCreditos = Number(d.creditos) || target.creditos;
+        const novoCodigo = d.codigo ? String(d.codigo).toUpperCase() : target.codigo;
+        const novosPrereqs = Array.isArray(d.prerequisitos) && d.prerequisitos.length ? d.prerequisitos : target.prerequisitosLista;
 
-    // Grade curricular: merge inteligente
-    if (!Array.isArray(app.data.curriculum)) app.data.curriculum = [];
-    const existingMap = new Map(
-      app.data.curriculum.map(item => [(item.nome || '').toLowerCase().replace(/\s+/g, ''), item])
-    );
+        if (String(target.semestre) !== String(novoSemestre)) changes.semestre = { de: target.semestre, para: novoSemestre };
+        if (target.tipo !== novoTipo) changes.tipo = { de: target.tipo, para: novoTipo };
+        if (Number(target.cargaHoraria) !== Number(novaCarga)) changes.cargaHoraria = { de: target.cargaHoraria, para: novaCarga };
+        if (Number(target.creditos) !== Number(novosCreditos)) changes.creditos = { de: target.creditos, para: novosCreditos };
 
-    let added = 0;
-    disciplinas.forEach(d => {
-      const key = (d.nome || '').toLowerCase().replace(/\s+/g, '');
-      if (!key) return;
-      if (existingMap.has(key)) {
-        const target = existingMap.get(key);
-        if (!target.semestre && d.semestre) target.semestre = d.semestre;
-        if (!target.cargaHoraria && d.cargaHoraria) target.cargaHoraria = Number(d.cargaHoraria);
-        if (!target.creditos && d.creditos) target.creditos = Number(d.creditos);
+        if (Object.keys(changes).length) {
+          updated.push({ item: target, novo: d, changes, novoSemestre, novoTipo, novaCarga, novosCreditos, novoCodigo, novosPrereqs });
+        }
       } else {
-        app.data.curriculum.push(normalizeItem(d));
-        added++;
+        added.push(d);
       }
     });
 
-    if (typeof dbService !== 'undefined') dbService.saveData('curriculum', app.data.curriculum);
-    if (app.loadView) app.loadView('grade-curricular');
+    // Matérias que existiam e não vieram na nova grade — candidatas a remoção,
+    // mas só quem já foi cursada/em curso conta (evita sinalizar coisas que o
+    // usuário cadastrou manualmente fora do fluxograma oficial sem necessidade).
+    const removedCandidates = existing.filter(item => !matchedIds.has(item.id));
 
-    return { count: disciplinas.length, added };
+    return { added, updated, removedCandidates };
   }
 
-  // ─── Modal de importação ───────────────────────────────────────────────────
+  function applyUpdate(app, diff, { removeIds = [] } = {}) {
+    if (!Array.isArray(app.data.curriculum)) app.data.curriculum = [];
+
+    diff.updated.forEach(({ item, novoSemestre, novoTipo, novaCarga, novosCreditos, novoCodigo, novosPrereqs }) => {
+      item.semestre = novoSemestre;
+      item.tipo = novoTipo;
+      item.cargaHoraria = Number(novaCarga) || 0;
+      item.creditos = Number(novosCreditos) || 0;
+      if (novoCodigo) item.codigo = novoCodigo;
+      if (Array.isArray(novosPrereqs)) {
+        item.prerequisitosLista = novosPrereqs;
+        item.prerequisitos = novosPrereqs.join(' | ');
+      }
+      // status, observações, nota e demais dados de progresso NÃO são tocados
+    });
+
+    diff.added.forEach(d => {
+      app.data.curriculum.push(normalizeItem(app, d));
+    });
+
+    if (removeIds.length) {
+      const removeSet = new Set(removeIds);
+      app.data.curriculum = app.data.curriculum.filter(item => !removeSet.has(item.id));
+    }
+
+    if (typeof dbService !== 'undefined') dbService.saveData('curriculum', app.data.curriculum);
+    if (app.loadView) app.loadView('grade-curricular');
+  }
+
+  // ─── Modal de resumo (o que mudou) antes de confirmar ──────────────────────
+
+  function showDiffModal(app, diff, disciplinas) {
+    return new Promise(resolve => {
+      const wrap = document.createElement('div');
+      wrap.id = 'slc-gim-diff-modal';
+      wrap.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:1rem;';
+
+      const updatedRows = diff.updated.map(u => {
+        const bits = Object.entries(u.changes).map(([campo, v]) => {
+          const label = { semestre: 'semestre', tipo: 'tipo', cargaHoraria: 'carga horária', creditos: 'créditos' }[campo] || campo;
+          return `${label}: <s style="opacity:.55">${v.de || '—'}</s> → <strong>${v.para}</strong>`;
+        }).join(' · ');
+        return `<li style="padding:.4rem 0;border-bottom:1px solid #eef2f7;font-size:.82rem;"><strong>${u.item.nome}</strong><br><span style="color:#64748b">${bits}</span></li>`;
+      }).join('');
+
+      const addedRows = diff.added.map(d => `<li style="padding:.3rem 0;font-size:.82rem;">${d.nome} <span style="color:#94a3b8">· ${d.semestre ? d.semestre + 'º sem.' : 'sem semestre'} · ${d.tipo === 'optativa' ? 'optativa' : 'obrigatória'}</span></li>`).join('');
+
+      const removedRows = diff.removedCandidates.map(item => `
+        <li style="padding:.35rem 0;font-size:.82rem;display:flex;align-items:center;gap:.5rem;">
+          <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;flex:1;">
+            <input type="checkbox" class="slc-gim-remove-check" value="${item.id}">
+            <span>${item.nome} <span style="color:#94a3b8">· status: ${item.status || 'não cursada'}</span></span>
+          </label>
+        </li>`).join('');
+
+      wrap.innerHTML = `
+        <div style="background:#fff;border-radius:16px;width:100%;max-width:560px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.22);overflow:hidden;">
+          <div style="padding:1.1rem 1.4rem;background:linear-gradient(135deg,#1a73e8,#4f46e5);color:#fff;">
+            <h3 style="margin:0;font-size:1rem;">Confira o que vai mudar</h3>
+            <p style="margin:.2rem 0 0;font-size:.78rem;opacity:.85;">Nada é aplicado até você confirmar. Progresso e notas já lançados não são alterados.</p>
+          </div>
+          <div style="padding:1.2rem 1.4rem;overflow-y:auto;flex:1;">
+            ${diff.added.length ? `<h4 style="font-size:.85rem;margin:.2rem 0 .4rem;color:#16a34a;">+ ${diff.added.length} nova(s) disciplina(s)</h4><ul style="list-style:none;padding:0;margin:0 0 1rem;">${addedRows}</ul>` : ''}
+            ${diff.updated.length ? `<h4 style="font-size:.85rem;margin:.2rem 0 .4rem;color:#1a73e8;">${diff.updated.length} disciplina(s) com dado atualizado</h4><ul style="list-style:none;padding:0;margin:0 0 1rem;">${updatedRows}</ul>` : ''}
+            ${diff.removedCandidates.length ? `
+              <h4 style="font-size:.85rem;margin:.2rem 0 .4rem;color:#dc2626;">${diff.removedCandidates.length} não apareceram no arquivo novo</h4>
+              <p style="font-size:.76rem;color:#64748b;margin:0 0 .4rem;">Marque só as que você quer remover da sua grade. As desmarcadas continuam como estão.</p>
+              <ul style="list-style:none;padding:0;margin:0 0 1rem;">${removedRows}</ul>` : ''}
+            ${(!diff.added.length && !diff.updated.length && !diff.removedCandidates.length) ? '<p style="font-size:.85rem;color:#64748b;">Nenhuma diferença encontrada — sua grade já está igual ao arquivo enviado.</p>' : ''}
+          </div>
+          <div style="padding:1rem 1.4rem;border-top:1px solid #eef2f7;display:flex;gap:.6rem;justify-content:flex-end;">
+            <button id="slc-gim-diff-cancel" style="padding:.55rem 1rem;border-radius:8px;border:1px solid #e2e8f0;background:#fff;cursor:pointer;font-size:.83rem;">Cancelar</button>
+            <button id="slc-gim-diff-confirm" style="padding:.55rem 1.1rem;border-radius:8px;border:none;background:#1a73e8;color:#fff;cursor:pointer;font-size:.83rem;font-weight:600;">Aplicar atualização</button>
+          </div>
+        </div>`;
+
+      document.body.appendChild(wrap);
+
+      wrap.querySelector('#slc-gim-diff-cancel').addEventListener('click', () => { wrap.remove(); resolve(null); });
+      wrap.addEventListener('click', e => { if (e.target === wrap) { wrap.remove(); resolve(null); } });
+      wrap.querySelector('#slc-gim-diff-confirm').addEventListener('click', () => {
+        const removeIds = Array.from(wrap.querySelectorAll('.slc-gim-remove-check:checked')).map(el => el.value);
+        wrap.remove();
+        resolve({ removeIds });
+      });
+    });
+  }
+
+  // ─── Modal principal de importação/atualização ──────────────────────────────
 
   function createImportModal(targetContext) {
     document.getElementById('slc-grade-ia-modal')?.remove();
+    const isUpdate = targetContext === 'grade';
 
     const modal = document.createElement('div');
     modal.id = 'slc-grade-ia-modal';
@@ -174,13 +308,14 @@ Regras:
         <div style="background:linear-gradient(135deg,#1a73e8,#4f46e5);padding:1.25rem 1.5rem;display:flex;align-items:center;gap:.75rem;">
           <i class="fas fa-wand-magic-sparkles" style="color:#fff;font-size:1.25rem;"></i>
           <div style="flex:1">
-            <h3 style="margin:0;color:#fff;font-size:1rem;font-weight:600;">Importar grade com IA</h3>
-            <p style="margin:0;color:rgba(255,255,255,.8);font-size:.78rem;">Google Gemini • Grátis • Sem limite de uso diário para este projeto</p>
+            <h3 style="margin:0;color:#fff;font-size:1rem;font-weight:600;">${isUpdate ? 'Atualizar grade com IA' : 'Importar grade com IA'}</h3>
+            <p style="margin:0;color:rgba(255,255,255,.8);font-size:.78rem;">Google Gemini • Grátis • ~1.500 leituras/dia (mais que suficiente pro dia a dia)</p>
           </div>
           <button id="slc-gim-close" style="background:rgba(255,255,255,.2);border:none;border-radius:8px;padding:5px 10px;color:#fff;cursor:pointer;">✕</button>
         </div>
 
         <div style="padding:1.5rem;">
+          ${isUpdate ? `<p style="font-size:.82rem;color:#475569;margin:0 0 1rem;background:#f8fafc;border:1px solid #eef2f7;border-radius:8px;padding:.6rem .8rem;">Envie a grade nova (PDF do fluxograma atualizado). O que você já cursou ou está cursando continua como está — só a estrutura (matérias, semestre, obrigatória/optativa) é atualizada, e você confirma tudo antes de salvar.</p>` : ''}
           <div style="display:flex;gap:.5rem;margin-bottom:1.25rem;">
             <button class="slc-gim-tab slc-gim-tab-on" data-tab="arquivo" style="flex:1;padding:.5rem;border-radius:8px;border:1.5px solid #1a73e8;background:#e8f0fe;color:#1a73e8;cursor:pointer;font-size:.83rem;font-weight:500;">
               <i class="fas fa-file-upload"></i> PDF ou imagem
@@ -212,11 +347,11 @@ Regras:
           <div id="slc-gim-status" style="display:none;margin-top:1rem;padding:.7rem 1rem;border-radius:8px;font-size:.83rem;"></div>
 
           <button id="slc-gim-run" style="width:100%;margin-top:1rem;padding:.75rem;background:#1a73e8;color:#fff;border:none;border-radius:10px;font-size:.93rem;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.5rem;">
-            <i class="fas fa-magic"></i> Importar com IA (grátis)
+            <i class="fas fa-magic"></i> ${isUpdate ? 'Analisar e comparar' : 'Importar com IA (grátis)'}
           </button>
 
           <p style="text-align:center;font-size:.73rem;color:#94a3b8;margin:.65rem 0 0;">
-            Powered by Google Gemini · 1.500 usos/dia grátis · Nenhum dado é armazenado pelo Google além de 48h
+            Powered by Google Gemini · chave pessoal grátis · o arquivo não fica salvo, só é lido na hora
           </p>
         </div>
       </div>
@@ -227,11 +362,9 @@ Regras:
     let selectedFile = null;
     let activeTab = 'arquivo';
 
-    // Fechar
     modal.querySelector('#slc-gim-close').addEventListener('click', () => modal.remove());
     modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
 
-    // Tabs
     modal.querySelectorAll('.slc-gim-tab').forEach(btn => {
       btn.addEventListener('click', () => {
         activeTab = btn.dataset.tab;
@@ -246,7 +379,6 @@ Regras:
       });
     });
 
-    // Drag & drop
     const dropzone = modal.querySelector('#slc-gim-dropzone');
     const fileInput = modal.querySelector('#slc-gim-file-input');
     const preview = modal.querySelector('#slc-gim-preview');
@@ -274,15 +406,14 @@ Regras:
       preview.style.display = 'none'; dropzone.style.display = 'block';
     });
 
-    // Processar
     const btn = modal.querySelector('#slc-gim-run');
     const statusEl = modal.querySelector('#slc-gim-status');
 
     function setStatus(html, type) {
       const cfg = {
-        loading: ['#eff6ff','#bfdbfe','#1e40af'],
-        success: ['#f0fdf4','#bbf7d0','#166534'],
-        error:   ['#fef2f2','#fecaca','#991b1b']
+        loading: ['#eff6ff', '#bfdbfe', '#1e40af'],
+        success: ['#f0fdf4', '#bbf7d0', '#166534'],
+        error: ['#fef2f2', '#fecaca', '#991b1b']
       };
       const [bg, border, color] = cfg[type] || cfg.loading;
       statusEl.style.cssText = `display:block;background:${bg};border:1px solid ${border};color:${color};padding:.7rem 1rem;border-radius:8px;font-size:.83rem;margin-top:1rem;`;
@@ -304,7 +435,7 @@ Regras:
           const isImg = mime.startsWith('image/');
           if (!isPdf && !isImg) throw new Error('Formato não suportado. Use PDF, PNG, JPG ou WEBP.');
 
-          setStatus('<i class="fas fa-spinner fa-spin"></i> Lendo o arquivo com Gemini...', 'loading');
+          setStatus('<i class="fas fa-spinner fa-spin"></i> Lendo o arquivo com IA...', 'loading');
           const b64 = await fileToBase64(selectedFile);
 
           parts = [
@@ -314,28 +445,44 @@ Regras:
         } else {
           const text = modal.querySelector('#slc-gim-texto').value.trim();
           if (!text) throw new Error('Cole o texto da grade primeiro.');
-          setStatus('<i class="fas fa-spinner fa-spin"></i> Interpretando com Gemini...', 'loading');
+          setStatus('<i class="fas fa-spinner fa-spin"></i> Interpretando com IA...', 'loading');
           parts = [{ text: GRADE_PROMPT + '\n\nConteúdo da grade:\n\n' + text }];
         }
 
         const result = await callGemini(parts);
-        const applied = applyGradeResult(result, targetContext);
+        const disciplinas = result?.disciplinas || [];
+        if (!disciplinas.length) throw new Error('Nenhuma disciplina encontrada no arquivo.');
 
-        if (applied.error) throw new Error(applied.error);
+        const app = window.app;
+        if (!app) throw new Error('App não encontrado.');
 
-        const extra = applied.semesterCount > 0
-          ? `<br><small style="opacity:.8">${applied.semesterCount} matéria(s) do semestre atual preenchidas.</small>` : '';
+        if (targetContext === 'setup') {
+          const applied = applySetupResult(app, result);
+          const extra = applied.semesterCount > 0
+            ? `<br><small style="opacity:.8">${applied.semesterCount} matéria(s) do semestre atual preenchidas.</small>` : '';
+          setStatus(`<i class="fas fa-check-circle"></i> <strong>${applied.count} disciplinas importadas!</strong>${extra}`, 'success');
+          btn.innerHTML = '<i class="fas fa-check"></i> Concluído!';
+          btn.style.background = '#16a34a';
+          if (typeof showToast === 'function') showToast(`${applied.count} disciplinas importadas com IA!`, 'success');
+          setTimeout(() => modal.remove(), 1600);
+          return;
+        }
 
-        setStatus(`<i class="fas fa-check-circle"></i> <strong>${applied.count} disciplinas importadas!</strong>${extra}`, 'success');
-        btn.innerHTML = '<i class="fas fa-check"></i> Concluído!';
-        btn.style.background = '#16a34a';
-        if (typeof showToast === 'function') showToast(`${applied.count} disciplinas importadas com IA!`, 'success');
-        setTimeout(() => modal.remove(), 2000);
+        // modo atualização: mostra diff e só aplica com confirmação
+        const diff = computeUpdateDiff(app, disciplinas);
+        modal.remove();
+        const decision = await showDiffModal(app, diff, disciplinas);
+        if (!decision) return; // cancelado
+
+        applyUpdate(app, diff, decision);
+        if (typeof showToast === 'function') {
+          showToast(`Grade atualizada: +${diff.added.length} novas, ${diff.updated.length} ajustadas${decision.removeIds.length ? `, ${decision.removeIds.length} removidas` : ''}.`, 'success');
+        }
 
       } catch (err) {
         setStatus(`<i class="fas fa-exclamation-circle"></i> ${err.message}`, 'error');
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-magic"></i> Tentar novamente';
+        btn.innerHTML = `<i class="fas fa-magic"></i> Tentar novamente`;
         btn.style.background = '#1a73e8';
       }
     });
@@ -347,7 +494,7 @@ Regras:
     openModal(ctx) { createImportModal(ctx || 'grade'); }
   };
 
-  // ─── Substituir botão "Importar grade pronta" → modal de IA ───────────────
+  // ─── Substitui o botão "Importar grade pronta" → modal de IA ───────────────
 
   function patchLoadView() {
     if (!window.StudyLifeControl || StudyLifeControl.prototype.__gradeIAPatched) return;
@@ -361,15 +508,31 @@ Regras:
           const btn = document.getElementById('btn-importar-ufob');
           if (btn && !btn.dataset.iaPatch) {
             btn.dataset.iaPatch = '1';
-            btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Importar com IA (grátis)';
+            btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Atualizar com IA (PDF)';
+            btn.title = 'Envie o PDF novo do fluxograma para comparar e atualizar sua grade';
             const nb = btn.cloneNode(true);
             btn.parentNode.replaceChild(nb, btn);
             nb.addEventListener('click', () => window.GradeIAImport.openModal('grade'));
           }
+          addCurrentSemesterChip(this);
         }, 100);
       }
       return r;
     };
+  }
+
+  // ─── Chip do semestre atual ao lado do título da página ────────────────────
+
+  function addCurrentSemesterChip(appInstance) {
+    const header = document.querySelector('.view-header-grade-upgraded h2, .view-header h2');
+    if (!header || header.dataset.semChip) return;
+    const semestre = parseInt((appInstance || window.app)?.data?.user?.semestre || 0, 10) || 0;
+    if (!semestre) return;
+    header.dataset.semChip = '1';
+    const chip = document.createElement('span');
+    chip.textContent = `${semestre}º semestre atual`;
+    chip.style.cssText = 'margin-left:.6rem;font-size:.7rem;font-weight:600;background:#1a73e8;color:#fff;padding:.2rem .55rem;border-radius:999px;vertical-align:middle;';
+    header.appendChild(chip);
   }
 
   // ─── Botão extra no setup ──────────────────────────────────────────────────
