@@ -494,39 +494,45 @@ Regras:
     openModal(ctx) { createImportModal(ctx || 'grade'); }
   };
 
-  // ─── Substitui o botão "Importar grade pronta" → modal de IA ───────────────
+  // ─── Assume o clique do botão "Importar grade pronta" ───────────────────────
+  // O projeto tem mais de um script disputando o clique desse mesmo botão
+  // (ex.: app.js abre um assistente antigo). Em vez de tentar "ganhar a corrida"
+  // no momento de anexar o listener (o que depende da ordem de carregamento dos
+  // scripts e é frágil), interceptamos o clique na FASE DE CAPTURA do documento.
+  // A fase de captura roda sempre antes dos listeners do próprio botão, então
+  // isso funciona não importa quais outros scripts também estejam ouvindo esse
+  // botão, nem em que ordem foram carregados.
+  document.addEventListener('click', function (e) {
+    const btn = e.target.closest('#btn-importar-ufob');
+    if (!btn) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    window.GradeIAImport.openModal('grade');
+  }, true);
 
-  function patchLoadView() {
-    if (!window.StudyLifeControl || StudyLifeControl.prototype.__gradeIAPatched) return;
-    StudyLifeControl.prototype.__gradeIAPatched = true;
+  // ─── Relabela o botão + mostra o chip do semestre atual ─────────────────────
+  // Também via MutationObserver (não depende de loadView ser chamado do jeito
+  // que a gente espera — só reage quando o botão realmente aparece na tela).
 
-    const _orig = StudyLifeControl.prototype.loadView;
-    StudyLifeControl.prototype.loadView = function (view) {
-      const r = _orig.call(this, view);
-      if (view === 'grade-curricular') {
-        setTimeout(() => {
-          const btn = document.getElementById('btn-importar-ufob');
-          if (btn && !btn.dataset.iaPatch) {
-            btn.dataset.iaPatch = '1';
-            btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Atualizar com IA (PDF)';
-            btn.title = 'Envie o PDF novo do fluxograma para comparar e atualizar sua grade';
-            const nb = btn.cloneNode(true);
-            btn.parentNode.replaceChild(nb, btn);
-            nb.addEventListener('click', () => window.GradeIAImport.openModal('grade'));
-          }
-          addCurrentSemesterChip(this);
-        }, 100);
-      }
-      return r;
-    };
+  function relabelImportButton() {
+    const btn = document.getElementById('btn-importar-ufob');
+    if (btn && !btn.dataset.iaLabel) {
+      btn.dataset.iaLabel = '1';
+      btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Atualizar com IA (PDF)';
+      btn.title = 'Envie o PDF novo do fluxograma para comparar e atualizar sua grade';
+    }
+    addCurrentSemesterChip();
   }
+
+  new MutationObserver(relabelImportButton).observe(document.body, { childList: true, subtree: true });
+  document.addEventListener('app-ready', () => setTimeout(relabelImportButton, 200));
 
   // ─── Chip do semestre atual ao lado do título da página ────────────────────
 
-  function addCurrentSemesterChip(appInstance) {
+  function addCurrentSemesterChip() {
     const header = document.querySelector('.view-header-grade-upgraded h2, .view-header h2');
     if (!header || header.dataset.semChip) return;
-    const semestre = parseInt((appInstance || window.app)?.data?.user?.semestre || 0, 10) || 0;
+    const semestre = parseInt(window.app?.data?.user?.semestre || 0, 10) || 0;
     if (!semestre) return;
     header.dataset.semChip = '1';
     const chip = document.createElement('span');
@@ -556,8 +562,5 @@ Regras:
     const p = helper.querySelector('p');
     if (p) p.textContent = 'Envie o PDF ou imagem da grade e a IA extrai tudo automaticamente. Ou use o método manual abaixo.';
   }).observe(document.body, { childList: true, subtree: true });
-
-  document.addEventListener('app-ready', () => setTimeout(patchLoadView, 300));
-  if (window.app?.initialized) setTimeout(patchLoadView, 100);
 
 })();
