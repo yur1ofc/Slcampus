@@ -41,12 +41,23 @@ Formato obrigatório:
   ]
 }
 
-Regras:
+Regras gerais:
 - "dia" deve ser um destes valores exatos, em minúsculas e sem acento: domingo, segunda, terca, quarta, quinta, sexta, sabado.
 - "inicio" e "fim" no formato 24h "HH:MM".
-- Se uma disciplina aparecer em mais de um dia/horário na semana, crie um item separado da lista para cada horário — não agrupe.
 - Não invente aulas, dias ou horários que não estiverem no conteúdo enviado.
-- Ignore intervalos/recreio que não sejam aulas.`;
+- Ignore intervalos/recreio que não sejam aulas.
+- Revise seu resultado antes de responder: confira se TODAS as disciplinas visíveis no documento foram incluídas, em TODOS os dias em que elas aparecem (é comum uma disciplina aparecer 2 ou 3 vezes por semana, em dias diferentes — inclua uma entrada para cada dia).
+
+Caso especial MUITO COMUM — documentos de sistemas acadêmicos (SIGAA, atestado de matrícula, etc.) com DUAS tabelas:
+1) Uma tabela "Turmas Matriculadas" / lista de componentes, com colunas tipo Código, Componente Curricular/Docente, Local. Essa tabela é a LEGENDA: cada código (ex.: CET5030) corresponde a um nome de disciplina, um professor e uma sala.
+2) Uma "Tabela de Horários" em formato de grade, com colunas Dom/Seg/Ter/Qua/Qui/Sex/Sab e linhas de faixas de horário (ex.: "07:30-08:20", "08:20-09:10"). Cada célula preenchida contém o CÓDIGO da disciplina (não o nome) que ocorre naquele dia/faixa.
+Quando encontrar esse formato:
+- Primeiro monte mentalmente o mapa código → nome da disciplina (e professor/sala) usando a tabela de legenda.
+- Depois percorra a grade célula por célula: para cada dia (coluna) e cada código que aparecer, gere as aulas correspondentes usando o NOME da disciplina (nunca o código) no campo "materia".
+- Se um mesmo código ocupar duas ou mais faixas de horário SEGUIDAS (sem intervalo) no mesmo dia, uma a essas faixas em UMA ÚNICA aula, do início da primeira faixa até o fim da última (ex.: código na faixa 07:30-08:20 e também em 08:20-09:10 no mesmo dia = uma aula única das 07:30 às 09:10). Não gere uma aula por faixa de 50 minutos.
+- Se a coluna "Local" da legenda mostrar salas diferentes por dia entre parênteses (ex.: "PD 12 (3M56) PD 11 (5M56)"), use a sala correta para cada dia — nesse exemplo, os números antes da letra indicam os dias da semana (2=segunda, 3=terça, 4=quarta, 5=quinta, 6=sexta, 7=sábado), então "3M56" é terça e "5M56" é quinta: sala PD 12 na terça, sala PD 11 na quinta.
+- Também pode aparecer um código compacto de horário ao lado de cada disciplina na lista de turmas (ex.: "246T12", "35M56"), no formato [dias][turno][faixas]: os dígitos antes da letra são os dias (2=segunda...7=sábado), a letra é o turno (M=manhã, T=tarde, N=noite). Use isso apenas como conferência extra de quais dias a disciplina ocorre — a fonte principal e mais confiável para o horário exato (início/fim) é sempre a grade "Tabela de Horários", não esse código.
+- Ignore disciplinas com status diferente de "MATRICULADO" (ex.: "INDEFERIDO", "CANCELADO", "TRANCADO") — essas não devem virar aulas.`;
 
     // ─── Helpers de arquivo / IA (mesma lógica de grade-ia-import.js) ──────────
 
