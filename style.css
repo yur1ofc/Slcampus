@@ -3819,6 +3819,27 @@ body.sidebar-open .mobile-nav-overlay {
   .main-content {
     width: 100%;
     min-width: 0;
+    margin-left: 0;
+  }
+
+  /* Nesta faixa a sidebar virou uma gaveta (abre por cima, com o ☰),
+     então ela tem espaço de sobra — mostra os textos ao lado dos ícones
+     em vez de ficar só com ícone (que é o modo "encolhido" pensado pra
+     quando a sidebar fica sempre visível e apertada, não é o caso aqui). */
+  .sidebar .logo span,
+  .sidebar .nav-item span,
+  .sidebar .user-details,
+  .sidebar .streak-info span,
+  .sidebar .toggle-label {
+    display: initial;
+  }
+
+  .sidebar .user-details {
+    display: flex;
+  }
+
+  .sidebar .nav-item {
+    justify-content: flex-start;
   }
 
   .content-header {
