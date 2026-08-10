@@ -418,6 +418,9 @@
 
         app.data.curriculum = working;
         const okCurriculum = await dbService.saveData('curriculum', app.data.curriculum);
+        if (okCurriculum && typeof window.syncSubjectsWithCurriculumAndRefresh === 'function') {
+            await window.syncSubjectsWithCurriculumAndRefresh(app, { reload: false });
+        }
 
         const currentSemester = parseInt(app.data?.user?.semestre || 0, 10) || 0;
         const nextSemester = currentSemester + 1;
@@ -509,6 +512,9 @@
                 item.nota = null;
                 app.data.curriculum = curriculum;
                 const ok = await dbService.saveData('curriculum', app.data.curriculum);
+                if (ok && typeof window.syncSubjectsWithCurriculumAndRefresh === 'function') {
+                    await window.syncSubjectsWithCurriculumAndRefresh(app, { reload: false });
+                }
                 showToast(ok ? `"${item.nome}" foi trancada.` : 'Não foi possível salvar. Verifique sua conexão.', ok ? 'success' : 'error');
                 renderGerenciar(app);
                 if (typeof app.loadView === 'function' && ok) app.loadView('grade-curricular');
@@ -525,6 +531,9 @@
                 item.nota = null;
                 app.data.curriculum = curriculum;
                 const ok = await dbService.saveData('curriculum', app.data.curriculum);
+                if (ok && typeof window.syncSubjectsWithCurriculumAndRefresh === 'function') {
+                    await window.syncSubjectsWithCurriculumAndRefresh(app, { reload: false });
+                }
                 showToast(ok ? `"${item.nome}" foi removida do semestre atual.` : 'Não foi possível salvar. Verifique sua conexão.', ok ? 'success' : 'error');
                 renderGerenciar(app);
                 if (typeof app.loadView === 'function' && ok) app.loadView('grade-curricular');
@@ -544,6 +553,9 @@
             item.nota = null;
             app.data.curriculum = curriculum;
             const ok = await dbService.saveData('curriculum', app.data.curriculum);
+            if (ok && typeof window.syncSubjectsWithCurriculumAndRefresh === 'function') {
+                await window.syncSubjectsWithCurriculumAndRefresh(app, { reload: false });
+            }
             showToast(ok ? `"${item.nome}" adicionada ao semestre atual.` : 'Não foi possível salvar. Verifique sua conexão.', ok ? 'success' : 'error');
             renderGerenciar(app);
             if (typeof app.loadView === 'function' && ok) app.loadView('grade-curricular');
