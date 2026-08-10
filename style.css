@@ -3446,6 +3446,43 @@ input:checked + .toggle-slider:before {
     color: #fcd34d;
 }
 
+.tag.reprovada {
+    background: rgba(239, 68, 68, 0.16);
+    color: #fca5a5;
+}
+
+.curriculum-nota-row {
+    margin: 6px 0;
+}
+
+.chip-nota {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 700;
+}
+
+.chip-nota-ok {
+    background: rgba(34, 197, 94, 0.16);
+    color: #86efac;
+}
+
+.chip-nota-baixa {
+    background: rgba(239, 68, 68, 0.16);
+    color: #fca5a5;
+}
+
+.btn-finalizar-semestre-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-finalizar-semestre-cta .badge {
+    background: var(--accent-danger, #ef4444);
+    color: #fff;
+}
+
 /* Assistente / sugestões de pré-requisito */
 .curriculum-ai-suggestions {
     margin-bottom: 14px;

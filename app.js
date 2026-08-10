@@ -641,6 +641,7 @@ class StudyLifeControl {
         if (view === 'grade-curricular') {
             document.getElementById('btn-novo-curriculum')?.addEventListener('click', () => this.openModal('curriculum'));
             document.getElementById('btn-importar-ufob')?.addEventListener('click', () => this.importarGradeUfob());
+            document.getElementById('btn-finalizar-semestre')?.addEventListener('click', () => this.abrirFinalizarSemestre());
 
             document.querySelectorAll('.btn-editar-curriculum').forEach(btn => {
                 btn.addEventListener('click', e => this.editarCurriculum(e.currentTarget.dataset.id));

@@ -2490,7 +2490,8 @@ class ViewRenderer {
         const progressoCursando = totais.totalHoras ? Math.round((totais.horasCursando / totais.totalHoras) * 100) : 0;
         const progressoPendente = Math.max(0, 100 - progresso - progressoCursando);
         const horasRestantes = Math.max(0, totais.totalHoras - totais.horasConcluidas);
-        const currentSemester = parseInt(this.app.data?.user?.semester || 0, 10) || 0;
+        const currentSemester = parseInt(this.app.data?.user?.semestre || 0, 10) || 0;
+        const cursandoAgora = curriculum.filter(item => item.status === 'cursando').length;
 
         const porSemestre = curriculum.reduce((acc, item) => {
             const sem = String(item.semestre || '0').trim();
@@ -2545,6 +2546,10 @@ class ViewRenderer {
                 <div class="view-actions-inline">
                     <button class="btn-secondary" id="btn-importar-ufob">
                         <i class="fas fa-wand-magic-sparkles"></i> Importar grade pronta
+                    </button>
+                    <button class="btn-secondary btn-finalizar-semestre-cta" id="btn-finalizar-semestre" title="Encerrar o semestre atual, registrar aprovações/reprovações e escolher as matérias do próximo">
+                        <i class="fas fa-flag-checkered"></i> Finalizar Semestre
+                        ${cursandoAgora ? `<span class="badge badge-soft">${cursandoAgora}</span>` : ''}
                     </button>
                     <button class="btn-primary" id="btn-novo-curriculum">
                         <i class="fas fa-plus"></i> Novo Componente
@@ -2721,6 +2726,14 @@ class ViewRenderer {
                                                         </div>
                                                         <span class="tag ${this.esc(item.status)}">${this.esc((item.status || '').replaceAll('-', ' '))}</span>
                                                     </div>
+
+                                                    ${(item.nota !== undefined && item.nota !== null && item.nota !== '') ? `
+                                                        <div class="curriculum-nota-row">
+                                                            <span class="chip chip-nota ${Number(item.nota) >= 6 ? 'chip-nota-ok' : 'chip-nota-baixa'}">
+                                                                <i class="fas fa-star"></i> Média: ${this.esc(Number(item.nota).toFixed(1))}
+                                                            </span>
+                                                        </div>
+                                                    ` : ''}
 
                                                     ${item.prerequisitosLista?.length ? `
                                                         <div class="prereq-inline-row upgraded">
