@@ -78,7 +78,7 @@ Regras:
 
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
-      const msg = err?.error?.message || `Erro HTTP ${response.status}`;
+      const msg = (typeof err?.error === 'string' ? err.error : err?.error?.message) || `Erro HTTP ${response.status}`;
       throw new Error(msg);
     }
 
