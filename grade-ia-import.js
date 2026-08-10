@@ -261,7 +261,7 @@ Regras:
         </li>`).join('');
 
       wrap.innerHTML = `
-        <div style="background:#fff;border-radius:16px;width:100%;max-width:560px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.22);overflow:hidden;">
+        <div style="background:#fff;color:#1e293b;border-radius:16px;width:100%;max-width:560px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.22);overflow:hidden;">
           <div style="padding:1.1rem 1.4rem;background:linear-gradient(135deg,#1a73e8,#4f46e5);color:#fff;">
             <h3 style="margin:0;font-size:1rem;">Confira o que vai mudar</h3>
             <p style="margin:.2rem 0 0;font-size:.78rem;opacity:.85;">Nada é aplicado até você confirmar. Progresso e notas já lançados não são alterados.</p>
@@ -304,7 +304,7 @@ Regras:
     modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.52);display:flex;align-items:center;justify-content:center;padding:1rem;';
 
     modal.innerHTML = `
-      <div style="background:#fff;border-radius:16px;width:100%;max-width:540px;box-shadow:0 8px 40px rgba(0,0,0,.22);overflow:hidden;">
+      <div style="background:#fff;color:#1e293b;border-radius:16px;width:100%;max-width:540px;box-shadow:0 8px 40px rgba(0,0,0,.22);overflow:hidden;">
         <div style="background:linear-gradient(135deg,#1a73e8,#4f46e5);padding:1.25rem 1.5rem;display:flex;align-items:center;gap:.75rem;">
           <i class="fas fa-wand-magic-sparkles" style="color:#fff;font-size:1.25rem;"></i>
           <div style="flex:1">
