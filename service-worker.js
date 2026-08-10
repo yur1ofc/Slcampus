@@ -1,5 +1,5 @@
 // service-worker.js — Cache inteligente com estratégias por tipo de recurso
-const CACHE_VERSION = 'slc-v6';
+const CACHE_VERSION = 'slc-v7';
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const DYNAMIC_CACHE = `${CACHE_VERSION}-dynamic`;
 
