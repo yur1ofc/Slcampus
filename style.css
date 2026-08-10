@@ -3451,6 +3451,11 @@ input:checked + .toggle-slider:before {
     color: #fca5a5;
 }
 
+.tag.trancada {
+    background: rgba(148, 163, 184, 0.2);
+    color: #cbd5e1;
+}
+
 .curriculum-nota-row {
     margin: 6px 0;
 }

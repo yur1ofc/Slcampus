@@ -1,7 +1,8 @@
-// semester-finish.js - Assistente "Finalizar Semestre"
-// Permite ao usuário encerrar o semestre atual: marcar cada matéria como
-// aprovada/reprovada, registrar a média final de cada uma e, em seguida,
-// escolher quais disciplinas cursará no próximo semestre.
+// semester-finish.js - Assistente "Finalizar Semestre" + "Editar Semestre Atual"
+// Finalizar Semestre: marcar cada matéria em curso como aprovada, reprovada ou
+// trancada, registrar a média final e escolher as matérias do próximo semestre.
+// Editar Semestre Atual: a qualquer momento, adicionar, remover ou trancar
+// matérias do semestre em andamento (sem precisar finalizar o semestre).
 (function () {
     'use strict';
 
@@ -20,43 +21,58 @@
         style.id = 'semfin-styles';
         style.textContent = `
             .semfin-overlay{position:fixed;inset:0;background:rgba(2,6,23,.72);display:flex;align-items:center;justify-content:center;z-index:10000;padding:16px;}
-            .semfin-modal{width:min(720px,100%);max-height:92vh;overflow:auto;background:var(--bg-card,#fff);color:var(--text-primary,#0f172a);border-radius:20px;box-shadow:0 25px 80px rgba(0,0,0,.35);}
-            .semfin-header{padding:20px 22px;border-bottom:1px solid var(--border,#e5e7eb);display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
-            .semfin-header h2{margin:0 0 4px;font-size:1.2rem;}
-            .semfin-header p{margin:0;opacity:.75;font-size:.92rem;}
-            .semfin-close{cursor:pointer;font-size:1.4rem;line-height:1;opacity:.6;background:none;border:none;color:inherit;}
+            .semfin-modal{width:min(720px,100%);max-height:92vh;overflow:auto;background:var(--bg-secondary,#151f2f);color:var(--text-primary,#f8fafc);border:1px solid var(--border,#2d3a4f);border-radius:24px;box-shadow:var(--card-shadow,0 25px 80px rgba(0,0,0,.5));}
+            .semfin-header{padding:20px 22px;border-bottom:1px solid var(--border,#2d3a4f);display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+            .semfin-header h2{margin:0 0 4px;font-size:1.2rem;color:var(--text-primary,#f8fafc);}
+            .semfin-header p{margin:0;color:var(--text-secondary,#94a3b8);font-size:.92rem;}
+            .semfin-close{cursor:pointer;font-size:1.4rem;line-height:1;opacity:.6;background:none;border:none;color:var(--text-primary,#f8fafc);}
             .semfin-close:hover{opacity:1;}
             .semfin-body{padding:20px 22px;}
             .semfin-steps{display:flex;gap:8px;margin-bottom:16px;}
-            .semfin-step-dot{flex:1;height:6px;border-radius:999px;background:var(--border,#e2e8f0);}
-            .semfin-step-dot.active{background:var(--accent-primary,#2563eb);}
-            .semfin-empty{padding:24px;text-align:center;opacity:.7;}
-            .semfin-row{border:1px solid var(--border,#e2e8f0);border-radius:14px;padding:14px;margin-bottom:12px;}
-            .semfin-row-head strong{display:block;font-size:1rem;}
-            .semfin-row-head small{opacity:.65;}
+            .semfin-step-dot{flex:1;height:6px;border-radius:999px;background:var(--bg-tertiary,#1e2b3a);}
+            .semfin-step-dot.active{background:var(--accent-primary,#3b82f6);}
+            .semfin-empty{padding:24px;text-align:center;color:var(--text-secondary,#94a3b8);}
+            .semfin-row{border:1px solid var(--border,#2d3a4f);border-radius:14px;padding:14px;margin-bottom:12px;background:var(--bg-tertiary,#1e2b3a);}
+            .semfin-row-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+            .semfin-row-head strong{display:block;font-size:1rem;color:var(--text-primary,#f8fafc);}
+            .semfin-row-head small{color:var(--text-secondary,#94a3b8);}
+            .semfin-row-remove{background:none;border:none;color:var(--text-tertiary,#64748b);cursor:pointer;font-size:.82rem;text-decoration:underline;white-space:nowrap;}
+            .semfin-row-remove:hover{color:var(--accent-danger,#ef4444);}
             .semfin-row-controls{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin-top:10px;}
-            .semfin-toggle{display:flex;gap:8px;}
-            .semfin-pill{border:1px solid var(--border,#cbd5e1);background:transparent;color:inherit;border-radius:999px;padding:8px 14px;font-weight:600;cursor:pointer;font-size:.88rem;}
-            .semfin-pill[data-choice="aprovado"].active{background:rgba(34,197,94,.16);border-color:#22c55e;color:#16a34a;}
-            .semfin-pill[data-choice="reprovado"].active{background:rgba(239,68,68,.16);border-color:#ef4444;color:#dc2626;}
+            .semfin-toggle{display:flex;gap:8px;flex-wrap:wrap;}
+            .semfin-pill{border:1px solid var(--border,#2d3a4f);background:transparent;color:var(--text-secondary,#94a3b8);border-radius:999px;padding:8px 14px;font-weight:600;cursor:pointer;font-size:.88rem;}
+            .semfin-pill[data-choice="aprovado"].active{background:rgba(16,185,129,.16);border-color:#10b981;color:#34d399;}
+            .semfin-pill[data-choice="reprovado"].active{background:rgba(239,68,68,.16);border-color:#ef4444;color:#f87171;}
+            .semfin-pill[data-choice="trancado"].active{background:rgba(148,163,184,.2);border-color:#94a3b8;color:#cbd5e1;}
             .semfin-nota-field{display:flex;flex-direction:column;gap:4px;}
-            .semfin-nota-field label{font-size:.82rem;font-weight:600;opacity:.75;}
-            .semfin-nota-field input{width:100px;border:1px solid var(--border,#cbd5e1);border-radius:10px;padding:8px 10px;font:inherit;background:var(--bg-input,#fff);color:inherit;}
+            .semfin-nota-field label{font-size:.82rem;font-weight:600;color:var(--text-secondary,#94a3b8);}
+            .semfin-nota-field input{width:100px;border:1px solid var(--border,#2d3a4f);border-radius:10px;padding:8px 10px;font:inherit;background:var(--bg-primary,#0a0f1f);color:var(--text-primary,#f8fafc);}
+            .semfin-nota-field input:disabled{opacity:.4;}
             .semfin-nota-field input.semfin-invalid{border-color:#ef4444;}
-            .semfin-candidate{display:flex;align-items:flex-start;gap:12px;border:1px solid var(--border,#e2e8f0);border-radius:14px;padding:12px 14px;margin-bottom:10px;}
-            .semfin-candidate.blocked{opacity:.55;}
+            .semfin-candidate{display:flex;align-items:flex-start;gap:12px;border:1px solid var(--border,#2d3a4f);background:var(--bg-tertiary,#1e2b3a);border-radius:14px;padding:12px 14px;margin-bottom:10px;}
+            .semfin-candidate.blocked{opacity:.5;}
             .semfin-candidate input[type="checkbox"]{margin-top:4px;width:18px;height:18px;}
             .semfin-candidate-info{flex:1;}
-            .semfin-candidate-info strong{display:block;}
-            .semfin-candidate-info small{opacity:.65;display:block;margin-top:2px;}
+            .semfin-candidate-info strong{display:block;color:var(--text-primary,#f8fafc);}
+            .semfin-candidate-info small{color:var(--text-secondary,#94a3b8);display:block;margin-top:2px;}
             .semfin-tag{display:inline-block;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:999px;margin-top:6px;margin-right:6px;}
-            .semfin-tag.recomendada{background:rgba(37,99,235,.14);color:#2563eb;}
-            .semfin-tag.repescagem{background:rgba(239,68,68,.14);color:#dc2626;}
-            .semfin-tag.bloqueada{background:rgba(148,163,184,.2);color:#64748b;}
-            .semfin-group-title{font-weight:700;margin:16px 0 8px;opacity:.8;}
-            .semfin-summary{background:var(--bg-soft,#f8fafc);border-radius:14px;padding:14px;margin-bottom:16px;font-size:.92rem;}
-            .semfin-footer{display:flex;justify-content:space-between;gap:10px;padding:16px 22px 22px;border-top:1px solid var(--border,#e5e7eb);}
-            .semfin-footer-right{display:flex;gap:10px;}
+            .semfin-tag.recomendada{background:rgba(59,130,246,.16);color:#93c5fd;}
+            .semfin-tag.repescagem{background:rgba(239,68,68,.16);color:#f87171;}
+            .semfin-tag.trancada{background:rgba(148,163,184,.2);color:#cbd5e1;}
+            .semfin-tag.bloqueada{background:rgba(148,163,184,.16);color:#94a3b8;}
+            .semfin-group-title{font-weight:700;margin:16px 0 8px;color:var(--text-secondary,#94a3b8);}
+            .semfin-summary{background:var(--bg-tertiary,#1e2b3a);border:1px solid var(--border,#2d3a4f);border-radius:14px;padding:14px;margin-bottom:16px;font-size:.92rem;color:var(--text-primary,#f8fafc);}
+            .semfin-footer{display:flex;justify-content:space-between;gap:10px;padding:16px 22px 22px;border-top:1px solid var(--border,#2d3a4f);flex-wrap:wrap;}
+            .semfin-footer-right{display:flex;gap:10px;flex-wrap:wrap;}
+            .semfin-manage-row{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid var(--border,#2d3a4f);background:var(--bg-tertiary,#1e2b3a);border-radius:14px;padding:12px 14px;margin-bottom:10px;}
+            .semfin-manage-info strong{display:block;color:var(--text-primary,#f8fafc);}
+            .semfin-manage-info small{color:var(--text-secondary,#94a3b8);}
+            .semfin-manage-actions{display:flex;gap:8px;flex-wrap:wrap;}
+            .semfin-manage-actions button{border-radius:10px;padding:7px 12px;font-size:.82rem;font-weight:600;cursor:pointer;border:1px solid var(--border,#2d3a4f);background:transparent;color:var(--text-primary,#f8fafc);}
+            .semfin-manage-actions .semfin-btn-lock:hover{border-color:#94a3b8;color:#cbd5e1;}
+            .semfin-manage-actions .semfin-btn-remove:hover{border-color:#ef4444;color:#f87171;}
+            .semfin-add-row{display:flex;gap:10px;align-items:center;margin-top:6px;flex-wrap:wrap;}
+            .semfin-add-row select{flex:1;min-width:220px;border:1px solid var(--border,#2d3a4f);border-radius:10px;padding:9px 10px;font:inherit;background:var(--bg-primary,#0a0f1f);color:var(--text-primary,#f8fafc);}
         `;
         document.head.appendChild(style);
     }
@@ -88,43 +104,55 @@
         `;
     }
 
-    // ---------- PASSO 1: aprovação/reprovação + média ----------
+    // =====================================================================
+    // FINALIZAR SEMESTRE
+    // =====================================================================
+
+    // ---------- PASSO 1: aprovação/reprovação/trancamento + média ----------
     function renderStep1(app) {
         const state = app._semFinState;
         const overlay = ensureOverlay();
+
+        if (!state.cursando.length) {
+            overlay.innerHTML = `
+                <div class="semfin-modal">
+                    <div class="semfin-header">
+                        <div>
+                            <h2><i class="fas fa-flag-checkered"></i> Finalizar Semestre</h2>
+                        </div>
+                        <button type="button" class="semfin-close" id="semfin-close-btn">&times;</button>
+                    </div>
+                    <div class="semfin-body">
+                        <div class="semfin-empty">Nenhuma matéria restante para avaliar neste semestre.</div>
+                    </div>
+                    <div class="semfin-footer">
+                        <div></div>
+                        <div class="semfin-footer-right">
+                            <button type="button" class="btn-primary" id="semfin-continue-btn">Continuar <i class="fas fa-arrow-right"></i></button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('semfin-close-btn')?.addEventListener('click', closeModal);
+            document.getElementById('semfin-continue-btn')?.addEventListener('click', () => {
+                buildWorkingCurriculum(app);
+                renderStep2(app);
+            });
+            return;
+        }
 
         overlay.innerHTML = `
             <div class="semfin-modal">
                 <div class="semfin-header">
                     <div>
                         <h2><i class="fas fa-flag-checkered"></i> Finalizar Semestre</h2>
-                        <p>Passo 1 de 2 — Marque o resultado de cada matéria que você estava cursando e informe a média final.</p>
+                        <p>Passo 1 de 2 — Marque o resultado de cada matéria e informe a média final. Se alguma não deveria estar aqui, use "remover da lista".</p>
                     </div>
                     <button type="button" class="semfin-close" id="semfin-close-btn">&times;</button>
                 </div>
-                <div class="semfin-body">
+                <div class="semfin-body" id="semfin-step1-list">
                     ${stepDots(1)}
-                    ${state.cursando.map(item => {
-                        const result = state.resultados[item.id] || { aprovado: true, nota: item.nota ?? '' };
-                        return `
-                            <div class="semfin-row" data-id="${item.id}">
-                                <div class="semfin-row-head">
-                                    <strong>${escapeHtml(item.nome)}</strong>
-                                    <small>${item.semestre ? `${escapeHtml(item.semestre)}º semestre` : 'Sem semestre'} ${item.codigo ? `• ${escapeHtml(item.codigo)}` : ''}</small>
-                                </div>
-                                <div class="semfin-row-controls">
-                                    <div class="semfin-toggle">
-                                        <button type="button" class="semfin-pill ${result.aprovado ? 'active' : ''}" data-choice="aprovado">✅ Aprovado</button>
-                                        <button type="button" class="semfin-pill ${!result.aprovado ? 'active' : ''}" data-choice="reprovado">❌ Reprovado</button>
-                                    </div>
-                                    <div class="semfin-nota-field">
-                                        <label>Média final</label>
-                                        <input type="number" class="semfin-nota-input" min="0" max="10" step="0.1" placeholder="0 a 10" value="${result.nota === '' || result.nota === undefined || result.nota === null ? '' : result.nota}">
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    }).join('')}
+                    ${state.cursando.map(item => renderStep1Row(state, item)).join('')}
                 </div>
                 <div class="semfin-footer">
                     <button type="button" class="btn-secondary" id="semfin-cancel-btn">Cancelar</button>
@@ -135,20 +163,86 @@
             </div>
         `;
 
+        bindStep1Events(app);
+
         document.getElementById('semfin-close-btn')?.addEventListener('click', closeModal);
         document.getElementById('semfin-cancel-btn')?.addEventListener('click', closeModal);
 
+        document.getElementById('semfin-continue-btn')?.addEventListener('click', () => {
+            if (!state.cursando.length) {
+                buildWorkingCurriculum(app);
+                renderStep2(app);
+                return;
+            }
+
+            let valid = true;
+            document.querySelectorAll('.semfin-row').forEach(row => {
+                const id = row.dataset.id;
+                const result = state.resultados[id];
+                if (result.choice === 'trancado') return;
+                const input = row.querySelector('.semfin-nota-input');
+                const raw = result.nota;
+                const num = parseFloat(String(raw).replace(',', '.'));
+                if (raw === '' || raw === undefined || raw === null || isNaN(num) || num < 0 || num > 10) {
+                    valid = false;
+                    input?.classList.add('semfin-invalid');
+                } else {
+                    result.nota = num;
+                }
+            });
+
+            if (!valid) {
+                showToast('Informe uma média válida (0 a 10) para cada matéria aprovada ou reprovada.', 'warning');
+                return;
+            }
+
+            buildWorkingCurriculum(app);
+            renderStep2(app);
+        });
+    }
+
+    function renderStep1Row(state, item) {
+        const result = state.resultados[item.id] || { choice: 'aprovado', nota: item.nota ?? '' };
+        state.resultados[item.id] = result;
+        const isTrancado = result.choice === 'trancado';
+        return `
+            <div class="semfin-row" data-id="${item.id}">
+                <div class="semfin-row-head">
+                    <div>
+                        <strong>${escapeHtml(item.nome)}</strong>
+                        <small>${item.semestre ? `${escapeHtml(item.semestre)}º semestre` : 'Sem semestre'} ${item.codigo ? `• ${escapeHtml(item.codigo)}` : ''}</small>
+                    </div>
+                    <button type="button" class="semfin-row-remove" data-remove-id="${item.id}">remover da lista</button>
+                </div>
+                <div class="semfin-row-controls">
+                    <div class="semfin-toggle">
+                        <button type="button" class="semfin-pill ${result.choice === 'aprovado' ? 'active' : ''}" data-choice="aprovado">✅ Aprovado</button>
+                        <button type="button" class="semfin-pill ${result.choice === 'reprovado' ? 'active' : ''}" data-choice="reprovado">❌ Reprovado</button>
+                        <button type="button" class="semfin-pill ${result.choice === 'trancado' ? 'active' : ''}" data-choice="trancado">🔒 Trancado</button>
+                    </div>
+                    <div class="semfin-nota-field">
+                        <label>Média final</label>
+                        <input type="number" class="semfin-nota-input" min="0" max="10" step="0.1" placeholder="0 a 10" value="${result.nota === '' || result.nota === undefined || result.nota === null ? '' : result.nota}" ${isTrancado ? 'disabled' : ''}>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function bindStep1Events(app) {
+        const state = app._semFinState;
+        const overlay = document.getElementById('semfin-overlay');
+        if (!overlay) return;
+
         overlay.querySelectorAll('.semfin-row').forEach(row => {
             const id = row.dataset.id;
-            if (!state.resultados[id]) {
-                const item = state.cursando.find(i => i.id === id);
-                state.resultados[id] = { aprovado: true, nota: item?.nota ?? '' };
-            }
 
             row.querySelectorAll('.semfin-pill').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    state.resultados[id].aprovado = btn.dataset.choice === 'aprovado';
+                    state.resultados[id].choice = btn.dataset.choice;
                     row.querySelectorAll('.semfin-pill').forEach(b => b.classList.toggle('active', b === btn));
+                    const notaInput = row.querySelector('.semfin-nota-input');
+                    if (notaInput) notaInput.disabled = btn.dataset.choice === 'trancado';
                 });
             });
 
@@ -157,30 +251,13 @@
                 state.resultados[id].nota = notaInput.value;
                 notaInput.classList.remove('semfin-invalid');
             });
-        });
 
-        document.getElementById('semfin-continue-btn')?.addEventListener('click', () => {
-            let valid = true;
-            overlay.querySelectorAll('.semfin-row').forEach(row => {
-                const id = row.dataset.id;
-                const input = row.querySelector('.semfin-nota-input');
-                const raw = state.resultados[id].nota;
-                const num = parseFloat(String(raw).replace(',', '.'));
-                if (raw === '' || raw === undefined || raw === null || isNaN(num) || num < 0 || num > 10) {
-                    valid = false;
-                    input?.classList.add('semfin-invalid');
-                } else {
-                    state.resultados[id].nota = num;
-                }
+            row.querySelector('.semfin-row-remove')?.addEventListener('click', () => {
+                state.cursando = state.cursando.filter(i => i.id !== id);
+                delete state.resultados[id];
+                showToast('Matéria removida desta finalização. O status dela não foi alterado — edite-a em "Editar Semestre Atual" se necessário.', 'success');
+                renderStep1(app);
             });
-
-            if (!valid) {
-                showToast('Informe uma média válida (0 a 10) para cada matéria.', 'warning');
-                return;
-            }
-
-            buildWorkingCurriculum(app);
-            renderStep2(app);
         });
     }
 
@@ -193,8 +270,16 @@
         state.working.forEach(item => {
             const result = state.resultados[item.id];
             if (!result) return;
-            item.status = result.aprovado ? 'concluida' : 'reprovada';
-            item.nota = result.nota;
+            if (result.choice === 'aprovado') {
+                item.status = 'concluida';
+                item.nota = result.nota;
+            } else if (result.choice === 'reprovado') {
+                item.status = 'reprovada';
+                item.nota = result.nota;
+            } else if (result.choice === 'trancado') {
+                item.status = 'trancada';
+                item.nota = null;
+            }
         });
     }
 
@@ -204,14 +289,18 @@
         const overlay = ensureOverlay();
         const working = state.working;
 
-        const aprovadas = Object.values(state.resultados).filter(r => r.aprovado).length;
-        const reprovadas = Object.values(state.resultados).filter(r => !r.aprovado).length;
+        const contagem = Object.values(state.resultados).reduce((acc, r) => {
+            if (r.choice === 'aprovado') acc.aprovadas++;
+            else if (r.choice === 'reprovado') acc.reprovadas++;
+            else if (r.choice === 'trancado') acc.trancadas++;
+            return acc;
+        }, { aprovadas: 0, reprovadas: 0, trancadas: 0 });
 
         const currentSemester = parseInt(app.data?.user?.semestre || 0, 10) || 0;
         const nextSemester = currentSemester ? currentSemester + 1 : 0;
 
         const cursandoIds = new Set(state.cursando.map(i => i.id));
-        const candidatos = working.filter(item => !cursandoIds.has(item.id) && (item.status === 'nao-cursada' || item.status === 'reprovada'));
+        const candidatos = working.filter(item => !cursandoIds.has(item.id) && ['nao-cursada', 'reprovada', 'trancada'].includes(item.status));
 
         function prereqsSatisfeitos(item) {
             if (!item.prerequisitosLista?.length) return { ok: true, pendentes: [] };
@@ -230,7 +319,7 @@
                     .filter(item => {
                         const { ok } = prereqsSatisfeitos(item);
                         if (!ok) return false;
-                        if (item.status === 'reprovada') return true;
+                        if (item.status === 'reprovada' || item.status === 'trancada') return true;
                         return nextSemester && parseInt(item.semestre || 0, 10) === nextSemester;
                     })
                     .map(item => item.id)
@@ -258,7 +347,9 @@
                 <div class="semfin-body">
                     ${stepDots(2)}
                     <div class="semfin-summary">
-                        ✅ <strong>${aprovadas}</strong> aprovada(s) &nbsp;•&nbsp; ❌ <strong>${reprovadas}</strong> reprovada(s)
+                        ✅ <strong>${contagem.aprovadas}</strong> aprovada(s) &nbsp;•&nbsp;
+                        ❌ <strong>${contagem.reprovadas}</strong> reprovada(s) &nbsp;•&nbsp;
+                        🔒 <strong>${contagem.trancadas}</strong> trancada(s)
                         ${nextSemester ? `&nbsp;•&nbsp; Próximo semestre: <strong>${nextSemester}º</strong>` : ''}
                     </div>
 
@@ -276,7 +367,8 @@
                                         <strong>${escapeHtml(item.nome)}</strong>
                                         <small>${Number(item.cargaHoraria) || 0}h ${item.codigo ? `• ${escapeHtml(item.codigo)}` : ''}</small>
                                         ${item.status === 'reprovada' ? '<span class="semfin-tag repescagem">Repescagem</span>' : ''}
-                                        ${ok && item.status !== 'reprovada' && nextSemester && parseInt(item.semestre || 0, 10) === nextSemester ? '<span class="semfin-tag recomendada">Recomendada</span>' : ''}
+                                        ${item.status === 'trancada' ? '<span class="semfin-tag trancada">Trancada anteriormente</span>' : ''}
+                                        ${ok && item.status === 'nao-cursada' && nextSemester && parseInt(item.semestre || 0, 10) === nextSemester ? '<span class="semfin-tag recomendada">Recomendada</span>' : ''}
                                         ${!ok ? `<span class="semfin-tag bloqueada">Falta: ${pendentes.map(escapeHtml).join(', ')}</span>` : ''}
                                     </div>
                                 </label>
@@ -311,8 +403,12 @@
     async function finalizarSemestre(app) {
         const state = app._semFinState;
         const working = state.working;
-        const aprovadas = Object.values(state.resultados).filter(r => r.aprovado).length;
-        const reprovadas = Object.values(state.resultados).filter(r => !r.aprovado).length;
+        const contagem = Object.values(state.resultados).reduce((acc, r) => {
+            if (r.choice === 'aprovado') acc.aprovadas++;
+            else if (r.choice === 'reprovado') acc.reprovadas++;
+            else if (r.choice === 'trancado') acc.trancadas++;
+            return acc;
+        }, { aprovadas: 0, reprovadas: 0, trancadas: 0 });
 
         working.forEach(item => {
             if (state.selecionadas.has(item.id)) {
@@ -334,7 +430,7 @@
         app._semFinState = null;
 
         if (okCurriculum) {
-            showToast(`Semestre finalizado! ✅ ${aprovadas} aprovada(s), ❌ ${reprovadas} reprovada(s), ${state.selecionadas.size} matéria(s) selecionada(s) para o próximo semestre.`, 'success');
+            showToast(`Semestre finalizado! ✅ ${contagem.aprovadas} aprovada(s), ❌ ${contagem.reprovadas} reprovada(s), 🔒 ${contagem.trancadas} trancada(s), ${state.selecionadas.size} matéria(s) selecionada(s) para o próximo semestre.`, 'success');
         } else {
             showToast('Semestre finalizado, mas houve um problema ao sincronizar. Verifique sua conexão.', 'warning');
         }
@@ -342,14 +438,126 @@
         if (typeof app.loadView === 'function') app.loadView('grade-curricular');
     }
 
+    // =====================================================================
+    // EDITAR SEMESTRE ATUAL (a qualquer momento, sem finalizar o semestre)
+    // =====================================================================
+
+    function renderGerenciar(app) {
+        injectStyles();
+        const overlay = ensureOverlay();
+        const curriculum = app.getNormalizedCurriculum ? app.getNormalizedCurriculum() : (app.data.curriculum || []);
+        const cursando = curriculum.filter(i => i.status === 'cursando').sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
+        const disponiveis = curriculum
+            .filter(i => ['nao-cursada', 'reprovada', 'trancada'].includes(i.status))
+            .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
+
+        const statusLabel = { 'nao-cursada': 'Não cursada', 'reprovada': 'Reprovada', 'trancada': 'Trancada' };
+
+        overlay.innerHTML = `
+            <div class="semfin-modal">
+                <div class="semfin-header">
+                    <div>
+                        <h2><i class="fas fa-sliders"></i> Editar Semestre Atual</h2>
+                        <p>Adicione, remova ou tranque matérias do semestre em andamento a qualquer momento.</p>
+                    </div>
+                    <button type="button" class="semfin-close" id="semfin-close-btn">&times;</button>
+                </div>
+                <div class="semfin-body">
+                    <div class="semfin-group-title">Cursando agora (${cursando.length})</div>
+                    ${!cursando.length ? `<div class="semfin-empty">Nenhuma matéria marcada como "Cursando" no momento.</div>` : cursando.map(item => `
+                        <div class="semfin-manage-row" data-id="${item.id}">
+                            <div class="semfin-manage-info">
+                                <strong>${escapeHtml(item.nome)}</strong>
+                                <small>${item.semestre ? `${escapeHtml(item.semestre)}º semestre` : 'Sem semestre'} ${item.codigo ? `• ${escapeHtml(item.codigo)}` : ''}</small>
+                            </div>
+                            <div class="semfin-manage-actions">
+                                <button type="button" class="semfin-btn-lock" data-lock-id="${item.id}"><i class="fas fa-lock"></i> Trancar</button>
+                                <button type="button" class="semfin-btn-remove" data-remove-id="${item.id}"><i class="fas fa-rotate-left"></i> Remover</button>
+                            </div>
+                        </div>
+                    `).join('')}
+
+                    <div class="semfin-group-title" style="margin-top:22px;">Adicionar matéria a este semestre</div>
+                    <div class="semfin-add-row">
+                        <select id="semfin-add-select">
+                            <option value="">Selecione uma matéria...</option>
+                            ${disponiveis.map(item => `<option value="${item.id}">${escapeHtml(item.nome)} (${statusLabel[item.status] || item.status})</option>`).join('')}
+                        </select>
+                        <button type="button" class="btn-primary" id="semfin-add-btn"><i class="fas fa-plus"></i> Adicionar</button>
+                    </div>
+                    ${!disponiveis.length ? `<small style="color:var(--text-secondary,#94a3b8);">Não há outras matérias cadastradas na Grade Curricular para adicionar.</small>` : ''}
+                </div>
+                <div class="semfin-footer">
+                    <div></div>
+                    <div class="semfin-footer-right">
+                        <button type="button" class="btn-primary" id="semfin-done-btn">Concluído</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('semfin-close-btn')?.addEventListener('click', closeModal);
+        document.getElementById('semfin-done-btn')?.addEventListener('click', closeModal);
+
+        overlay.querySelectorAll('[data-lock-id]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const id = btn.dataset.lockId;
+                const item = curriculum.find(i => i.id === id);
+                if (!item) return;
+                if (!confirm(`Trancar "${item.nome}"? Ela ficará disponível para cursar novamente mais tarde, sem nota registrada.`)) return;
+                item.status = 'trancada';
+                item.nota = null;
+                app.data.curriculum = curriculum;
+                const ok = await dbService.saveData('curriculum', app.data.curriculum);
+                showToast(ok ? `"${item.nome}" foi trancada.` : 'Não foi possível salvar. Verifique sua conexão.', ok ? 'success' : 'error');
+                renderGerenciar(app);
+                if (typeof app.loadView === 'function' && ok) app.loadView('grade-curricular');
+            });
+        });
+
+        overlay.querySelectorAll('[data-remove-id]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const id = btn.dataset.removeId;
+                const item = curriculum.find(i => i.id === id);
+                if (!item) return;
+                if (!confirm(`Remover "${item.nome}" das matérias que você está cursando agora? Ela voltará para "Não cursada".`)) return;
+                item.status = 'nao-cursada';
+                item.nota = null;
+                app.data.curriculum = curriculum;
+                const ok = await dbService.saveData('curriculum', app.data.curriculum);
+                showToast(ok ? `"${item.nome}" foi removida do semestre atual.` : 'Não foi possível salvar. Verifique sua conexão.', ok ? 'success' : 'error');
+                renderGerenciar(app);
+                if (typeof app.loadView === 'function' && ok) app.loadView('grade-curricular');
+            });
+        });
+
+        document.getElementById('semfin-add-btn')?.addEventListener('click', async () => {
+            const select = document.getElementById('semfin-add-select');
+            const id = select?.value;
+            if (!id) {
+                showToast('Selecione uma matéria para adicionar.', 'warning');
+                return;
+            }
+            const item = curriculum.find(i => i.id === id);
+            if (!item) return;
+            item.status = 'cursando';
+            item.nota = null;
+            app.data.curriculum = curriculum;
+            const ok = await dbService.saveData('curriculum', app.data.curriculum);
+            showToast(ok ? `"${item.nome}" adicionada ao semestre atual.` : 'Não foi possível salvar. Verifique sua conexão.', ok ? 'success' : 'error');
+            renderGerenciar(app);
+            if (typeof app.loadView === 'function' && ok) app.loadView('grade-curricular');
+        });
+    }
+
     if (window.StudyLifeControl) {
         window.StudyLifeControl.prototype.abrirFinalizarSemestre = function () {
-            this.normalizeCurriculumInMemory ? this.normalizeCurriculumInMemory() : null;
+            if (this.normalizeCurriculumInMemory) this.normalizeCurriculumInMemory();
             const curriculum = this.getNormalizedCurriculum ? this.getNormalizedCurriculum() : (this.data.curriculum || []);
             const cursando = curriculum.filter(item => item.status === 'cursando');
 
             if (!cursando.length) {
-                showToast('Nenhuma matéria está marcada como "Cursando" na Grade Curricular. Atualize o status das matérias do semestre atual antes de finalizar.', 'warning');
+                showToast('Nenhuma matéria está marcada como "Cursando" na Grade Curricular. Use "Editar Semestre Atual" para adicionar as matérias deste semestre antes de finalizar.', 'warning');
                 return;
             }
 
@@ -361,6 +569,11 @@
                 selecionadas: null
             };
             renderStep1(this);
+        };
+
+        window.StudyLifeControl.prototype.abrirGerenciarSemestreAtual = function () {
+            if (this.normalizeCurriculumInMemory) this.normalizeCurriculumInMemory();
+            renderGerenciar(this);
         };
     }
 })();

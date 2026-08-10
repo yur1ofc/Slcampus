@@ -2547,9 +2547,12 @@ class ViewRenderer {
                     <button class="btn-secondary" id="btn-importar-ufob">
                         <i class="fas fa-wand-magic-sparkles"></i> Importar grade pronta
                     </button>
+                    <button class="btn-secondary" id="btn-editar-semestre-atual" title="Adicionar, remover ou trancar matérias do semestre em andamento">
+                        <i class="fas fa-sliders"></i> Editar Semestre Atual
+                        ${cursandoAgora ? `<span class="badge badge-soft">${cursandoAgora}</span>` : ''}
+                    </button>
                     <button class="btn-secondary btn-finalizar-semestre-cta" id="btn-finalizar-semestre" title="Encerrar o semestre atual, registrar aprovações/reprovações e escolher as matérias do próximo">
                         <i class="fas fa-flag-checkered"></i> Finalizar Semestre
-                        ${cursandoAgora ? `<span class="badge badge-soft">${cursandoAgora}</span>` : ''}
                     </button>
                     <button class="btn-primary" id="btn-novo-curriculum">
                         <i class="fas fa-plus"></i> Novo Componente
