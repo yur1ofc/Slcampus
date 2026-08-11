@@ -28,6 +28,22 @@
   }
   function getNextClass(){ return window.scheduleManager?.getProximaAula?.()||null; }
   function getCurrentClass(){ return window.scheduleManager?.getAulaAtual?.()||null; }
+  function getUpcomingClasses(limit){
+    const sm=window.scheduleManager; if(!sm) return [];
+    sm.loadAulas?.();
+    const hoje=new Date();
+    const diaSemana=hoje.getDay();
+    const minutosAtuais=hoje.getHours()*60+hoje.getMinutes();
+    const result=[];
+    const aulasHoje=(sm.getAulasPorDia?sm.getAulasPorDia(diaSemana):[]).filter(a=>window.calcularDuracaoMinutos ? window.calcularDuracaoMinutos('00:00',a.inicio) > minutosAtuais : true);
+    aulasHoje.forEach(a=>result.push({...a,diaOffset:0}));
+    for(let i=1;i<=6 && result.length<limit;i++){
+      const proximoDia=(diaSemana+i)%7;
+      const aulas=sm.getAulasPorDia?sm.getAulasPorDia(proximoDia):[];
+      aulas.forEach(a=>result.push({...a,diaOffset:i}));
+    }
+    return result.slice(0,limit);
+  }
   function dueLabel(dateStr){
     if(!dateStr) return 'Sem data';
     const today=new Date(); today.setHours(0,0,0,0);
@@ -44,17 +60,23 @@
   }
 
   function renderSimpleDashboard(){
+    const view=this && this.app ? this : null;
     const app=window.app; if(!app) return '<div class="card"><p class="text-secondary">Carregando dashboard...</p></div>';
     const user=app.data?.user||{};
     const current=getCurrentClass();
     const next=getNextClass();
+    const proximasAulas=getUpcomingClasses(4).filter(a => !current || a.id !== current.id);
     const tasks=getUpcomingTasks();
     const exams=getUpcomingExams();
     const plan=quickStudyPlan();
     const p=progressData();
     const alerts=(app.generateAlerts?.()||[]).slice(0,3);
     const risk=(app.analyzeAcademicRisk?.()||[]).slice(0,3);
+    const horas=view?.getResumoHorasEstudo ? view.getResumoHorasEstudo() : {hoje:p.done,semana:0,total:0};
+    const materiasAtrasadas=view?.getMateriasAtrasadas ? view.getMateriasAtrasadas().slice(0,3) : [];
     const todayText=new Date().toLocaleDateString('pt-BR',{weekday:'long', day:'2-digit', month:'long'});
+    const semAlertas = !alerts.length && !risk.length;
+
     return `
       <div class="dashboard-shell">
         <div class="dashboard-header">
@@ -83,6 +105,8 @@
               <div class="progress-bar"><div class="progress-fill" style="width:${p.pct}%"></div></div>
             </div>
             <div class="dashboard-kpi-row">
+              <div class="dashboard-kpi"><span>Horas hoje</span><strong>${horas.hoje.toFixed(1)}h</strong></div>
+              <div class="dashboard-kpi"><span>Horas semana</span><strong>${horas.semana.toFixed(1)}h</strong></div>
               <div class="dashboard-kpi"><span>Tarefas abertas</span><strong>${(app.data?.tasks||[]).filter(t=>!t.concluida).length}</strong></div>
               <div class="dashboard-kpi"><span>Provas chegando</span><strong>${exams.length}</strong></div>
               <div class="dashboard-kpi"><span>Streak</span><strong>${esc(user.streak||0)} dias</strong></div>
@@ -114,21 +138,30 @@
 
         <div class="dashboard-top-grid">
           <section class="dashboard-main-card">
-            <div class="dashboard-section-head"><h3><i class="fas fa-tasks"></i> Entregas e provas</h3></div>
+            <div class="dashboard-section-head"><h3><i class="fas fa-calendar-day"></i> Próximas aulas</h3></div>
             <div class="mini-list">
-              ${tasks.map(t=>`<div class="mini-item"><div class="mini-item-main"><strong>${esc(t.titulo)}</strong><small>${esc(t.materia||'Sem matéria')}</small></div><span class="tag ${((t.prioridade||'').toLowerCase()==='alta' || dueLabel(t.dataLimite).includes('Atrasada') || dueLabel(t.dataLimite)==='Hoje') ? 'high':'warning'}">${esc(dueLabel(t.dataLimite))}</span></div>`).join('') || '<p class="text-secondary">Nenhuma tarefa pendente</p>'}
-              ${exams.slice(0,2).map(e=>`<div class="mini-item"><div class="mini-item-main"><strong>${esc(e.titulo||e.tipo||'Avaliação')}</strong><small>${esc(e.materia||'Sem matéria')}</small></div><span class="tag warning">${esc(dueLabel(e.data))}</span></div>`).join('')}
+              ${proximasAulas.map(a=>`<div class="mini-item"><div class="mini-item-main"><strong>${esc(a.materia)}</strong><small>${a.diaOffset===0?'Hoje':a.diaOffset===1?'Amanhã':(fullDays[parseInt(a.dia,10)]||'')} • ${esc(a.inicio)} - ${esc(a.fim)}${a.sala?` • Sala ${esc(a.sala)}`:''}</small></div><span class="tag ${a.diaOffset===0?'high':'medium'}">${a.diaOffset===0?'hoje':a.diaOffset===1?'amanhã':(fullDays[parseInt(a.dia,10)]||'').slice(0,3)}</span></div>`).join('') || '<p class="text-secondary">Nenhuma aula cadastrada na grade.</p>'}
             </div>
           </section>
           <section class="dashboard-list-card">
-            <div class="dashboard-section-head"><h3><i class="fas fa-bell"></i> Atenção</h3></div>
+            <div class="dashboard-section-head"><h3><i class="fas fa-tasks"></i> Entregas e provas</h3></div>
             <div class="mini-list">
-              ${alerts.map(a=>`<div class="mini-item"><div class="mini-item-main"><strong>${esc(a.titulo||'Alerta')}</strong><small>${esc(a.descricao||a.mensagem||'')}</small></div><span class="tag ${(a.tipo||'warning')==='danger'?'high':'warning'}">${esc(a.tipo||'alerta')}</span></div>`).join('')}
-              ${risk.map(r=>`<div class="mini-item"><div class="mini-item-main"><strong>${esc(r.materia)}</strong><small>${esc(r.motivo||'Risco acadêmico')}</small></div><span class="tag ${String(r.nivel).toLowerCase().includes('alto')?'high':'warning'}">${esc(r.nivel||'risco')}</span></div>`).join('')}
-              ${(!alerts.length && !risk.length) ? '<p class="text-secondary">Tudo sob controle por enquanto.</p>' : ''}
+              ${tasks.map(t=>`<div class="mini-item"><div class="mini-item-main"><strong>${esc(t.titulo)}</strong><small>${esc(t.materia||'Sem matéria')}</small></div><span class="tag ${((t.prioridade||'').toLowerCase()==='alta' || dueLabel(t.dataLimite).includes('Atrasada') || dueLabel(t.dataLimite)==='Hoje') ? 'high':'warning'}">${esc(dueLabel(t.dataLimite))}</span></div>`).join('')}
+              ${exams.slice(0,3).map(e=>`<div class="mini-item"><div class="mini-item-main"><strong>${esc(e.titulo||e.tipo||'Avaliação')}</strong><small>${esc(e.materia||'Sem matéria')}</small></div><span class="tag warning">${esc(dueLabel(e.data))}</span></div>`).join('')}
+              ${(!tasks.length && !exams.length) ? '<p class="text-secondary">Nenhuma tarefa ou prova pendente</p>' : ''}
             </div>
           </section>
         </div>
+
+        <section class="dashboard-list-card dashboard-attention-card">
+          <div class="dashboard-section-head"><h3><i class="fas fa-bell"></i> Atenção</h3></div>
+          <div class="mini-list">
+            ${alerts.map(a=>`<div class="mini-item"><div class="mini-item-main"><strong>${esc(a.titulo||'Alerta')}</strong><small>${esc(a.descricao||a.mensagem||'')}</small></div><span class="tag ${(a.tipo||'warning')==='danger'?'high':'warning'}">${esc(a.tipo||'alerta')}</span></div>`).join('')}
+            ${risk.map(r=>`<div class="mini-item"><div class="mini-item-main"><strong>${esc(r.materia)}</strong><small>${esc(r.motivo||'Risco acadêmico')}</small></div><span class="tag ${String(r.nivel).toLowerCase().includes('alto')?'high':'warning'}">${esc(r.nivel||'risco')}</span></div>`).join('')}
+            ${materiasAtrasadas.map(m=>`<div class="mini-item"><div class="mini-item-main"><strong>${esc(m.materia)}</strong><small>${m.nuncaEstudou?'Sem registro de estudo ainda':`${m.dias} dias sem estudar`}</small></div><span class="tag warning">${m.nuncaEstudou?'novo':`${m.dias}d`}</span></div>`).join('')}
+            ${(semAlertas && !materiasAtrasadas.length) ? '<p class="text-secondary">Tudo sob controle por enquanto.</p>' : ''}
+            </div>
+          </section>
       </div>`;
   }
 
