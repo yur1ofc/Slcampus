@@ -77,6 +77,80 @@
         document.head.appendChild(style);
     }
 
+    // Coleções da conta que guardam itens presos a uma matéria específica
+    // (mesmo padrão usado em excluirMateria, no app.js).
+    const MATERIA_COLLECTIONS = ['sessions', 'tasks', 'exams', 'learningMap', 'grades', 'materials', 'classDiaries', 'reviews'];
+
+    // Arquiva (não apaga) tudo que pertencia às matérias do semestre que
+    // está sendo finalizado: sessões, tarefas, provas, tópicos, notas,
+    // materiais, diários de aula, revisões e a grade horária inteira.
+    // Fica guardado em app.data.archivedSemesters para histórico, e some
+    // das telas ativas do site.
+    async function archiveFinishedSemesterData(app, subjectNames, semesterLabel) {
+        const nameSet = new Set(subjectNames.filter(Boolean).map(n => slug(n)));
+        if (!nameSet.size) return { archivedCount: 0 };
+
+        const archive = { semestre: semesterLabel || null, finalizadoEm: new Date().toISOString(), materias: subjectNames.slice() };
+        let archivedCount = 0;
+
+        MATERIA_COLLECTIONS.forEach(key => {
+            const list = Array.isArray(app.data[key]) ? app.data[key] : [];
+            const toKeep = [];
+            const toArchive = [];
+            list.forEach(item => {
+                if (item && nameSet.has(slug(item.materia))) toArchive.push(item);
+                else toKeep.push(item);
+            });
+            if (toArchive.length) {
+                archive[key] = toArchive;
+                archivedCount += toArchive.length;
+                app.data[key] = toKeep;
+            }
+        });
+
+        // Grade Horária: some inteira, já que o próximo semestre tem um
+        // horário novo (mesmo que alguma matéria continue por repescagem,
+        // dias/salas/horários costumam mudar de semestre pra semestre).
+        const aulas = Array.isArray(app.data.classSchedule) ? app.data.classSchedule : [];
+        if (aulas.length) {
+            archive.classSchedule = aulas;
+            archivedCount += aulas.length;
+            app.data.classSchedule = [];
+
+            // Presença fica salva num mapa por aulaId+data — limpa as
+            // entradas das aulas que acabaram de ser arquivadas.
+            const aulaIds = new Set(aulas.map(a => a.id));
+            if (app.data.attendance && typeof app.data.attendance === 'object') {
+                const attendanceKept = {};
+                Object.entries(app.data.attendance).forEach(([key, value]) => {
+                    const aulaId = key.split('_')[0];
+                    if (!aulaIds.has(aulaId)) attendanceKept[key] = value;
+                });
+                app.data.attendance = attendanceKept;
+            }
+        }
+
+        if (!Array.isArray(app.data.archivedSemesters)) app.data.archivedSemesters = [];
+        app.data.archivedSemesters.push(archive);
+
+        await dbService.saveAllData(app.data);
+        return { archivedCount };
+    }
+
+    // Depois de finalizar, garante que toda a interface reflete o novo
+    // semestre imediatamente: caches internos (grade horária, mentor IA,
+    // notificações) e a view que estiver aberta na hora.
+    function refreshWholeApp(app) {
+        window.scheduleManager?.loadAulas?.();
+        window.aiAssistant?.updateContext?.(app.data);
+        if (typeof app.populateSubjectSelects === 'function') {
+            try { app.populateSubjectSelects(); } catch (error) { /* nenhum modal aberto */ }
+        }
+        if (typeof window.renderNotifications === 'function') {
+            try { window.renderNotifications(); } catch (error) { /* painel pode não existir ainda */ }
+        }
+    }
+
     function closeModal() {
         document.getElementById('semfin-overlay')?.remove();
     }
@@ -410,6 +484,10 @@
             return acc;
         }, { aprovadas: 0, reprovadas: 0, trancadas: 0 });
 
+        // Nomes das matérias que estavam "cursando" neste semestre que está
+        // sendo fechado agora — é isso que vira histórico/arquivo.
+        const materiasDoSemestreQueFecha = state.cursando.map(item => item.nome);
+
         working.forEach(item => {
             if (state.selecionadas.has(item.id)) {
                 item.status = 'cursando';
@@ -429,16 +507,20 @@
             await dbService.saveData('user', app.data.user);
         }
 
+        const { archivedCount } = await archiveFinishedSemesterData(app, materiasDoSemestreQueFecha, currentSemester || null);
+        refreshWholeApp(app);
+
         closeModal();
         app._semFinState = null;
 
         if (okCurriculum) {
-            showToast(`Semestre finalizado! ✅ ${contagem.aprovadas} aprovada(s), ❌ ${contagem.reprovadas} reprovada(s), 🔒 ${contagem.trancadas} trancada(s), ${state.selecionadas.size} matéria(s) selecionada(s) para o próximo semestre.`, 'success');
+            const extra = archivedCount ? ` ${archivedCount} item(ns) do semestre anterior (tarefas, provas, sessões, grade horária etc.) foram arquivados e saíram das telas ativas.` : '';
+            showToast(`Semestre finalizado! ✅ ${contagem.aprovadas} aprovada(s), ❌ ${contagem.reprovadas} reprovada(s), 🔒 ${contagem.trancadas} trancada(s), ${state.selecionadas.size} matéria(s) selecionada(s) para o próximo semestre.${extra}`, 'success');
         } else {
             showToast('Semestre finalizado, mas houve um problema ao sincronizar. Verifique sua conexão.', 'warning');
         }
 
-        if (typeof app.loadView === 'function') app.loadView('grade-curricular');
+        if (typeof app.loadView === 'function') app.loadView('dashboard');
     }
 
     // =====================================================================
