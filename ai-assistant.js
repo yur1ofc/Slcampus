@@ -1725,170 +1725,203 @@ ${report.monthly}`;
 })();
 
 // ══════════════════════════════════════════════════════
-// MENTOR IA v7 — IA realmente inteligente com Anthropic API
-// Usa Claude claude-sonnet-4-20250514 para respostas ricas e contextuais
+// MENTOR IA v8 — mais esperto, 100% em regras (sem API paga)
+// Adiciona: projeção de nota necessária, tendência semanal por
+// matéria, melhor horário de estudo (baseado no diário) e
+// respostas de prioridade/diagnóstico já citando a tendência.
 // ══════════════════════════════════════════════════════
 (function () {
-  if (!window.AIAssistant || window.AIAssistant.prototype.__mentorV7Patched) return;
+  if (!window.AIAssistant || window.AIAssistant.prototype.__mentorV8Patched) return;
   const proto = window.AIAssistant.prototype;
 
-  // ── Constrói contexto completo em texto para o Claude ──────────────────────
-  proto._buildRichContext = function () {
-    const ctx = this.context;
-    const hoje = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
-    const user = ctx.user || {};
+  const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 
-    // Matérias com stats
-    const materias = (ctx.subjects || []).map(s => {
-      const horasTotal = this.getHorasEstudadasMateria(s.nome);
-      const minutos7d = this.getMinutosEstudadosUltimosDias(s.nome, 7);
-      const notas = (ctx.grades || []).filter(g => g.materia === s.nome);
-      const media = notas.length
-        ? (notas.reduce((a, g) => a + (Number(g.nota) * (Number(g.peso) || 1)), 0) / notas.reduce((a, g) => a + (Number(g.peso) || 1), 0)).toFixed(1)
-        : null;
-      const provaProxima = (ctx.exams || [])
-        .filter(e => e.materia === s.nome && !e.concluida && e.data >= new Date().toISOString().slice(0,10))
-        .sort((a,b) => a.data.localeCompare(b.data))[0];
-      const tarefas = (ctx.tasks || []).filter(t => t.materia === s.nome && !t.concluida).length;
+  const parseNumeroPtBr = (texto) => {
+    const match = String(texto || '').match(/(\d{1,2}[,.]\d{1,2}|\d{1,2})/);
+    if (!match) return null;
+    const valor = parseFloat(match[1].replace(',', '.'));
+    return Number.isFinite(valor) ? valor : null;
+  };
 
+  // ── Projeção de nota necessária ────────────────────────────────────────
+  function projetarNotaNecessaria(ctx, subject, notaDesejada) {
+    const notas = (ctx.grades || []).filter(g => g?.materia === subject.nome && typeof g.valor === 'number' && typeof g.peso === 'number');
+    const pesoFeito = notas.reduce((acc, n) => acc + n.peso, 0);
+    const pesoRestante = Math.max(0, 100 - pesoFeito);
+    const somaPonderada = notas.reduce((acc, n) => acc + (n.valor * n.peso), 0);
+    const mediaAtual = pesoFeito ? somaPonderada / pesoFeito : null;
+
+    if (pesoRestante <= 0) {
+      const passou = mediaAtual !== null && mediaAtual >= notaDesejada;
       return {
-        nome: s.nome,
-        dificuldade: s.dificuldade || 3,
-        horasTotal: horasTotal.toFixed(1),
-        horas7d: (minutos7d/60).toFixed(1),
-        media: media || 'sem nota',
-        provaEm: provaProxima ? `${Math.round((new Date(provaProxima.data) - new Date()) / 86400000)} dias (${provaProxima.titulo})` : null,
-        tarefasPendentes: tarefas
+        texto: passou
+          ? `✅ **${subject.nome}**: todas as avaliações já foram lançadas e sua média (${mediaAtual.toFixed(1)}) já bate ${notaDesejada}.`
+          : `❌ **${subject.nome}**: todas as avaliações já foram lançadas e a média (${mediaAtual !== null ? mediaAtual.toFixed(1) : 'sem notas'}) ficou abaixo de ${notaDesejada}. Não dá mais pra mudar via nota — verifique se há prova final/recuperação.`
       };
+    }
+
+    const notaNecessaria = ((notaDesejada * 100) - somaPonderada) / pesoRestante;
+    const notaNecessariaClamp = Math.max(0, Math.min(10, notaNecessaria));
+    const possivel = notaNecessaria <= 10;
+
+    let texto = `🎯 **${subject.nome}**: `;
+    if (!notas.length) {
+      texto += `ainda não tem nota lançada. Considerando peso 100% restante, você precisa tirar ${notaDesejada.toFixed(1)} nas avaliações que faltam para fechar com média ${notaDesejada.toFixed(1)}.`;
+    } else if (possivel) {
+      texto += `média atual ${mediaAtual.toFixed(1)}. Nas avaliações restantes (peso ${pesoRestante}% do total), você precisa tirar em média ${notaNecessariaClamp.toFixed(1)} para fechar com ${notaDesejada.toFixed(1)}.`;
+      if (notaNecessaria <= 4) texto += ' Tranquilo, está numa boa posição.';
+      else if (notaNecessaria >= 8) texto += ' Vai exigir foco — comece a revisar essa matéria com prioridade.';
+    } else {
+      texto += `média atual ${mediaAtual.toFixed(1)}. Mesmo tirando 10 no que resta (peso ${pesoRestante}%), não dá pra fechar com ${notaDesejada.toFixed(1)} — o máximo possível fica perto de ${(((10 * pesoRestante) + somaPonderada) / 100).toFixed(1)}. Se a meta é só passar, mira num valor mais realista.`;
+    }
+    return { texto, mediaAtual, notaNecessaria: notaNecessariaClamp, possivel };
+  }
+
+  proto._answerNotaNecessaria = function (pergunta) {
+    const ctx = this.context;
+    const subjects = ctx.subjects || [];
+    if (!subjects.length) return 'Cadastre suas matérias e notas primeiro para eu calcular isso.';
+
+    const notaDesejada = parseNumeroPtBr(pergunta) ?? 6;
+    const materiaAlvo = this._findSubjectInQuestion ? this._findSubjectInQuestion(pergunta) : null;
+
+    if (materiaAlvo) {
+      const subject = subjects.find(s => s.nome === materiaAlvo) || subjects.find(s => norm(s.nome) === norm(materiaAlvo));
+      if (subject) return projetarNotaNecessaria(ctx, subject, notaDesejada).texto;
+    }
+
+    // Sem matéria específica: mostra as que têm avaliação pendente
+    const linhas = subjects
+      .map(s => projetarNotaNecessaria(ctx, s, notaDesejada))
+      .filter(r => r && r.texto)
+      .map(r => r.texto);
+
+    if (!linhas.length) return 'Não encontrei matérias com avaliações pendentes para calcular.';
+    return `Considerando meta de média ${notaDesejada.toFixed(1)} (me diga a nota da matéria específica se quiser outro valor):\n\n${linhas.join('\n\n')}`;
+  };
+
+  // ── Tendência semanal (esta semana vs. semana anterior) ────────────────
+  function minutosNoIntervalo(ctx, nomeMateria, diasInicio, diasFim) {
+    const hoje = new Date();
+    const inicio = new Date(hoje.getTime() - diasInicio * 86400000);
+    const fim = new Date(hoje.getTime() - diasFim * 86400000);
+    return (ctx.sessions || [])
+      .filter(s => s?.concluida && norm(s.materia) === norm(nomeMateria))
+      .filter(s => {
+        const d = s?.data ? new Date(s.data) : null;
+        return d && !Number.isNaN(d.getTime()) && d >= inicio && d < fim;
+      })
+      .reduce((acc, s) => acc + (parseInt(s.duracao) || 0), 0);
+  }
+
+  function tendenciaMateria(ctx, nomeMateria) {
+    const semanaAtual = minutosNoIntervalo(ctx, nomeMateria, 7, 0);
+    const semanaAnterior = minutosNoIntervalo(ctx, nomeMateria, 14, 7);
+    if (semanaAtual === 0 && semanaAnterior === 0) return null;
+    if (semanaAnterior === 0) return { direcao: 'novo', semanaAtual, semanaAnterior };
+    const variacao = ((semanaAtual - semanaAnterior) / semanaAnterior) * 100;
+    if (variacao >= 20) return { direcao: 'subindo', variacao, semanaAtual, semanaAnterior };
+    if (variacao <= -20) return { direcao: 'caindo', variacao, semanaAtual, semanaAnterior };
+    return { direcao: 'estavel', variacao, semanaAtual, semanaAnterior };
+  }
+
+  proto._answerTendencia = function (pergunta) {
+    const ctx = this.context;
+    const subjects = ctx.subjects || [];
+    if (!subjects.length) return 'Cadastre suas matérias para eu acompanhar sua evolução.';
+
+    const materiaAlvo = this._findSubjectInQuestion ? this._findSubjectInQuestion(pergunta) : null;
+    const alvo = materiaAlvo ? subjects.filter(s => norm(s.nome) === norm(materiaAlvo)) : subjects;
+
+    const linhas = [];
+    alvo.forEach(s => {
+      const t = tendenciaMateria(ctx, s.nome);
+      if (!t) { linhas.push(`⚪ **${s.nome}**: sem sessões registradas nas últimas 2 semanas.`); return; }
+      const h1 = (t.semanaAtual / 60).toFixed(1);
+      const h2 = (t.semanaAnterior / 60).toFixed(1);
+      if (t.direcao === 'novo') linhas.push(`🆕 **${s.nome}**: ${h1}h essa semana (não tinha estudo na semana anterior).`);
+      else if (t.direcao === 'subindo') linhas.push(`📈 **${s.nome}**: subiu de ${h2}h para ${h1}h (${t.variacao > 0 ? '+' : ''}${t.variacao.toFixed(0)}%). Bom ritmo!`);
+      else if (t.direcao === 'caindo') linhas.push(`📉 **${s.nome}**: caiu de ${h2}h para ${h1}h (${t.variacao.toFixed(0)}%). Vale retomar antes que vire uma dívida grande.`);
+      else linhas.push(`➖ **${s.nome}**: estável, ${h1}h essa semana (${h2}h na anterior).`);
     });
 
-    // Provas próximas
-    const provas = (ctx.exams || [])
-      .filter(e => !e.concluida && e.data)
-      .sort((a,b) => a.data.localeCompare(b.data))
-      .slice(0, 8)
-      .map(e => {
-        const dias = Math.round((new Date(e.data) - new Date()) / 86400000);
-        return `${e.titulo} (${e.materia}) — ${dias > 0 ? 'em ' + dias + ' dias' : dias === 0 ? 'HOJE' : Math.abs(dias) + ' dias atrás'}`;
-      });
-
-    // Tarefas pendentes
-    const tarefas = (ctx.tasks || [])
-      .filter(t => !t.concluida)
-      .sort((a,b) => (a.dataLimite||'').localeCompare(b.dataLimite||''))
-      .slice(0, 8)
-      .map(t => {
-        const dias = t.dataLimite ? Math.round((new Date(t.dataLimite) - new Date()) / 86400000) : null;
-        return `${t.titulo} (${t.materia || 'sem matéria'})${dias !== null ? ' — ' + (dias < 0 ? Math.abs(dias) + ' dias atrasada' : dias === 0 ? 'vence hoje' : 'vence em ' + dias + ' dias') : ''}`;
-      });
-
-    // Sessões recentes
-    const sessoes7d = (ctx.sessions || [])
-      .filter(s => s.completada && s.data >= new Date(Date.now() - 7*86400000).toISOString().slice(0,10))
-      .slice(0, 10)
-      .map(s => `${s.materia} — ${s.duracao}min (${s.tipo || 'estudo'}) em ${s.data}`);
-
-    // Grade horária hoje
-    const diaSemana = new Date().getDay();
-    const aulasHoje = (ctx.classSchedule || [])
-      .filter(a => Number(a.dia) === diaSemana)
-      .map(a => `${a.materia} ${a.inicio}-${a.fim}${a.sala ? ' sala '+a.sala : ''}`);
-
-    return `
-=== HOJE: ${hoje} ===
-
-=== ALUNO ===
-Nome: ${user.nome || 'não informado'}
-Curso: ${user.curso || 'não informado'} | Semestre: ${user.semestre || '?'}
-Universidade: ${user.universidade || user.faculdade || 'não informada'}
-Meta diária de estudo: ${user.horasMaximas || 4}h
-
-=== MATÉRIAS (${materias.length}) ===
-${materias.map(m =>
-  `• ${m.nome}: ${m.horasTotal}h total (${m.horas7d}h esta semana), média ${m.media}, dificuldade ${m.dificuldade}/5${m.provaEm ? ', PROVA EM '+m.provaEm : ''}${m.tarefasPendentes ? ', '+m.tarefasPendentes+' tarefa(s) pendente(s)' : ''}`
-).join('\n')}
-
-=== AULAS HOJE ===
-${aulasHoje.length ? aulasHoje.join('\n') : 'Nenhuma aula hoje'}
-
-=== PROVAS/TRABALHOS PRÓXIMOS ===
-${provas.length ? provas.join('\n') : 'Nenhuma prova próxima cadastrada'}
-
-=== TAREFAS PENDENTES ===
-${tarefas.length ? tarefas.join('\n') : 'Nenhuma tarefa pendente'}
-
-=== SESSÕES DE ESTUDO (últimos 7 dias) ===
-${sessoes7d.length ? sessoes7d.join('\n') : 'Nenhuma sessão registrada esta semana'}
-
-=== REVISÕES PENDENTES HOJE ===
-${this.getRevisoesPendentes().map(r => `${r.materia}: ${r.topico || 'geral'}`).join('\n') || 'Nenhuma'}
-`.trim();
+    return linhas.length ? linhas.join('\n') : 'Ainda não tenho sessões suficientes para comparar as semanas.';
   };
 
-  // ── Chama a API do Claude para respostas inteligentes ──────────────────────
-  proto._askClaude = async function (pergunta, extraContext = '') {
-    const context = this._buildRichContext();
-    const systemPrompt = `Você é o Mentor IA do Study Life Control, um assistente acadêmico altamente inteligente e direto ao ponto.
-
-Seu papel é ser como um tutor pessoal que conhece tudo sobre a vida acadêmica do aluno: matérias, notas, provas, tarefas, horas de estudo e rotina.
-
-REGRAS IMPORTANTES:
-- Seja específico e use os dados reais do aluno nas suas respostas
-- Nunca seja genérico. Se sabe o nome da prova, usa. Se sabe a nota, menciona
-- Respostas curtas e diretas (máx 250 palavras salvo quando pede plano detalhado)
-- Use emojis moderadamente (1-3 por resposta)
-- Quando detectar risco acadêmico real, seja claro e direto sobre isso
-- Sugira ações concretas: "estude X por 30 min hoje" não "você deveria estudar mais"
-- Lembre que o aluno está usando um app de estudos — ele quer praticidade
-
-DADOS DO ALUNO:
-${context}
-${extraContext ? '\nCONTEXTO ADICIONAL:\n' + extraContext : ''}`;
-
-    try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          system: systemPrompt,
-          messages: [{ role: 'user', content: pergunta }]
-        })
-      });
-
-      if (!response.ok) throw new Error(`API error: ${response.status}`);
-      const data = await response.json();
-      return data.content?.[0]?.text || null;
-    } catch (err) {
-      console.warn('[MentorIA v7] Falha na API do Claude, usando modo local:', err.message);
-      return null; // fallback para modo local
+  // ── Melhor horário de estudo (a partir do diário: foco x horário) ──────
+  proto._answerMelhorHorario = function () {
+    const ctx = this.context;
+    const logs = (ctx.dailyLogs || []).filter(l => l?.estudoInicio && l?.foco != null && l.foco !== '');
+    if (logs.length < 3) {
+      return 'Ainda preciso de mais registros no seu diário (horário de início + nível de foco) para descobrir seu melhor horário. Continue preenchendo o diário do dia!';
     }
+
+    const buckets = { madrugada: [], manha: [], tarde: [], noite: [] };
+    const labels = { madrugada: 'madrugada (0h-6h)', manha: 'manhã (6h-12h)', tarde: 'tarde (12h-18h)', noite: 'noite (18h-24h)' };
+    logs.forEach(l => {
+      const hora = parseInt(String(l.estudoInicio).split(':')[0], 10);
+      const foco = Number(l.foco);
+      if (Number.isNaN(hora) || !Number.isFinite(foco)) return;
+      const bucket = hora < 6 ? 'madrugada' : hora < 12 ? 'manha' : hora < 18 ? 'tarde' : 'noite';
+      buckets[bucket].push(foco);
+    });
+
+    const stats = Object.entries(buckets)
+      .filter(([, arr]) => arr.length)
+      .map(([nome, arr]) => ({ nome, media: arr.reduce((a, b) => a + b, 0) / arr.length, n: arr.length }))
+      .sort((a, b) => b.media - a.media);
+
+    if (!stats.length) return 'Não consegui cruzar horário e foco nos registros — confira se o diário está salvando esses dois campos.';
+
+    const melhor = stats[0];
+    let resp = `⏰ Pelos seus registros, seu foco costuma ser maior estudando de **${labels[melhor.nome]}** (foco médio ${melhor.media.toFixed(1)}, em ${melhor.n} registro(s)).`;
+    if (stats.length > 1) {
+      const pior = stats[stats.length - 1];
+      resp += `\nO período com foco mais baixo foi **${labels[pior.nome]}** (${pior.media.toFixed(1)}).`;
+    }
+    if (melhor.n < 5) resp += '\n\n(Ainda são poucos registros — quanto mais você preencher o diário, mais precisa fica essa análise.)';
+    return resp;
   };
 
-  // ── Patch do ask() — tenta Claude primeiro, fallback local ─────────────────
-  const _origAskV7 = proto.ask;
+  // ── Patch do ask() — plugando os novos intents ──────────────────────────
+  const _origAskV8 = proto.ask;
   proto.ask = async function (pergunta) {
-    if (!pergunta || typeof pergunta !== 'string') return _origAskV7.call(this, pergunta);
+    const p = norm(pergunta);
 
-    // Tenta Claude API
-    const claudeResp = await this._askClaude(pergunta);
-    if (claudeResp) return claudeResp;
-
-    // Fallback: modo local (todas as respostas anteriores)
-    return _origAskV7.call(this, pergunta);
-  };
-
-  // ── askRich também usa Claude ───────────────────────────────────────────────
-  const _origAskRichV7 = proto.askRich;
-  proto.askRich = async function (pergunta) {
-    const claudeResp = await this._askClaude(pergunta);
-    if (claudeResp) {
-      return { text: claudeResp, actions: [], memory: [] };
+    if (p.match(/quanto.*preciso|nota necessaria|preciso tirar|quanto.*tirar|nota.*passar|media.*passar|nota minima|consigo passar|vou passar/)) {
+      return this._answerNotaNecessaria(pergunta);
     }
-    return _origAskRichV7 ? _origAskRichV7.call(this, pergunta) : { text: await _origAskV7.call(this, pergunta), actions: [], memory: [] };
+
+    if (p.match(/tendencia|evolu|melhorei|piorei|melhorando|piorando|comparad[oa].*semana|estou indo bem|estou progredindo/)) {
+      return this._answerTendencia(pergunta);
+    }
+
+    if (p.match(/melhor horario|que horas.*estudar|quando.*devo estudar|periodo.*mais produtiv|horario.*produtiv/)) {
+      return this._answerMelhorHorario();
+    }
+
+    return _origAskV8.call(this, pergunta);
   };
 
-  proto.__mentorV7Patched = true;
-  console.info('[MentorIA v7] IA com Claude API ativada.');
+  // ── Enriquecer o diagnóstico completo (v6) com a tendência semanal ─────
+  if (typeof proto._buildSmartDiagnosis === 'function') {
+    const _origDiag = proto._buildSmartDiagnosis;
+    proto._buildSmartDiagnosis = function () {
+      const base = _origDiag.call(this);
+      const ctx = this.context;
+      const subjects = ctx.subjects || [];
+      if (!subjects.length) return base;
+
+      const emQueda = subjects.filter(s => {
+        const t = tendenciaMateria(ctx, s.nome);
+        return t && t.direcao === 'caindo';
+      });
+
+      if (!emQueda.length) return base;
+      return `${base}\n\n📉 **Atenção ao ritmo:** ${emQueda.map(s => s.nome).join(', ')} ${emQueda.length > 1 ? 'estão' : 'está'} com estudo em queda na última semana comparado à anterior.`;
+    };
+  }
+
+  proto.__mentorV8Patched = true;
+  console.info('[MentorIA v8] Regras avançadas ativadas (nota necessária, tendência, melhor horário) — sem chamadas de API externa.');
 })();
