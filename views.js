@@ -493,88 +493,68 @@ class ViewRenderer {
 
         const aulas = window.scheduleManager.loadAulas() || [];
         const dias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-        const horarioInicio = window.scheduleManager.HORARIO_INICIO || 7;
-        const horarioFim = window.scheduleManager.HORARIO_FIM || 22;
-        const alturaPorHora = window.scheduleManager.ALTURA_POR_HORA || 80;
+        const hoje = new Date().getDay();
 
-        const totalHoras = horarioFim - horarioInicio + 1;
-        const alturaTotal = totalHoras * alturaPorHora;
+        // Agenda vertical: um bloco por dia, aulas empilhadas em cards.
+        // Sem colunas fixas por dia, então nunca precisa de scroll lateral.
+        const diasComAula = dias
+            .map((nome, index) => ({
+                nome,
+                index,
+                aulas: aulas
+                    .filter(a => parseInt(a.dia, 10) === index)
+                    .sort((a, b) => String(a.inicio).localeCompare(String(b.inicio)))
+            }))
+            .filter(d => d.aulas.length);
 
-        const getTop = (horario) => {
-            const [h, m] = String(horario).split(':').map(Number);
-            const minutosDesdeInicio = ((h - horarioInicio) * 60) + m;
-            return Math.max(0, (minutosDesdeInicio / 60) * alturaPorHora);
-        };
-
-        const getHeight = (inicio, fim) => {
-            const duracao = calcularDuracaoMinutos(inicio, fim);
-            return Math.max(24, (duracao / 60) * alturaPorHora);
-        };
+        if (!diasComAula.length) {
+            container.innerHTML = `
+                <div class="no-classes-message">
+                    <i class="fas fa-calendar-times"></i>
+                    <p>Nenhuma aula cadastrada</p>
+                </div>
+            `;
+            return;
+        }
 
         container.innerHTML = `
-            <div class="weekly-timeline">
-                <div class="weekly-timeline-header">
-                    <div class="weekly-time-spacer"></div>
-                    ${dias.map(dia => `<div class="weekly-day-header">${dia}</div>`).join('')}
-                </div>
-
-                <div class="weekly-timeline-body" style="height:${alturaTotal}px;">
-                    <div class="weekly-time-column">
-                        ${Array.from({ length: totalHoras }, (_, i) => {
-                            const hora = horarioInicio + i;
-                            return `
-                                <div class="weekly-time-slot" style="height:${alturaPorHora}px;">
-                                    ${String(hora).padStart(2, '0')}:00
-                                </div>
-                            `;
-                        }).join('')}
-                    </div>
-
-                    <div class="weekly-grid-area">
-                        ${dias.map((_, diaIndex) => `
-                            <div class="weekly-day-column-grid" data-dia="${diaIndex}">
-                                ${Array.from({ length: totalHoras }, () => `
-                                    <div class="weekly-hour-cell" style="height:${alturaPorHora}px;"></div>
-                                `).join('')}
+            <div class="week-agenda">
+                ${diasComAula.map(d => {
+                    const totalMin = d.aulas.reduce((soma, a) => soma + calcularDuracaoMinutos(a.inicio, a.fim), 0);
+                    const totalH = (totalMin / 60).toFixed(1).replace(/\.0$/, '');
+                    return `
+                        <div class="week-agenda-day ${d.index === hoje ? 'is-today' : ''}">
+                            <div class="week-agenda-day-header">
+                                <h4>${d.nome}${d.index === hoje ? '<span class="week-agenda-today-tag">hoje</span>' : ''}</h4>
+                                <span class="week-agenda-day-total">${d.aulas.length} aula${d.aulas.length > 1 ? 's' : ''} • ${totalH}h</span>
                             </div>
-                        `).join('')}
-
-                        <div class="weekly-events-layer">
-                            ${aulas.map(aula => {
-                                const dia = parseInt(aula.dia, 10);
-                                const top = getTop(aula.inicio);
-                                const height = getHeight(aula.inicio, aula.fim);
-                                const cor = aula.cor || '#3b82f6';
-
-                                return `
-                                    <div
-                                        class="weekly-event-block"
-                                        data-aula-id="${this.esc(aula.id)}"
-                                        style="
-                                            top:${top}px;
-                                            left:calc(${dia} * (100% / 7) + 8px);
-                                            width:calc((100% / 7) - 16px);
-                                            height:${height}px;
-                                            background:${cor}22;
-                                            border-left:4px solid ${cor};
-                                        "
-                                    >
-                                        <div class="event-content">
-                                            <strong>${this.esc(aula.materia)}</strong>
-                                            <div class="event-time">${this.esc(aula.inicio)} - ${this.esc(aula.fim)}</div>
-                                            ${aula.sala ? `<div class="event-room">📍 ${this.esc(aula.sala)}</div>` : ''}
-                                            ${aula.professor ? `<div class="event-prof">👤 ${this.esc(aula.professor)}</div>` : ''}
+                            <div class="week-agenda-day-list">
+                                ${d.aulas.map(aula => {
+                                    const cor = aula.cor || '#3b82f6';
+                                    return `
+                                        <div class="week-agenda-item" data-aula-id="${this.esc(aula.id)}" style="border-left-color:${cor};">
+                                            <div class="week-agenda-time">
+                                                <strong>${this.esc(aula.inicio)}</strong>
+                                                <span>${this.esc(aula.fim)}</span>
+                                            </div>
+                                            <div class="week-agenda-info">
+                                                <strong>${this.esc(aula.materia)}</strong>
+                                                <div class="week-agenda-meta">
+                                                    ${aula.sala ? `<span>📍 ${this.esc(aula.sala)}</span>` : ''}
+                                                    ${aula.professor ? `<span>👤 ${this.esc(aula.professor)}</span>` : ''}
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
-                                `;
-                            }).join('')}
+                                    `;
+                                }).join('')}
+                            </div>
                         </div>
-                    </div>
-                </div>
+                    `;
+                }).join('')}
             </div>
         `;
 
-        container.querySelectorAll('.weekly-event-block').forEach(item => {
+        container.querySelectorAll('.week-agenda-item').forEach(item => {
             item.addEventListener('click', e => {
                 const aulaId = e.currentTarget.dataset.aulaId;
                 if (aulaId && window.app) {
