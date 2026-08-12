@@ -9,7 +9,13 @@ window.__ENV = {
   FIREBASE_PROJECT_ID:          'seu-projeto',
   FIREBASE_STORAGE_BUCKET:      'seu-projeto.appspot.com',
   FIREBASE_MESSAGING_SENDER_ID: '000000000000',
-  FIREBASE_APP_ID:              '1:000000000000:web:xxxx'
+  FIREBASE_APP_ID:              '1:000000000000:web:xxxx',
+
+  // Opcional — só necessária pra ativar notificações push (ver push-notifications.js).
+  // Gere o par com: npx web-push generate-vapid-keys
+  // A pública vai aqui E no Vercel (VAPID_PUBLIC_KEY). A privada NUNCA vai
+  // aqui — só no Vercel, como VAPID_PRIVATE_KEY (usada em api/send-daily-notifications.js).
+  VAPID_PUBLIC_KEY:             ''
 };
 
 // A chave do Gemini (importação/atualização de grade com IA) NÃO vai aqui.

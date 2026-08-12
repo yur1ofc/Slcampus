@@ -1,6 +1,12 @@
 {
   "cleanUrls": true,
   "outputDirectory": ".",
+  "crons": [
+    {
+      "path": "/api/send-daily-notifications",
+      "schedule": "0 21 * * *"
+    }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",

@@ -112,3 +112,35 @@ self.addEventListener('fetch', event => {
     })
   );
 });
+
+// ── Push: recebe notificação enviada pelo servidor ──────────────────────────
+self.addEventListener('push', event => {
+  let payload = {};
+  try { payload = event.data ? event.data.json() : {}; } catch { payload = {}; }
+
+  const title = payload.title || 'Study Life Control';
+  const options = {
+    body: payload.body || '',
+    icon: payload.icon || './favicon.svg',
+    badge: './favicon.svg',
+    tag: payload.tag || 'slc-notification',
+    data: { url: payload.url || './' },
+    renotify: !!payload.tag
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// ── Clique na notificação: foca a aba já aberta ou abre uma nova ───────────
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const targetUrl = event.notification.data?.url || './';
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientsArr => {
+      const existing = clientsArr.find(c => 'focus' in c);
+      if (existing) return existing.focus();
+      return self.clients.openWindow(targetUrl);
+    })
+  );
+});

@@ -1152,6 +1152,16 @@
     <script src="schedule-ia-import.js"></script>
     <script src="setup-onboarding-enhancer.js"></script>
     <script src="app-enhancements.js"></script>
+
+    <!-- Estavam no projeto mas nunca eram carregados pelo site — corrigido -->
+    <script src="dashboard-prioritario.js"></script>
+    <script src="onboarding-simplificado.js"></script>
+
+    <!-- Crescimento/retenção: push, streak compartilhável, convite de amigo -->
+    <script src="push-notifications.js"></script>
+    <script src="share-card.js"></script>
+    <script src="invite-friend.js"></script>
+    <script src="growth-buttons.js"></script>
     <link rel="stylesheet" href="launch-polish.css">
     <script src="launch-polish.js"></script>
     <script src="improvements.js"></script>
