@@ -578,7 +578,17 @@ class StudyLifeControl {
 
             // Aba Geral
             document.getElementById('config-notificacoes')?.addEventListener('change', async e => {
-                this.data.settings.notifications = e.target.checked;
+                const ligar = e.target.checked;
+
+                if (ligar) {
+                    const ok = await window.SLC_subscribeToPush?.();
+                    if (!ok) {
+                        e.target.checked = false; // reverte se o usuário negou ou deu erro
+                        return;
+                    }
+                }
+
+                this.data.settings.notifications = ligar;
                 await dbService.saveData('settings', this.data.settings);
             });
             document.getElementById('config-auto-plan')?.addEventListener('change', async e => {

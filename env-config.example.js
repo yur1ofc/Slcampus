@@ -1,41 +1,33 @@
-# Segredos e variáveis de ambiente — NUNCA commitar
-.env
-.env.local
-.env.production
-.env.*.local
-*.pem
-*.key
-serviceAccount*.json
-service-account*.json
-*-firebase-adminsdk*.json
+# Checklist de deploy público - Study Life Control
 
-# Dependências
-node_modules/
-.pnp
-.pnp.js
+## Firebase
+- [ ] Firestore Rules publicadas usando o arquivo `firestore.rules`
+- [ ] Authentication > Sign-in method > Google habilitado
+- [ ] Authentication > Settings > Authorized domains contém:
+  - [ ] `study-life-control.vercel.app`
+  - [ ] seu domínio final personalizado
+  - [ ] `localhost` para testes locais
+- [ ] Firestore Database criado em modo produção
 
-# Build
-dist/
-build/
-.next/
-out/
+## Vercel
+- [ ] Repositório conectado na Vercel
+- [ ] Projeto configurado como site estático
+- [ ] Deploy sem erro no build/output
+- [ ] HTTPS ativo no domínio final
+- [ ] Cache limpo após publicar nova versão
 
-# Cache e logs
-.cache/
-*.log
-npm-debug.log*
-yarn-debug.log*
+## Fluxo funcional
+- [ ] Login com conta Google nova
+- [ ] Setup inicial salva nome/curso/universidade
+- [ ] Criar matéria
+- [ ] Criar aula
+- [ ] Recarregar a página e conferir persistência
+- [ ] Sair da conta
+- [ ] Entrar novamente e conferir dados
+- [ ] Teste offline: abrir, desligar internet, navegar, religar internet
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-.DS_Store
-Thumbs.db
-
-# Vercel
-.vercel/
-
-# Firebase config gerado localmente — tem credentials reais
-env-config.js
+## Qualidade visual
+- [ ] Banner de conexão aparece só quando necessário
+- [ ] Mobile abre sidebar corretamente
+- [ ] Dashboard não quebra em 360px de largura
+- [ ] PWA pode ser instalada
