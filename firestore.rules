@@ -112,29 +112,6 @@ service cloud.firestore {
         && request.resource.data.count <= 1000;
     }
 
-    // ─── Convite de amigo (referral) ───────────────────────────────────────────
-    // Um documento por usuário indicado, guardando quem indicou. Não guarda
-    // contador em documento alheio — quem quiser saber quantos indicou, conta
-    // via query (where referrer == meu uid), por isso o read é liberado pra
-    // qualquer usuário logado (são só dois uids, sem dado sensível).
-
-    match /referrals/{userId} {
-      allow read: if isSignedIn();
-      allow create: if isOwner(userId)
-        && request.resource.data.referrer is string
-        && request.resource.data.referrer != userId
-        && strLen(request.resource.data.criadoEm, 30);
-      allow update, delete: if false;
-    }
-
-    // ─── Inscrições de notificação push ────────────────────────────────────────
-    // Cada usuário só mexe na própria inscrição. O job de cron (api/send-daily-
-    // notifications.js) usa a Admin SDK, que ignora essas regras.
-
-    match /push_subscriptions/{userId} {
-      allow read, write: if isOwner(userId);
-    }
-
     // ─── Proteção padrão: nega tudo que não foi explicitamente permitido ──────
     match /{document=**} {
       allow read, write: if false;

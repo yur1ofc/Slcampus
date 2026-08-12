@@ -189,20 +189,12 @@
     });
 
     if (!sessionToday && data.subjects?.length > 0) {
-      // Usa o mesmo motor de pontuação do Mentor IA (dificuldade, prova
-      // próxima, tarefas, revisões, média, faltas) em vez de pegar a
-      // primeira matéria cadastrada — a sugestão fica realmente relevante.
-      const top = window.aiAssistant?.getTopPrioridade?.();
-      const nomeMateria = top?.nome || data.subjects[0]?.nome || 'estudos';
-      const motivo = top?.justificativaCurta;
-
+      const firstSubject = data.subjects[0];
       return {
         type: 'study',
         urgency: 'normal',
         title: 'Ainda não estudou hoje',
-        sub: motivo
-          ? `${nomeMateria}: ${motivo}. ${top?.planoRapido || 'Até 25 minutos já fazem diferença.'}`
-          : `Que tal uma sessão de ${nomeMateria} agora? Até 25 minutos já fazem diferença.`,
+        sub: `Que tal uma sessão de ${firstSubject?.nome || 'estudos'} agora? Até 25 minutos já fazem diferença.`,
         primaryBtn: { label: 'Iniciar sessão', view: 'foco' },
         secondaryBtn: { label: 'Ver plano do dia', view: 'mentor-ia' }
       };

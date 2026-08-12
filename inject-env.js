@@ -23,12 +23,6 @@ if (missing.length) {
 const envObj = {};
 keys.forEach(k => { envObj[k] = process.env[k]; });
 
-// VAPID_PUBLIC_KEY é opcional (feature de notificações push) — não quebra o
-// build se ainda não estiver configurada, só desativa o botão de ativar.
-if (process.env.VAPID_PUBLIC_KEY) {
-  envObj.VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
-}
-
 const content = `// Gerado automaticamente no build — NÃO EDITE e NÃO COMMITE este arquivo\nwindow.__ENV = ${JSON.stringify(envObj, null, 2)};\n`;
 
 fs.writeFileSync(path.join(__dirname, 'env-config.js'), content, 'utf8');

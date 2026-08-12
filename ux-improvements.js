@@ -387,9 +387,12 @@
 
     try {
       window.aiAssistant.updateContext?.(app.data);
-      const resp = typeof window.aiAssistant.gerarBriefingDia === 'function'
-        ? window.aiAssistant.gerarBriefingDia()
-        : await window.aiAssistant.ask('resumo do meu dia hoje');
+      const today = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
+      const resp = await window.aiAssistant.ask(
+        `Em 3 linhas curtas e diretas, me dá um briefing rápido do meu dia de hoje (${today}): ` +
+        `menciona as provas/aulas mais importantes, tarefas com prazo hoje e uma dica de foco. ` +
+        `Sem introdução, vai direto ao ponto.`
+      );
       if (resp) {
         saveBriefing(resp);
         if (textEl) textEl.innerHTML = resp.replace(/\n/g, '<br>');
