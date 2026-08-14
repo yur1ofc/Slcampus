@@ -96,15 +96,6 @@
       .catalog-btn.ghost{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.18)}
       .catalog-badges{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
       .catalog-badge{padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.1);font-size:.85rem}
-      .catalog-hero-slim{display:block;padding:0;border-radius:14px;overflow:hidden}
-      .catalog-hero-toggle{width:100%;display:flex;align-items:center;gap:10px;padding:12px 16px;background:transparent;border:none;color:#fff;cursor:pointer;text-align:left;font:inherit}
-      .catalog-hero-toggle span{flex:1;font-size:.86rem;line-height:1.35;opacity:.92}
-      .catalog-hero-toggle span strong{opacity:1}
-      .catalog-hero-chevron{transition:transform .2s ease;font-size:.8rem;opacity:.75}
-      .catalog-hero-chevron.rotated{transform:rotate(180deg)}
-      .catalog-hero-body{padding:0 16px 16px}
-      .catalog-hero-body p{margin:0 0 10px;font-size:.85rem}
-      .catalog-hero-body .catalog-actions{justify-content:flex-start}
       .catalog-modal-overlay{position:fixed;inset:0;background:rgba(2,6,23,.72);display:none;align-items:center;justify-content:center;z-index:9999;padding:16px}
       .catalog-modal{width:min(980px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:22px;box-shadow:0 25px 80px rgba(0,0,0,.28)}
       .catalog-modal header{padding:22px 22px 12px;border-bottom:1px solid #e5e7eb;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
@@ -726,22 +717,21 @@
         const original = originalRenderGradeCurricular.call(this);
         const faculdade = this.app?.data?.user?.universidade || 'sua faculdade';
         const curso = this.app?.data?.user?.curso || 'seu curso';
-        // Versão compacta: uma faixa fina, colapsável, em vez do card grande de antes.
-        // "Atualizar com IA (PDF)" já mora no botão principal do topo (grade-ia-import.js),
-        // então aqui ficam só as ações do catálogo comunitário (buscar/compartilhar).
         const hero = `
-          <section class="catalog-hero catalog-hero-slim">
-            <button type="button" class="catalog-hero-toggle" id="catalog-hero-toggle" aria-expanded="false">
-              <i class="fas fa-users"></i>
-              <span>Catálogo comunitário: aproveite grades de <strong>${escapeHtml(curso)}</strong> em <strong>${escapeHtml(faculdade)}</strong> já cadastradas por outros alunos</span>
-              <i class="fas fa-chevron-down catalog-hero-chevron"></i>
-            </button>
-            <div class="catalog-hero-body" id="catalog-hero-body" hidden>
-              <p>O site aprende com as grades cadastradas pelos usuários — quem informar o mesmo curso e faculdade já encontra boa parte da estrutura pronta.</p>
-              <div class="catalog-actions">
-                <button class="catalog-btn secondary" id="btn-community-load">Buscar grade pronta</button>
-                <button class="catalog-btn primary" id="btn-community-share">Compartilhar minha grade</button>
+          <section class="catalog-hero">
+            <div>
+              <h3>Catálogo comunitário da grade curricular</h3>
+              <p>O site pode aprender com as grades cadastradas pelos usuários. Assim, quem informar <strong>${escapeHtml(curso)}</strong> em <strong>${escapeHtml(faculdade)}</strong> já encontra boa parte da estrutura pronta.</p>
+              <div class="catalog-badges">
+                <span class="catalog-badge">Importar por faculdade + curso</span>
+                <span class="catalog-badge">Compartilhar sua grade</span>
+                <span class="catalog-badge">Colar texto do fluxograma</span>
               </div>
+            </div>
+            <div class="catalog-actions">
+              <button class="catalog-btn secondary" id="btn-community-load">Buscar grade pronta</button>
+              <button class="catalog-btn primary" id="btn-community-share">Compartilhar minha grade</button>
+              <button class="catalog-btn ghost" id="btn-community-paste">Colar texto/PDF</button>
             </div>
           </section>`;
         return hero + original;
@@ -825,18 +815,8 @@
         originalSetupViewEvents.call(this, view);
         if (view === 'grade-curricular') {
           document.getElementById('btn-community-load')?.addEventListener('click', () => showModal({ mode: 'load' }));
+          document.getElementById('btn-community-paste')?.addEventListener('click', () => showModal({ mode: 'paste' }));
           document.getElementById('btn-community-share')?.addEventListener('click', () => showModal({ mode: 'share' }));
-          const toggle = document.getElementById('catalog-hero-toggle');
-          const body = document.getElementById('catalog-hero-body');
-          if (toggle && body && !toggle.dataset.bound) {
-            toggle.dataset.bound = '1';
-            toggle.addEventListener('click', () => {
-              const open = toggle.getAttribute('aria-expanded') === 'true';
-              toggle.setAttribute('aria-expanded', String(!open));
-              body.hidden = open;
-              toggle.querySelector('.catalog-hero-chevron')?.classList.toggle('rotated', !open);
-            });
-          }
         }
         if (view === 'configuracoes') {
           document.getElementById('btn-config-community-load')?.addEventListener('click', () => showModal({ mode: 'load' }));

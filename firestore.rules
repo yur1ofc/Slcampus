@@ -99,19 +99,6 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // ─── Contador de uso da importação de grade por IA ────────────────────────
-    // Um documento por usuário só com "date" e "count" — usado pelo
-    // api/gemini.js para limitar quantas importações cada um faz por dia.
-
-    match /ai_usage/{userId} {
-      allow read: if isOwner(userId);
-      allow write: if isOwner(userId)
-        && strLen(request.resource.data.date, 10)
-        && request.resource.data.count is int
-        && request.resource.data.count >= 0
-        && request.resource.data.count <= 1000;
-    }
-
     // ─── Proteção padrão: nega tudo que não foi explicitamente permitido ──────
     match /{document=**} {
       allow read, write: if false;

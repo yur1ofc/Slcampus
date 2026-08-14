@@ -642,7 +642,6 @@ button:active,
     flex: 1;
     padding: 24px 12px;
     overflow-y: auto;
-    overscroll-behavior: contain;
 }
 
 .nav-item {
@@ -2359,8 +2358,48 @@ input:checked + .toggle-slider:before {
         flex-direction: column;
     }
 
+    .sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+        transform: translateX(0);
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+    }
+
     .sidebar-header {
         padding: 16px;
+    }
+
+    .sidebar-nav {
+        display: flex;
+        flex-wrap: wrap;
+        padding: 12px;
+        gap: 8px;
+    }
+
+    .nav-item {
+        flex: 1 0 auto;
+        min-width: 80px;
+        justify-content: center;
+        padding: 8px;
+    }
+
+    .nav-item span {
+        display: none;
+    }
+
+    .nav-item i {
+        margin: 0;
+        font-size: 20px;
+    }
+
+    .sidebar-footer {
+        display: none;
+    }
+
+    .main-content {
+        margin-left: 0;
     }
 
     .content-header {
@@ -2680,139 +2719,6 @@ input:checked + .toggle-slider:before {
 
     .weekly-event-block .event-content {
         font-size: 11px;
-    }
-}
-
-/* ===== Grade Horária - Agenda semanal vertical (sem scroll lateral) ===== */
-.week-agenda {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    width: 100%;
-}
-
-.week-agenda-day {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    overflow: hidden;
-}
-
-.week-agenda-day.is-today {
-    border-color: var(--accent-primary);
-    box-shadow: 0 0 0 1px var(--accent-primary);
-}
-
-.week-agenda-day-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 12px 16px;
-    background: var(--bg-tertiary);
-    border-bottom: 1px solid var(--border);
-}
-
-.week-agenda-day-header h4 {
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 15px;
-    color: var(--text-primary);
-}
-
-.week-agenda-today-tag {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    color: #fff;
-    background: var(--accent-primary);
-    padding: 2px 8px;
-    border-radius: 999px;
-}
-
-.week-agenda-day-total {
-    font-size: 12px;
-    color: var(--text-secondary);
-    white-space: nowrap;
-}
-
-.week-agenda-day-list {
-    display: flex;
-    flex-direction: column;
-}
-
-.week-agenda-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 14px;
-    padding: 12px 16px;
-    border-left: 4px solid var(--accent-primary);
-    border-bottom: 1px solid var(--border);
-    cursor: pointer;
-    transition: var(--transition);
-}
-
-.week-agenda-item:last-child {
-    border-bottom: none;
-}
-
-.week-agenda-item:hover {
-    background: rgba(255, 255, 255, 0.03);
-}
-
-.week-agenda-time {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    min-width: 56px;
-    line-height: 1.3;
-}
-
-.week-agenda-time strong {
-    font-size: 14px;
-    color: var(--text-primary);
-}
-
-.week-agenda-time span {
-    font-size: 12px;
-    color: var(--text-secondary);
-}
-
-.week-agenda-info {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.week-agenda-info strong {
-    font-size: 14px;
-    color: var(--text-primary);
-    word-break: break-word;
-}
-
-.week-agenda-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px 12px;
-    font-size: 12px;
-    color: var(--text-secondary);
-}
-
-@media (max-width: 480px) {
-    .week-agenda-day-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 4px;
-    }
-
-    .week-agenda-item {
-        padding: 10px 12px;
-        gap: 10px;
     }
 }
 
@@ -3545,11 +3451,6 @@ input:checked + .toggle-slider:before {
     color: #fca5a5;
 }
 
-.tag.trancada {
-    background: rgba(148, 163, 184, 0.2);
-    color: #cbd5e1;
-}
-
 .curriculum-nota-row {
     margin: 6px 0;
 }
@@ -3882,7 +3783,6 @@ input:checked + .toggle-slider:before {
   inset: 0;
   background: rgba(2, 6, 23, 0.52);
   z-index: 80;
-  touch-action: none;
 }
 
 body.sidebar-open .mobile-nav-overlay {
@@ -3914,27 +3814,6 @@ body.sidebar-open .mobile-nav-overlay {
   .main-content {
     width: 100%;
     min-width: 0;
-    margin-left: 0;
-  }
-
-  /* Nesta faixa a sidebar virou uma gaveta (abre por cima, com o ☰),
-     então ela tem espaço de sobra — mostra os textos ao lado dos ícones
-     em vez de ficar só com ícone (que é o modo "encolhido" pensado pra
-     quando a sidebar fica sempre visível e apertada, não é o caso aqui). */
-  .sidebar .logo span,
-  .sidebar .nav-item span,
-  .sidebar .user-details,
-  .sidebar .streak-info span,
-  .sidebar .toggle-label {
-    display: initial;
-  }
-
-  .sidebar .user-details {
-    display: flex;
-  }
-
-  .sidebar .nav-item {
-    justify-content: flex-start;
   }
 
   .content-header {

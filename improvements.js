@@ -167,7 +167,7 @@
       const ds = d.toISOString().slice(0, 10);
       labels.push(d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }));
       const mins = sessions
-        .filter(s => (s.data || s.dataHora || '').slice(0, 10) === ds && s.concluida)
+        .filter(s => (s.data || s.dataHora || '').slice(0, 10) === ds && s.completada)
         .reduce((acc, s) => acc + (Number(s.duracao) || 0), 0);
       hoursData.push(+(mins / 60).toFixed(1));
     }
@@ -175,9 +175,9 @@
     // Média de notas por matéria
     const subjectGrades = {};
     grades.forEach(g => {
-      if (!g.materia || !g.valor) return;
+      if (!g.materia || !g.nota) return;
       if (!subjectGrades[g.materia]) subjectGrades[g.materia] = [];
-      subjectGrades[g.materia].push(Number(g.valor));
+      subjectGrades[g.materia].push(Number(g.nota));
     });
     const gradeLabels = Object.keys(subjectGrades).slice(0, 8);
     const gradeData   = gradeLabels.map(m => {
@@ -187,7 +187,7 @@
 
     // Heatmap de atividade (últimos 84 dias = 12 semanas)
     const activityMap = {};
-    sessions.filter(s => s.concluida).forEach(s => {
+    sessions.filter(s => s.completada).forEach(s => {
       const d = (s.data || s.dataHora || '').slice(0, 10);
       if (d) activityMap[d] = (activityMap[d] || 0) + 1;
     });

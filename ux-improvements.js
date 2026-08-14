@@ -587,7 +587,7 @@
         btn.style.color = 'var(--accent-primary)';
         goTo(tab.view);
         // Fecha sidebar se aberta
-        window.SLCSidebar?.close();
+        document.body.classList.remove('sidebar-open');
       });
       nav.appendChild(btn);
     });
