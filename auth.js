@@ -50,6 +50,17 @@ auth.onAuthStateChanged(async (user) => {
   try {
     window.showLoading?.();
 
+    // Handle demo mode: initialize app without Firebase auth
+    if (!user && window.isDemoMode?.()) {
+      setDisplay('login-screen', 'none');
+      setDisplay('setup-screen', 'none');
+      setDisplay('main-dashboard', 'block');
+      if (window.app) {
+        await window.app.init();
+      }
+      return;
+    }
+
     if (user) {
       await handleSignedInUser(user);
     } else {
