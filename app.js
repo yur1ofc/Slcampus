@@ -74,6 +74,18 @@ class StudyLifeControl {
     }
 
     async loadData() {
+        // Check for demo mode (localStorage-only, no Firebase auth required)
+        if (window.isDemoMode?.()) {
+            const data = await window.demoDbService?.loadUserData('demo-user');
+            this.data = data || (typeof DEFAULT_APP_DATA === 'function' ? DEFAULT_APP_DATA() : this.data);
+            if (!Array.isArray(this.data.curriculum)) this.data.curriculum = [];
+            if (!Array.isArray(this.data.extraCourses)) this.data.extraCourses = [];
+            this.normalizeCurriculumInMemory();
+            // Show demo mode indicator
+            if (window.showToast) window.showToast('Modo demo ativo - dados salvos localmente', 'info');
+            return this.data;
+        }
+
         const user = auth.currentUser;
         if (!user) return this.data;
 
@@ -624,6 +636,20 @@ class StudyLifeControl {
             document.getElementById('btn-relatar-problema')?.addEventListener('click', () => {
                 window.open('https://github.com/yur1ofc/study-life-control/issues/new', '_blank');
             });
+            // Demo mode toggle
+            document.getElementById('toggle-demo-mode')?.addEventListener('change', async e => {
+                const enabled = e.target.checked;
+                localStorage.setItem('slc-demo-mode', enabled ? 'true' : 'false');
+                window.showToast?.(
+                    enabled
+                        ? 'Modo demo ativado! Recarregue a página para aplicar.'
+                        : 'Modo demo desativado! Recarregue a página para aplicar.',
+                    'info'
+                );
+                // Show hint
+                const hint = document.getElementById('demo-mode-hint');
+                if (hint) hint.style.display = enabled ? 'block' : 'none';
+            });
         }
 
         if (view === 'materias') {
@@ -689,6 +715,7 @@ class StudyLifeControl {
         document.getElementById('quick-sessao')?.addEventListener('click', () => this.openModal('sessao'));
         document.getElementById('quick-tarefa')?.addEventListener('click', () => this.openModal('tarefa'));
         document.getElementById('quick-prova')?.addEventListener('click', () => this.openModal('prova'));
+        document.getElementById('quick-aula')?.addEventListener('click', () => this.openModal('aula'));
         document.getElementById('quick-foco')?.addEventListener('click', () => this.loadView('foco'));
         document.getElementById('perguntar-ia')?.addEventListener('click', () => this.loadView('mentor-ia'));
 

@@ -2167,7 +2167,28 @@ class ViewRenderer {
         }
 
         if (aba === 'dados') {
+            const demoEnabled = window.isDemoMode?.() === true;
             conteudo = `
+            <div class="config-section-title">🧪 Modo Demo (Offline)</div>
+            <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:24px;">
+                <div class="card" style="padding:16px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                        <div>
+                            <strong style="font-size:1rem;">Modo Demo</strong>
+                            <p style="color:var(--text-secondary);font-size:.85rem;margin-top:4px;">
+                                Funciona sem login - dados salvos apenas no navegador (localStorage). Ideal para testar o app.
+                            </p>
+                        </div>
+                        <label class="switch" style="flex-shrink:0;">
+                            <input type="checkbox" id="toggle-demo-mode" ${demoEnabled ? 'checked' : ''}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <p id="demo-mode-hint" style="font-size:.8rem;color:var(--text-tertiary);margin-top:8px;display:${demoEnabled ? 'block' : 'none'};">
+                        Modo demo ativo: <code>localStorage slc-demo-mode=true</code> | Recarregue a página para alternar
+                    </p>
+                </div>
+            </div>
             <div class="config-section-title">📦 Backup e restauração</div>
             <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px;">
                 <button class="btn-secondary" id="exportar-dados" style="justify-content:flex-start;">

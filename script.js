@@ -1328,6 +1328,28 @@
     el('setup-form')?.addEventListener('submit', e => { e.preventDefault(); window.app?.handleSetupSubmit?.(e); });
     el('add-materia')?.addEventListener('click', () => window.app?.addMateriaField?.());
     el('add-aula')?.addEventListener('click', () => window.app?.addAulaField?.());
+
+    // Theme toggle handler
+    const themeToggle = el('theme-toggle');
+    if (themeToggle) {
+      themeToggle.addEventListener('click', () => {
+        const current = localStorage.getItem('slc-theme-config');
+        const cfg = current ? JSON.parse(current) : { preset: 'dark', custom: {} };
+        const isDark = cfg.preset === 'dark' || cfg.preset === 'midnight' || cfg.preset === 'forest' || cfg.preset === 'rose';
+        const nextPreset = isDark ? 'light' : 'dark';
+        cfg.preset = nextPreset;
+        cfg.custom = {};
+        localStorage.setItem('slc-theme-config', JSON.stringify(cfg));
+        if (window.themeEngine?.applyPreset) {
+          window.themeEngine.applyPreset(nextPreset, {});
+        } else {
+          // Fallback: set data-theme attribute
+          document.documentElement.setAttribute('data-theme', nextPreset === 'dark' ? 'dark' : 'light');
+        }
+        if (window.showToast) window.showToast(`Tema ${nextPreset === 'dark' ? 'escuro' : 'claro'} aplicado!`, 'success');
+      });
+    }
+
     install();
     ensureGamificationNavItem();
     ensureHelpNavItem();

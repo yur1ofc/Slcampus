@@ -206,3 +206,128 @@ const dbService = {
 
 window.DEFAULT_APP_DATA = DEFAULT_APP_DATA;
 window.dbService = dbService;
+
+// Demo mode: localStorage-only data service (bypasses Firebase)
+const DEMO_KEY = 'slc-demo-data';
+const DEMO_USER_KEY = 'slc-demo-user';
+
+function isDemoMode() {
+    return localStorage.getItem('slc-demo-mode') === 'true' || new URLSearchParams(window.location.search).get('demo') === '1';
+}
+
+function getDemoData() {
+    try {
+        const raw = localStorage.getItem(DEMO_KEY);
+        if (!raw) return null;
+        return JSON.parse(raw);
+    } catch (error) {
+        console.warn('Erro ao ler dados demo:', error);
+        return null;
+    }
+}
+
+function saveDemoData(data) {
+    try {
+        localStorage.setItem(DEMO_KEY, JSON.stringify(data));
+    } catch (error) {
+        console.warn('Erro ao salvar dados demo:', error);
+    }
+}
+
+function getDemoUser() {
+    try {
+        const raw = localStorage.getItem(DEMO_USER_KEY);
+        if (!raw) return null;
+        return JSON.parse(raw);
+    } catch (error) {
+        return null;
+    }
+}
+
+function saveDemoUser(user) {
+    try {
+        localStorage.setItem(DEMO_USER_KEY, JSON.stringify(user));
+    } catch (error) {
+        console.warn('Erro ao salvar usuário demo:', error);
+    }
+}
+
+const demoDbService = {
+    async loadUserData(userId) {
+        if (!isDemoMode()) return null;
+        const data = getDemoData() || DEFAULT_APP_DATA();
+        const user = getDemoUser();
+        if (user) data.user = user;
+        if (window.app) window.app.data = data;
+        return data;
+    },
+
+    async saveAllData(data) {
+        if (!isDemoMode()) return false;
+        saveDemoData(data);
+        if (data.user) saveDemoUser(data.user);
+        if (window.showToast) window.showToast('Dados salvos (modo demo)', 'success');
+        return true;
+    },
+
+    async saveData(field, value) {
+        if (!isDemoMode()) return false;
+        const data = getDemoData() || DEFAULT_APP_DATA();
+        data[field] = value;
+        if (field === 'user') saveDemoUser(value);
+        saveDemoData(data);
+        return true;
+    },
+
+    async addItem(collection, item) {
+        if (!isDemoMode()) return false;
+        const data = getDemoData() || DEFAULT_APP_DATA();
+        if (!Array.isArray(data[collection])) data[collection] = [];
+        data[collection].push(item);
+        saveDemoData(data);
+        return true;
+    },
+
+    async updateItem(collection, id, updates) {
+        if (!isDemoMode()) return false;
+        const data = getDemoData() || DEFAULT_APP_DATA();
+        if (!Array.isArray(data[collection])) return false;
+        const idx = data[collection].findIndex(i => i.id === id);
+        if (idx === -1) return false;
+        data[collection][idx] = { ...data[collection][idx], ...updates };
+        saveDemoData(data);
+        return true;
+    },
+
+    async removeItem(collection, id) {
+        if (!isDemoMode()) return false;
+        const data = getDemoData() || DEFAULT_APP_DATA();
+        if (!Array.isArray(data[collection])) return false;
+        data[collection] = data[collection].filter(i => i.id !== id);
+        saveDemoData(data);
+        return true;
+    },
+
+    async clearAllData() {
+        if (!isDemoMode()) return false;
+        localStorage.removeItem(DEMO_KEY);
+        localStorage.removeItem(DEMO_USER_KEY);
+        return true;
+    }
+};
+
+window.demoDbService = demoDbService;
+
+// Unified database service: automatically uses demo mode when enabled
+const unifiedDbService = new Proxy(dbService, {
+    get(target, prop) {
+        if (window.isDemoMode?.() && window.demoDbService?.[prop]) {
+            return window.demoDbService[prop].bind(window.demoDbService);
+        }
+        return target[prop];
+    }
+});
+
+window.DEFAULT_APP_DATA = DEFAULT_APP_DATA;
+window.dbService = unifiedDbService;
+window.isDemoMode = isDemoMode;
