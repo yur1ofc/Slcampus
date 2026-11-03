@@ -19,5 +19,5 @@ jobs:
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
-          vercel --prod --token=$VERCEL_TOKEN --scope=yuris-projects-61de9c02
+          vercel --prod --token=$VERCEL_TOKEN --scope=yuris-projects-61de9c02 --yes
         working-directory: ./
