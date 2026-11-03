@@ -1,4 +1,4 @@
-// database.js - Gerenciamento do Firestore
+// database.js - Gerenciamento do Firestore (v2 - demo mode support)
 
 const DEFAULT_APP_DATA = () => ({
     user: null,
