@@ -1,4 +1,5 @@
 {
+  "buildCommand": "node inject-env.js",
   "cleanUrls": true,
   "outputDirectory": ".",
   "rewrites": [
