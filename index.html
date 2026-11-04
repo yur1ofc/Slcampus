@@ -1400,7 +1400,7 @@
 .slc-cookie-btn:hover{transform:translateY(-1px);filter:saturate(1.08)}
 .slc-cookie-btn:focus-visible{outline:2px solid #60a5fa;outline-offset:3px}
 @keyframes slcCookieIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
-@media (max-width:560px){.slc-cookie-notice{left:10px;right:10px;bottom:10px;padding:13px 15px}.slc-cookie-btn{width:100%}}
+@media (max-width:560px){.slc-cookie-notice{left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));padding:13px 15px}.slc-cookie-btn{width:100%}}
 @media (prefers-reduced-motion:reduce){.slc-cookie-notice{animation:none}}
 </style>
 <script>
