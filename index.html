@@ -1388,7 +1388,7 @@
     <button type="button" id="cookie-notice-accept" class="slc-cookie-btn">Entendi</button>
 </div>
 <style>
-.slc-cookie-notice{position:fixed;left:16px;right:16px;bottom:16px;z-index:1400;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;background:rgba(11,16,27,.97);border:1px solid rgba(148,163,184,.22);border-radius:16px;padding:14px 18px;box-shadow:0 20px 50px rgba(0,0,0,.5);backdrop-filter:blur(12px);font-family:'Plus Jakarta Sans',system-ui,sans-serif;animation:slcCookieIn .35s ease both}
+.slc-cookie-notice{position:fixed;left:16px;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:1400;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;background:rgba(11,16,27,.97);border:1px solid rgba(148,163,184,.22);border-radius:16px;padding:14px 18px;box-shadow:0 20px 50px rgba(0,0,0,.5);backdrop-filter:blur(12px);font-family:'Plus Jakarta Sans',system-ui,sans-serif;animation:slcCookieIn .35s ease both}
 .slc-cookie-notice[hidden]{display:none!important}
 .slc-cookie-text{display:flex;align-items:flex-start;gap:11px;flex:1;min-width:230px}
 .slc-cookie-text i{color:#60a5fa;font-size:16px;margin-top:3px}
@@ -1410,10 +1410,14 @@
         var box = document.getElementById('cookie-notice');
         if (!box) return;
         box.hidden = false;
+        // Enquanto o aviso estiver aberto, reserva espaço no rodapé das telas
+        // de login para o CTA não ficar atrás do banner fixo no mobile.
+        document.body.classList.add('slc-cookie-open');
         var btn = document.getElementById('cookie-notice-accept');
         if (btn) btn.addEventListener('click', function () {
             try { localStorage.setItem('slc_cookie_notice', 'ok'); } catch (e) {}
             box.hidden = true;
+            document.body.classList.remove('slc-cookie-open');
         });
     } catch (e) {}
 })();

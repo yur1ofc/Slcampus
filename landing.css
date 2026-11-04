@@ -109,6 +109,12 @@
 /* ── Refinamentos: navegação por âncoras, hierarquia tipográfica ── */
 html{scroll-behavior:smooth}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+/* Auditoria mobile 2026-11-04 — alvos de toque confortáveis */
+@media (max-width:640px){
+  .landing-nav-login,.landing-secondary{min-height:44px}
+  .landing-support-link,.landing-footer-legal a{min-height:44px;display:inline-flex;align-items:center}
+}
 .landing-section{scroll-margin-top:92px}
 .landing-hero h1,.landing-section h2,.landing-final-cta h2{text-wrap:balance}
 .landing-screen ::selection{background:rgba(59,130,246,.35);color:#fff}

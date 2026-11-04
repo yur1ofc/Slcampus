@@ -71,9 +71,28 @@
       try { return localStorage.getItem('slc_cookie_notice') !== 'ok'; } catch (e) { return false; }
     }
 
+    function authScreenVisible() {
+      // O card de instalação é fixo e, na tela de login/setup, pode cobrir
+      // o CTA ou os textos legais no mobile. Deixa o prompt para a landing
+      // ou para depois que o app estiver carregado.
+      const visible = (node) => !!node && !node.hidden && getComputedStyle(node).display !== 'none';
+      return visible(el('login-screen')) || visible(el('setup-screen'));
+    }
+
     function showCardIfAllowed() {
-      if (!deferredInstallPrompt || recentlyDismissed() || cookieNoticeOpen()) return;
+      if (!deferredInstallPrompt || recentlyDismissed() || cookieNoticeOpen() || authScreenVisible()) return;
       card.hidden = false;
+    }
+
+    // Se o prompt já estava visível na landing e o usuário abre o login/setup,
+    // esconde o card para ele não cobrir o CTA. Volta a aparecer se retornar.
+    const authScreens = [el('login-screen'), el('setup-screen')].filter(Boolean);
+    if (authScreens.length && 'MutationObserver' in window) {
+      const authObserver = new MutationObserver(() => {
+        if (authScreenVisible()) card.hidden = true;
+        else showCardIfAllowed();
+      });
+      authScreens.forEach((node) => authObserver.observe(node, { attributes: true, attributeFilter: ['style', 'class'] }));
     }
 
     window.addEventListener('beforeinstallprompt', (event) => {

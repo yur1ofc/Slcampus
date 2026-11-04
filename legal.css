@@ -120,3 +120,15 @@ a:hover { text-decoration: underline; }
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+/* Auditoria mobile 2026-11-04 — alvos de toque confortáveis */
+@media (max-width: 560px) {
+  .lg-brand,
+  .lg-back,
+  .lg-footer-links a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .lg-footer-links { gap: 0 16px; }
+}

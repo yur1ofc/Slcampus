@@ -405,3 +405,65 @@ a:hover { text-decoration: underline; }
 
 /* Campo com valor fora do intervalo (ex.: nota > 10) */
 .input[aria-invalid="true"]{border-color:#ef4444!important;box-shadow:0 0 0 3px rgba(239,68,68,.15)}
+
+/* =========================================================
+   Auditoria mobile 2026-11-04 — rodapé, nav e calculadoras
+   ========================================================= */
+.tool-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 6px 14px;
+}
+.tool-footer .sep { display: none; }
+.tool-footer a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+}
+
+@media (max-width: 560px) {
+  /* A nav precisa caber em 320px sem quebrar o texto do CTA em duas linhas. */
+  .tool-nav { padding: 12px 14px; gap: 10px; }
+  .tool-brand { font-size: .98rem; }
+  .tool-brand img { height: 28px; }
+  .tool-nav-cta {
+    font-size: .82rem;
+    padding: 9px 12px;
+    gap: 6px;
+    min-height: 44px;
+    white-space: nowrap;
+  }
+
+  /* Em vez de espremer 4 colunas em 320px, o nome da avaliação ocupa a
+     primeira linha e nota/peso/remover ficam na segunda. */
+  .grade-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px;
+    gap: 8px;
+  }
+  .grade-row > .mini-label { grid-column: 1 / -1; }
+  .grade-row > .input:nth-of-type(2) { grid-column: 1; }
+  .grade-row > .input:nth-of-type(3) { grid-column: 2; }
+  .grade-row > .icon-btn {
+    grid-column: 3;
+    grid-row: 2;
+    width: 44px;
+    height: 44px;
+    justify-self: end;
+    align-self: center;
+  }
+  .input { min-height: 44px; font-size: 16px; }
+  .btn-ghost { min-height: 44px; }
+  .check-line { min-height: 44px; }
+
+  .tool-footer { padding: 16px 14px 24px; gap: 2px 10px; }
+  .tool-footer a { min-height: 44px; padding: 4px 0; }
+}
+
+@media (max-width: 380px) {
+  .tool-nav { padding: 10px 12px; gap: 8px; }
+  .tool-brand { font-size: .92rem; gap: 7px; }
+  .tool-brand img { height: 25px; }
+  .tool-nav-cta { font-size: .76rem; padding: 8px 10px; }
+}
