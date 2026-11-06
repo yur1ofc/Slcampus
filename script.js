@@ -1256,6 +1256,10 @@
       pop = document.createElement('div');
       pop.id = 'notification-popover';
       pop.className = 'notification-popover';
+      // Portalizado no body, fica fora de qualquer landmark — role/label
+      // garantem que o axe (regra region) e leitores de tela enxerguem o painel.
+      pop.setAttribute('role', 'region');
+      pop.setAttribute('aria-label', 'Notificações');
       pop.innerHTML = `
         <div class="notification-popover-head">
           <div><strong>Notificações</strong><div class="text-secondary">Alertas rápidos do teu semestre</div></div>
@@ -1291,10 +1295,12 @@
     if (!pop) return;
     positionNotificationPopover(pop);
     pop.classList.add('open');
+    el('notification-badge')?.setAttribute('aria-expanded', 'true');
   }
 
   function closeNotificationPopover() {
     el('notification-popover')?.classList.remove('open');
+    el('notification-badge')?.setAttribute('aria-expanded', 'false');
   }
 
   function ensureHelpNavItem() {
@@ -1359,6 +1365,8 @@
     updateSidebarLevelRing(app);
     if (!badge.dataset.bound) {
       badge.dataset.bound = '1';
+      badge.setAttribute('aria-controls', 'notification-popover');
+      badge.setAttribute('aria-expanded', 'false');
       badge.addEventListener('click', (e) => {
         e.stopPropagation();
         if (pop.classList.contains('open')) closeNotificationPopover();
