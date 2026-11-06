@@ -131,6 +131,7 @@
     const wanted = String(label || '').trim().toLocaleLowerCase('pt-BR');
     const nodes = [...document.querySelectorAll('#sidebar-nav .nav-item, .sidebar .nav-item, [data-view]')];
     return nodes.find(node => {
+      if (node === document.body || node === document.documentElement) return false;
       const r = node.getBoundingClientRect();
       if (!r.width || !r.height) return false;
       if (node.closest('#slc-mobile-more') && deviceKind() !== 'mobile') return false;
@@ -205,7 +206,11 @@
       ['[data-view="configuracoes"], [data-slcnavigate="configuracoes"]','nav-config'],
       ['[data-view="perfil"]','nav-perfil']
     ];
-    mapping.forEach(([selector,name]) => document.querySelector(selector)?.setAttribute('data-tutorial', name));
+    mapping.forEach(([selector,name]) => {
+      const node = [...document.querySelectorAll(selector)]
+        .find(n => n !== document.body && n !== document.documentElement);
+      node?.setAttribute('data-tutorial', name);
+    });
   }
 
   function ensureOverlay() {

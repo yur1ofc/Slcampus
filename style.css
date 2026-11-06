@@ -7060,12 +7060,15 @@ body.slc-tutorial-open { overscroll-behavior:none !important; }
   .login-mobile-teaser { margin: 0 0 18px; padding: 12px 14px; }
   .login-body .btn-google { min-height: 50px; }
 
-  /* Enquanto o aviso de cookies estiver aberto, o banner fica fixo no
-     rodapé. O espaço extra permite rolar o conteúdo do login para cima
-     do banner em vez de deixar o botão Google escondido atrás dele. */
-  body.slc-cookie-open .login-container {
-    padding-bottom: calc(170px + env(safe-area-inset-bottom));
-  }
+}
+
+/* Enquanto o aviso de cookies estiver aberto, o banner fica fixo no
+   rodapé. O espaço extra permite rolar o conteúdo do login para cima
+   do banner em vez de deixar o botão Google escondido atrás dele.
+   Fora do media query de propósito: entre 641px e 980px a tela de login
+   também aparece e o botão Google ficava coberto pelo banner. */
+body.slc-cookie-open .login-container {
+  padding-bottom: calc(170px + env(safe-area-inset-bottom));
 }
 
 @media (max-width: 380px) {
