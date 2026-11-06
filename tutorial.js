@@ -25,6 +25,13 @@
     return 'desktop';
   }
 
+  // A sidebar só vira gaveta em telas estreitas (≤980px, ver style.css): fora
+  // dessa faixa ela já fica visível; nela ela nasce off-canvas até o ☰ abrir.
+  // Alvo fora da viewport faz getTarget desistir e o balão renderiza vazio.
+  function usesSidebarDrawer() {
+    return window.matchMedia('(max-width: 980px)').matches;
+  }
+
   const HELP_SECTIONS = [
     { icon:'🏠', title:'Início', body:'Seu painel muda de acordo com o seu perfil. Ele reúne o que merece atenção agora, próximas atividades, progresso e atalhos para agir.' },
     { icon:'🧭', title:'Estudar', body:'É a área de execução. Use o Modo Foco, revisões, materiais e o histórico de sessões para transformar planejamento em estudo de verdade.' },
@@ -293,7 +300,7 @@
       window.removeEventListener('orientationchange',this.handleViewportChange);
       this._setInteractionLock(false);
       window.SLCProductShell?.closeMobileMore?.();
-      window.SLCSidebar?.close?.();
+      if(document.body.classList.contains('sidebar-open'))window.SLCSidebar?.close?.();
       if(markDone)this.markCompleted();
     },
 
@@ -309,6 +316,11 @@
 
     handleViewportChange(){
       if(!window.SiteTutorial?.running)return;
+      // Janela alargou e saiu do modo gaveta: fecha a sidebar para não deixar
+      // o overlay dela preso por cima do conteúdo.
+      if(!usesSidebarDrawer()&&document.body.classList.contains('sidebar-open')){
+        window.SLCSidebar?.close?.();
+      }
       const nextDevice=deviceKind();
       if(nextDevice!==window.SiteTutorial._lastDevice){
         window.SiteTutorial._lastDevice=nextDevice;
@@ -374,6 +386,22 @@
       await wait(120);
     },
 
+    // Em telas de 641–980px a sidebar é uma gaveta off-canvas (abre pelo ☰).
+    // Os passos da navegação lateral precisam dela aberta: sem isso o alvo
+    // fica fora da viewport, getTarget desiste e o balão renderiza vazio.
+    async _setSidebarDrawer(open){
+      if(deviceKind()==='mobile')return; // no celular a sidebar nem existe
+      if(!usesSidebarDrawer())return;    // no desktop largo ela já está visível
+      const isOpen=document.body.classList.contains('sidebar-open');
+      if(open&&!isOpen){
+        window.SLCSidebar?.open?.();
+        await wait(300); // transition do transform (.25s)
+      }else if(!open&&isOpen){
+        window.SLCSidebar?.close?.();
+        await wait(60);
+      }
+    },
+
     async _navigate(view){
       if(!view||!window.app?.loadView)return;
       try{ window.app.loadView(view); markNavActive(view); }catch(_){ }
@@ -393,6 +421,12 @@
 
       // Estado de navegação é parte do passo. Isso evita resíduos ao usar Voltar.
       if(!needsDrawer) await this._setDrawer(false);
+      if(!this.running||token!==this._runToken)return;
+
+      // Passos da navegação lateral precisam da sidebar aberta quando ela é
+      // gaveta (641–980px). Sem isso o alvo fica fora da viewport, getTarget
+      // desiste após 30 tentativas e o balão renderiza vazio.
+      if(!['notifications','more'].includes(step.target)) await this._setSidebarDrawer(true);
       if(!this.running||token!==this._runToken)return;
 
       if(view && !['notifications','more'].includes(step.target)){

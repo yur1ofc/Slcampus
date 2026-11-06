@@ -291,15 +291,16 @@
                 : 'Média simples (todas as notas com o mesmo peso). Informe o peso de todas as linhas pra usar a ponderada.';
             var restante = num(nextWeight.value);
             if (restante != null && restante > 0 && restante <= 100) {
-                // somaNotaPeso está em escala dos pesos informados; normaliza p/ base 100
-                var base = somaPeso > 0 ? somaPeso : 100;
-                var ganho = somaNotaPeso; // Σ(nota×peso)
-                var faltaPeso = (base === 100 ? restante : restante); // % da média final
-                if (base !== 100) {
-                    // converte o ganho para escala 100 quando pesos não somam 100
-                    ganho = somaNotaPeso * (100 / base);
+                // As notas já tiradas valem somaPeso dos pesos; as próximas valem
+                // `restante`. Média final = (Σnota×peso + p×restante) / (somaPeso +
+                // restante) ≥ meta  →  p = (meta×(somaPeso+restante) − Σnota×peso) / restante
+                var precisa;
+                if (allHavePeso && somaPeso > 0) {
+                    precisa = ((meta * (somaPeso + restante)) - somaNotaPeso) / restante;
+                } else {
+                    // Média simples: o que já foi feito responde por (100 − restante)% da final.
+                    precisa = ((meta * 100) - (media * (100 - restante))) / restante;
                 }
-                var precisa = ((meta * 100) - ganho) / faltaPeso;
                 if (precisa <= 0) {
                     note = 'Com as notas atuais você <strong>já garantiu ' + String(meta).replace('.', ',') + '</strong> — mesmo sem as próximas avaliações.';
                     badges.push('<span class="tbadge ok">Meta garantida</span>');

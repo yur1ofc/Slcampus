@@ -650,6 +650,7 @@ Regras:
         window.scrollTo(0, 0);
       });
     });
+    enhanceCardAccessibility();
   }
 
   /* ─── Passo "quem" (varia por perfil) ─────────────────────── */
@@ -1075,6 +1076,35 @@ Regras:
   }
 
   /* ─── Render do wizard completo ───────────────────────────── */
+  /* ─── Acessibilidade dos cards clicáveis ──────────────────── */
+  // .wiz-profile-card e .wiz-radio-card são <div> com handler de click: sem
+  // papel semântico nem foco, quem navega por teclado ou leitor de tela não
+  // consegue completar o wizard. Dá role/tabindex e ativa com Enter/Espaço.
+  function enhanceCardAccessibility() {
+    document.querySelectorAll('.wiz-profile-card, .wiz-radio-card').forEach(card => {
+      if (card.dataset.a11y === '1') return;
+      card.dataset.a11y = '1';
+      card.setAttribute('role', 'button');
+      card.tabIndex = 0;
+      if (card.classList.contains('wiz-radio-card')) {
+        const sync = () => card.setAttribute('aria-pressed', card.classList.contains('active') ? 'true' : 'false');
+        sync();
+        card.addEventListener('click', sync);
+      }
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); card.click(); }
+      });
+    });
+    // Os dias da semana já são <button>; só falta o estado semântico de toggle.
+    document.querySelectorAll('.wiz-day-btn').forEach(btn => {
+      if (btn.dataset.a11y === '1') return;
+      btn.dataset.a11y = '1';
+      const sync = () => btn.setAttribute('aria-pressed', btn.classList.contains('active') ? 'true' : 'false');
+      sync();
+      btn.addEventListener('click', sync);
+    });
+  }
+
   function renderWizard() {
     const step = wizardState.step;
 
@@ -1132,6 +1162,7 @@ Regras:
 
     attachEvents(step);
     restoreValues(step);
+    enhanceCardAccessibility();
   }
 
   /* ─── Restaurar valores ao voltar ────────────────────────── */
