@@ -19,6 +19,19 @@ description: Fluxo de deploy do SLCampus — bump do CACHE_VERSION, Preview Depl
 7. **Produção** (só após aprovação): `vercel deploy --prod` → confirme com
    `vercel ls` (status Ready) → smoke final na URL de produção.
 
+## Acessar o Preview (protegido por SSO)
+Os previews têm Deployment Protection ativo — direto no navegador caem no login
+do Vercel. Para validar:
+1. Pegue o segredo sem persistir em arquivo: `cmd /c vercel project protection
+   slcampus --json` → campo `protectionBypass` (chave do objeto).
+2. Navegue **uma vez** para `<preview-url>/?x-vercel-protection-bypass=<segredo>&x-vercel-set-bypass-cookie=true`.
+   O Vercel emite o cookie via `Set-Cookie` e todas as cargas seguintes (CSS, JS,
+   API) funcionam normalmente. Cookie manual no DOM **não** funciona (nome interno
+   do Vercel; `domain=.vercel.app` é public suffix).
+3. **Limitação**: o domínio do preview não está nas authorized domains do Firebase
+   Auth → login falha com `auth/unauthorized-domain`. Itens que dependem de login
+   (dashboard, tour, calculadora) só rodam no smoke de produção pós-deploy.
+
 ## Regras do ambiente
 - PowerShell: sem `;`? Não — use `;` e `if ($?)` no lugar de `&&`.
 - npm/npx sempre via `cmd /c` (PowerShell bloqueia).

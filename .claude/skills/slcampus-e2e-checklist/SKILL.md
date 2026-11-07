@@ -7,6 +7,12 @@ description: Checklist de regressão E2E do SLCampus no navegador — console, a
 
 Rode no navegador real (site publicado ou Preview). Marque tudo antes do deploy.
 
+> **Preview vs produção**: em Preview o login está bloqueado
+> (`auth/unauthorized-domain` — domínio não autorizado no Firebase). No Preview,
+> rode os itens estáticos/PWA/axe/banner; os itens de login → dashboard rodam
+> obrigatoriamente na produção (pós-aprovação do deploy). Acesso ao Preview
+> protegido: ver `.claude/skills/slcampus-deploy/SKILL.md`.
+
 ## Básico
 - [ ] Console do navegador **sem erros** (filtros: apenas warnings aceitos).
 - [ ] `axe` (extensão ou injeção) com **0 violações** em: landing, dashboard,
