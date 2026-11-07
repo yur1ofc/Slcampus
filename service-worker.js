@@ -9,7 +9,7 @@
 // navegador não reinstala o SW e o cache-first serve os arquivos antigos
 // para sempre (o STATIC_CACHE pré-cacheado na instalação nunca é atualizado
 // por conta própria — só a activate com nome de cache novo o substitui).
-const CACHE_VERSION = 'slc-v95-notif-a11y';
+const CACHE_VERSION = 'slc-v96-uuid-landing';
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const DYNAMIC_CACHE = `${CACHE_VERSION}-dynamic`;
 
@@ -38,6 +38,7 @@ const STATIC_ASSETS = [
   './security.js',
   './utils.js',
   './auth.js',
+  './landing.js',
   './database.js',
   './daily-log.js',
   './class-diary.js',
