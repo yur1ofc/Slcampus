@@ -1,6 +1,6 @@
 // SLCampus — webhook Telegram. Além dos comandos clássicos, entende frases
 // naturais em português sem precisar chamar uma IA paga.
-const admin=require('firebase-admin');
+const admin=require('../admin-compat');
 const AcademicCore=require('../../../shared/academic-context.js');
 const AI=require('../ai-core');
 const quota=require('../gemini-admin-quota');

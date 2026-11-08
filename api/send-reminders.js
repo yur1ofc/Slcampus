@@ -81,7 +81,7 @@ async function markScheduler(db, patch) {
 
 let firebaseAdminApp = null;
 function getDb() {
-  const admin = require('firebase-admin');
+  const admin = require('./_lib/admin-compat');
   if (!firebaseAdminApp) {
     const raw = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
     if (!raw) throw new Error('FIREBASE_SERVICE_ACCOUNT_KEY não configurada no servidor.');

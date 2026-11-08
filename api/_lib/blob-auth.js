@@ -1,7 +1,7 @@
 // Autenticação compartilhada dos endpoints do Vercel Blob.
 // Nunca expõe o token do Blob para o navegador: o cliente só recebe um
 // token de upload de curta duração, limitado ao próprio usuário.
-const admin = require('firebase-admin');
+const admin = require('./admin-compat');
 
 let app;
 function init() {

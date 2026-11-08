@@ -1,7 +1,7 @@
 // api/admin-users.js
 // Painel administrativo de usuários. Toda leitura de Firebase Auth e presença
 // acontece no servidor; o navegador nunca recebe credenciais privilegiadas.
-const admin = require('firebase-admin');
+const admin = require('./_lib/admin-compat');
 const { getFirebaseAdmin, authenticateAdmin, sendAuthError } = require('./_lib/admin-auth');
 const quota = require('./_lib/gemini-admin-quota');
 

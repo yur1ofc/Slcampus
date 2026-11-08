@@ -1,5 +1,5 @@
 // SLCampus — vinculação segura da conta ao bot do Telegram.
-const admin=require('firebase-admin');
+const admin=require('../admin-compat');
 const crypto=require('crypto');
 let app;
 function init(){if(app)return app;const raw=process.env.FIREBASE_SERVICE_ACCOUNT_KEY;if(!raw)throw new Error('FIREBASE_SERVICE_ACCOUNT_KEY não configurada.');const service=JSON.parse(Buffer.from(raw,'base64').toString('utf8'));app=admin.apps.length?admin.app():admin.initializeApp({credential:admin.credential.cert(service)});return app;}

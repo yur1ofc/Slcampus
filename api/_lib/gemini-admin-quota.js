@@ -3,7 +3,7 @@
 // do usuário (ex.: uma mensagem do Mentor) conta 1 vez para o usuário, mesmo
 // quando o AI Router precisa trocar de Gemini para Groq ou vice-versa.
 
-const admin = require('firebase-admin');
+const admin = require('./admin-compat');
 
 let app = null;
 function getDb() {

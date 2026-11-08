@@ -1,6 +1,6 @@
 // SLCampus — teste de push do dispositivo atual.
 // Usa o Firebase ID token do usuário e a assinatura já salva no Firestore.
-const admin = require('firebase-admin');
+const admin = require('../admin-compat');
 const webpush = require('web-push');
 const rateLimit = require('../rate-limit');
 const { isValidPushEndpoint, isValidPushSubscription } = require('../notification-validation');

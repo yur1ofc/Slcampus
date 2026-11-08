@@ -2,7 +2,7 @@
 // Autenticação administrativa SERVER-ONLY.
 // A lista de e-mails permitidos vem exclusivamente das variáveis de ambiente
 // da Vercel. Nunca confie em um e-mail enviado pelo navegador.
-const admin = require('firebase-admin');
+const admin = require('./admin-compat');
 
 function getFirebaseAdmin() {
   if (admin.apps.length) return admin.app();

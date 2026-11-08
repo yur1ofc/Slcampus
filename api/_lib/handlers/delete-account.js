@@ -1,4 +1,4 @@
-const admin = require('firebase-admin');
+const admin = require('../admin-compat');
 const { list, del } = require('@vercel/blob');
 
 let initialized = false;

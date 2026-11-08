@@ -1,7 +1,7 @@
 // SLCampus — agenda server-side do término do Modo Foco.
 // O navegador informa ao servidor quando o bloco termina; o cron de push
 // dispara a notificação mesmo que a aba/Chrome esteja fechado.
-const admin = require('firebase-admin');
+const admin = require('../admin-compat');
 let initialized = false;
 function db(){
   if(!initialized){
