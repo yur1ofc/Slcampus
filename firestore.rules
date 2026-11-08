@@ -25,35 +25,42 @@ service cloud.firestore {
         && strLen(d.curso, 120)
         && d.subjects is list
         && d.subjects.size() <= 200          // máx 200 matérias por catálogo
-        && strLen(d.updatedAt, 30);
+        // createdAt/updatedAt são ISO strings gravadas por curriculum-catalog.js
+        // (new Date().toISOString()) — NÃO são timestamps do Firestore. Exigir
+        // `is timestamp` aqui negaria toda escrita do catálogo.
+        && strLen(d.updatedAt, 30)
+        && strLen(d.createdAt, 40);
     }
 
     // Validação de tamanho do documento do usuário (o limite real do Firestore é 1 MiB).
     // Essas regras limitam o crescimento dos arrays principais; o tamanho final
     // do documento também é validado pelo Firestore.
+    // `is list` em cada campo é type-safety: sem ele, um string/mapa com o mesmo
+    // nome passaria pelo .size() e corromperia o schema (verificado: todos os
+    // campos abaixo são gravados como array pelo cliente e pelo servidor).
     function validUserDocSize() {
       // Limita arrays principais para evitar crescimento ilimitado
       let d = request.resource.data;
-      return (!('sessions'   in d) || d.sessions.size()   <= 5000)
-          && (!('tasks'      in d) || d.tasks.size()      <= 2000)
-          && (!('exams'      in d) || d.exams.size()      <= 500)
-          && (!('materials'  in d) || d.materials.size()  <= 2000)
-          && (!('grades'     in d) || d.grades.size()     <= 2000)
-          && (!('dailyLogs'  in d) || d.dailyLogs.size()  <= 3650)  // ~10 anos
-          && (!('classDiaries' in d) || d.classDiaries.size() <= 5000)
-          && (!('curriculum' in d) || d.curriculum.size() <= 500)
-          && (!('extraCourses' in d) || d.extraCourses.size() <= 200)
-          && (!('pushSubscriptions' in d) || d.pushSubscriptions.size() <= 10)
-          && (!('sentReminders' in d) || d.sentReminders.size() <= 500)
-          && (!('sentTelegramReminders' in d) || d.sentTelegramReminders.size() <= 500)
-          && (!('telegramProcessedUpdates' in d) || d.telegramProcessedUpdates.size() <= 300)
-          && (!('telegramInbox' in d) || d.telegramInbox.size() <= 200)
-          && (!('learningEvidence' in d) || d.learningEvidence.size() <= 5000)
-          && (!('questionAttempts' in d) || d.questionAttempts.size() <= 5000)
-          && (!('reviews' in d) || d.reviews.size() <= 2000)
-          && (!('learningMap' in d) || d.learningMap.size() <= 2000)
-          && (!('classSchedule' in d) || d.classSchedule.size() <= 500)
-          && (!('archivedSemesters' in d) || d.archivedSemesters.size() <= 20);
+      return (!('sessions'   in d) || (d.sessions is list && d.sessions.size()   <= 5000))
+          && (!('tasks'      in d) || (d.tasks is list && d.tasks.size()      <= 2000))
+          && (!('exams'      in d) || (d.exams is list && d.exams.size()      <= 500))
+          && (!('materials'  in d) || (d.materials is list && d.materials.size()  <= 2000))
+          && (!('grades'     in d) || (d.grades is list && d.grades.size()     <= 2000))
+          && (!('dailyLogs'  in d) || (d.dailyLogs is list && d.dailyLogs.size()  <= 3650))  // ~10 anos
+          && (!('classDiaries' in d) || (d.classDiaries is list && d.classDiaries.size() <= 5000))
+          && (!('curriculum' in d) || (d.curriculum is list && d.curriculum.size() <= 500))
+          && (!('extraCourses' in d) || (d.extraCourses is list && d.extraCourses.size() <= 200))
+          && (!('pushSubscriptions' in d) || (d.pushSubscriptions is list && d.pushSubscriptions.size() <= 10))
+          && (!('sentReminders' in d) || (d.sentReminders is list && d.sentReminders.size() <= 500))
+          && (!('sentTelegramReminders' in d) || (d.sentTelegramReminders is list && d.sentTelegramReminders.size() <= 500))
+          && (!('telegramProcessedUpdates' in d) || (d.telegramProcessedUpdates is list && d.telegramProcessedUpdates.size() <= 300))
+          && (!('telegramInbox' in d) || (d.telegramInbox is list && d.telegramInbox.size() <= 200))
+          && (!('learningEvidence' in d) || (d.learningEvidence is list && d.learningEvidence.size() <= 5000))
+          && (!('questionAttempts' in d) || (d.questionAttempts is list && d.questionAttempts.size() <= 5000))
+          && (!('reviews' in d) || (d.reviews is list && d.reviews.size() <= 2000))
+          && (!('learningMap' in d) || (d.learningMap is list && d.learningMap.size() <= 2000))
+          && (!('classSchedule' in d) || (d.classSchedule is list && d.classSchedule.size() <= 500))
+          && (!('archivedSemesters' in d) || (d.archivedSemesters is list && d.archivedSemesters.size() <= 20));
     }
 
     // Campos gravados exclusivamente pelo servidor (Telegram/cron). O cliente
@@ -277,7 +284,10 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && request.resource.data.uid == request.auth.uid
         && strLen(request.resource.data.mensagem, 2000)
-        && request.resource.data.tipo in ['bug', 'sugestao', 'elogio'];
+        && request.resource.data.tipo in ['bug', 'sugestao', 'elogio']
+        // criadoEm é ISO string (feedback-widget.js usa toISOString()) — NÃO é
+        // timestamp do Firestore; o campo também não se chama createdAt.
+        && strLen(request.resource.data.criadoEm, 40);
     }
 
     // ─── Proteção padrão: nega tudo que não foi explicitamente permitido ──────

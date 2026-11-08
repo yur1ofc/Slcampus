@@ -62,16 +62,22 @@ exigem aprovação), MCP Vercel (CLI oficial `vercel` 65.10.0 já logado).
 - **Git** + GitHub (`yur1ofc/study-life-control…`) — branch atual
   `auditoria-mobile-2026-11-04`.
 - **Node/npm** — build (`node inject-env.js`), `npm audit`.
+- **Firebase CLI 15.34.2 + Emuladores Firestore/Auth** (Java 21) — valida
+  `firestore.rules` localmente **sem tocar produção**: seção `emulators` no
+  `firebase.json` (auth 9099, firestore 8080, projeto `demo-*`) + harness
+  `scripts/test-firestore-rules.js` (12 casos allow/deny — suíte 12/12).
 - **Python `http.server 4173`** — teste local do site estático.
 - **PowerShell**: sem `&&` (usar `;`/`if ($?)`); npm/npx só via `cmd /c`.
 
 ## 8. Limites conhecidos
 - **Plano free do OpenCode**: subagentes em background falham com
   "Free usage limit reached" → levantamentos extensos feitos inline.
-- `npm audit --omit=dev`: **8 vulnerabilidades moderadas** na árvore do
-  `firebase-admin@^12.7.0` (uuid/gaxios/google-gax); correção aponta para
-  `firebase-admin@14.5.0` (breaking) — upgrade pendente de validação das
-  functions `api/**` antes de aplicar.
+- `npm audit`: **0 vulnerabilidades** desde o upgrade para
+  `firebase-admin@14.5.0` (shim `api/_lib/admin-compat.js` + override
+  `jwks-rsa → jose@^5`). Atenção: o runtime da Vercel desabilita
+  `require(esm)` por padrão — qualquer dependência ESM-only exigida via
+  `require()` derruba o load das functions (reproduzir localmente com
+  `node --no-experimental-require-module`).
 - Segredos ficam só em env vars da Vercel (nomes, sem valores):
   `FIREBASE_API_KEY`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_PROJECT_ID`,
   `FIREBASE_STORAGE_BUCKET`, `FIREBASE_MESSAGING_SENDER_ID`, `FIREBASE_APP_ID`,
