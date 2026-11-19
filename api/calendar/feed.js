@@ -46,6 +46,7 @@ function fsFields(fields) {
 // ── Helpers de formatação ICS (RFC 5545) ────────────────────────────────────
 function icsEscape(text) {
   return String(text ?? '')
+    .replace(/\r/g, '')
     .replace(/\\/g, '\\\\')
     .replace(/;/g, '\\;')
     .replace(/,/g, '\\,')
