@@ -14,6 +14,12 @@ node_modules/
 *.log
 .DS_Store
 
+# Segredos locais: o build usa as variaveis do projeto na Vercel, nunca
+# estes arquivos. Sem esta linha o .env.local viajaria junto no upload.
+.env
+.env.*
+!.env.example
+
 # Documentacao interna e arquivos que nao precisam ser publicos.
 # NAO remova inject-env.js, package.json, env-config.js, robots.txt
 # nem sitemap.xml: o build e o site dependem deles.
