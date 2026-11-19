@@ -4511,6 +4511,26 @@ body.sidebar-open .mobile-nav-overlay {
   }
 }
 
+/* Abaixo de 768px a navegação real é a barra inferior fixa de 72px
+   (#slc-product-bottom-nav). Com "bottom:20px" o botão ficava POR CIMA
+   dela — em 390px cobria o item central da barra. Sobe o botão (e o
+   convite, que fica acima dele) para logo acima da barra, respeitando a
+   safe area do iPhone. */
+@media (max-width: 768px) {
+  #slc-feedback-btn,
+  #slc-feedback-nudge {
+    left: 12px;
+  }
+
+  #slc-feedback-btn {
+    bottom: calc(72px + 12px + env(safe-area-inset-bottom)) !important;
+  }
+
+  #slc-feedback-nudge {
+    bottom: calc(72px + 12px + 52px + env(safe-area-inset-bottom)) !important;
+  }
+}
+
 /* Enquanto a gaveta da sidebar tá aberta no mobile (body.sidebar-open),
    os botões flutuantes (feedback, "+" de quick-add, barra inferior)
    tinham z-index mais alto que a sidebar e ficavam por cima da gaveta,
