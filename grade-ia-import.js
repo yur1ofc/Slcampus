@@ -102,7 +102,12 @@ Regras:
     // Chama o proxy seguro em /api/gemini — a chave fica só no servidor (Vercel), nunca no navegador
     const response = await fetch('/api/gemini', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+      headers: await (async () => {
+        const h = { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` };
+        const acToken = await window.getAppCheckToken?.();
+        if (acToken) h['X-Firebase-AppCheck'] = acToken;
+        return h;
+      })(),
       body: JSON.stringify({ contents: [{ parts }] })
     });
 

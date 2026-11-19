@@ -64,6 +64,20 @@ try {
   console.warn('[SLC] App Check não foi ativado:', e?.message || e);
 }
 
+// Token de App Check para as chamadas às nossas funções (api/gemini, api/mentor-chat).
+// Só é exigido no servidor quando APPCHECK_ENFORCE=true; sem App Check ativo devolve null
+// e as chamadas seguem exatamente como antes.
+window.getAppCheckToken = async function () {
+  try {
+    if (!window.firebaseAppCheck) return null;
+    const result = await window.firebaseAppCheck.getToken();
+    return (result && result.token) || null;
+  } catch (err) {
+    console.warn('[SLC] App Check getToken falhou:', err?.message || err);
+    return null;
+  }
+};
+
   const auth = firebase.auth();
   // O SDK do Firestore pode não estar disponível (ex.: cache offline incompleto).
   // Sem este guard, `firebase.firestore()` lança TypeError e derruba todo o boot.

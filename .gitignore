@@ -39,3 +39,6 @@ Thumbs.db
 .vercel/
 .vercel
 .env*
+
+# Relatorios de auditoria de seguranca (mapa de vulnerabilidades: nunca commitar)
+SECURITY-AUDIT-*.md
