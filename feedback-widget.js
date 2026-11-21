@@ -46,7 +46,7 @@
         <div id="fb-status" style="display:none;margin-top:10px;font-size:.8rem;"></div>
         <div style="display:flex;gap:8px;margin-top:14px;">
           <button id="fb-cancel" style="flex:1;padding:.6rem;border-radius:8px;border:1px solid var(--border,#e2e8f0);background:transparent;color:inherit;cursor:pointer;">Cancelar</button>
-          <button id="fb-send" style="flex:2;padding:.6rem;border-radius:8px;border:none;background:#4f46e5;color:#fff;font-weight:600;cursor:pointer;">Enviar</button>
+          <button id="fb-send" style="flex:2;padding:.6rem;border-radius:8px;border:none;background:#2563eb;color:#fff;font-weight:600;cursor:pointer;">Enviar</button>
         </div>
       </div>
     `;
@@ -151,8 +151,8 @@
       box-shadow:0 8px 20px rgba(0,0,0,.18);
       transition:transform .2s,box-shadow .2s,border-color .2s;
     `;
-    btn.querySelector('i').style.cssText = 'color:#4f46e5;font-size:15px;';
-    btn.onmouseover = () => { btn.style.transform = 'scale(1.05)'; btn.style.borderColor = '#4f46e5'; };
+    btn.querySelector('i').style.cssText = 'color:#2563eb;font-size:15px;';
+    btn.onmouseover = () => { btn.style.transform = 'scale(1.05)'; btn.style.borderColor = '#2563eb'; };
     btn.onmouseout  = () => { btn.style.transform = 'scale(1)'; btn.style.borderColor = 'var(--border)'; };
     btn.onclick = () => { removeNudge(); openModal('botao_fixo'); };
     document.body.appendChild(btn);
@@ -198,7 +198,7 @@
         <span id="slc-nudge-close" style="cursor:pointer;color:var(--text-tertiary);line-height:1;">✕</span>
       </div>
       <p style="margin:0 0 10px;color:var(--text-secondary);">Meio minuto pra contar o que tá bom ou o que falta ajuda muito.</p>
-      <button id="slc-nudge-cta" style="width:100%;padding:7px;border:none;border-radius:8px;background:#4f46e5;color:#fff;font-weight:600;font-size:12.5px;cursor:pointer;">Dar feedback</button>
+      <button id="slc-nudge-cta" style="width:100%;padding:7px;border:none;border-radius:8px;background:#2563eb;color:#fff;font-weight:600;font-size:12.5px;cursor:pointer;">Dar feedback</button>
     `;
     document.body.appendChild(nudge);
 
