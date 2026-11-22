@@ -26,19 +26,19 @@
    TEMA CLARO
 =========================== */
 [data-theme="light"] {
-    --bg-primary: #f0f4f8;
-    --bg-secondary: #ffffff;
-    --bg-tertiary: #e8edf3;
+    --bg-primary: #f3f0e9;
+    --bg-secondary: #fffdf8;
+    --bg-tertiary: #eae5da;
     --accent-primary: #2563eb;
     --accent-secondary: #1d4ed8;
-    --accent-success: #059669;
-    --accent-warning: #d97706;
-    --accent-danger: #dc2626;
-    --text-primary: #0f172a;
-    --text-secondary: #475569;
-    --text-tertiary: #94a3b8;
-    --border: #cbd5e1;
-    --card-shadow: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -1px rgba(0,0,0,0.05);
+    --accent-success: #047857;
+    --accent-warning: #b45309;
+    --accent-danger: #b91c1c;
+    --text-primary: #17150f;
+    --text-secondary: #4a463c;
+    --text-tertiary: #6b6659;
+    --border: #ded7c9;
+    --card-shadow: 0 1px 2px rgba(23,21,15,.05), 0 12px 28px -20px rgba(23,21,15,.35);
 }
 
 [data-theme="light"] body {
@@ -207,6 +207,34 @@ textarea {
 .tag.nao-comecei {
     background: rgba(100, 116, 139, 0.2);
     color: #cbd5e1;
+}
+
+/* No tema claro os tons pastel do tema escuro ficam ilegíveis sobre papel:
+   usa-se o tom sólido, mais escuro, com o fundo quase neutro. */
+[data-theme="light"] .tag.high,
+[data-theme="light"] .tag.alta,
+[data-theme="light"] .tag.danger {
+    background: rgba(185, 28, 28, .1);
+    color: #b91c1c;
+}
+
+[data-theme="light"] .tag.medium,
+[data-theme="light"] .tag.media,
+[data-theme="light"] .tag.warning {
+    background: rgba(180, 83, 9, .1);
+    color: #b45309;
+}
+
+[data-theme="light"] .tag.low,
+[data-theme="light"] .tag.baixa,
+[data-theme="light"] .tag.success {
+    background: rgba(4, 120, 87, .1);
+    color: #047857;
+}
+
+[data-theme="light"] .tag.nao-comecei {
+    background: rgba(107, 102, 89, .1);
+    color: #4a463c;
 }
 
 .tag.estudando {
@@ -1307,7 +1335,7 @@ button:active,
     flex: 1;
     min-width: 132px;
     background: var(--bg-tertiary);
-    color: var(--text-primary);
+    color: var(--text-primary) !important;
     border: 1px solid var(--border);
     font-size: 14px;
     font-weight: 500;
@@ -6628,7 +6656,7 @@ body.slc-tutorial-open { overflow: hidden !important; overscroll-behavior: none 
 .help-profile-chip{display:flex;flex-direction:column;gap:4px;min-width:150px;padding:13px 15px;border:1px solid var(--border);border-radius:16px;background:var(--bg-primary)}
 .help-profile-chip span{font-size:.7rem;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.06em;font-weight:800}.help-profile-chip strong{color:var(--text-primary)}
 .help-shortcut-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.help-shortcut-grid button{display:flex;align-items:center;gap:9px;padding:12px 14px;border:1px solid var(--border);background:var(--bg-primary);color:var(--text-primary);border-radius:14px;cursor:pointer;font-weight:700;text-align:left}.help-shortcut-grid button i{color:var(--accent-primary);width:18px;text-align:center}
-.tutorial-device-note{font-size:.68rem;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px;font-weight:800}
+.tutorial-device-note{font-size:.7rem;color:var(--text-tertiary);text-transform:none;letter-spacing:0;margin-bottom:7px;font-weight:500}
 @media(max-width:640px){.help-shortcut-grid{grid-template-columns:1fr 1fr}.help-profile-chip{width:100%;box-sizing:border-box}}
 
 /* ================================================================
@@ -7108,4 +7136,87 @@ body.slc-cookie-open .login-container {
   .login-card { padding: 18px 14px; }
   .login-header h1 { font-size: 1.5rem; }
   .login-mobile-teaser { padding: 11px 12px; }
+}
+
+/* =========================================================
+   Tema claro — componentes que ainda assumiam fundo escuro
+   ========================================================= */
+[data-theme="light"] .v18-plan-item {
+  background: var(--bg-tertiary);
+  border-color: var(--border);
+}
+[data-theme="light"] .v18-plan-rank {
+  background: rgba(37, 99, 235, .1);
+  color: var(--accent-primary);
+}
+[data-theme="light"] .v18-plan-copy small {
+  color: var(--text-secondary);
+}
+[data-theme="light"] .v18-plan-copy span {
+  color: var(--text-tertiary);
+}
+[data-theme="light"] .v18-q-block {
+  background: var(--bg-tertiary);
+  border-color: var(--border);
+}
+[data-theme="light"] .v18-q-block > span {
+  color: var(--accent-primary);
+}
+[data-theme="light"] .v18-brain-foot,
+[data-theme="light"] .v18-empty {
+  color: var(--text-secondary);
+}
+[data-theme="light"] .curriculum-item-modern,
+[data-theme="light"] .curriculum-item-modern-upgraded {
+  background: var(--bg-secondary);
+  border-color: var(--border);
+}
+[data-theme="light"] .ai-helper-card,
+[data-theme="light"] .ai-helper-card-strong,
+[data-theme="light"] .grade-kpi-card.highlight {
+  background: rgba(37, 99, 235, .05);
+  border-color: rgba(37, 99, 235, .22);
+}
+[data-theme="light"] .grade-kpi-card {
+  background: var(--bg-secondary);
+  border-color: var(--border);
+}
+[data-theme="light"] .code-badge {
+  background: var(--bg-tertiary);
+  border-color: var(--border);
+}
+[data-theme="light"] .focus-item,
+[data-theme="light"] .mini-item,
+[data-theme="light"] .notification-item,
+[data-theme="light"] .batch-help-card {
+  background: rgba(23, 21, 15, .03);
+  border-color: var(--border);
+}
+[data-theme="light"] .tutorial-card,
+[data-theme="light"] .tutorial-card-arrow {
+  background: var(--bg-secondary);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+[data-theme="light"] .tutorial-card h3 {
+  color: var(--text-primary);
+}
+[data-theme="light"] .tutorial-card p {
+  color: var(--text-secondary);
+}
+[data-theme="light"] .tutorial-progress {
+  color: var(--text-tertiary);
+}
+[data-theme="light"] .tutorial-skip {
+  color: var(--text-secondary);
+}
+[data-theme="light"] .sidebar .nav-item.active {
+  background: rgba(37, 99, 235, .09);
+}
+
+/* O balão do tutorial trocava o raio a cada passo (18px 24px 24px 18px,
+   26px 18px 26px 18px…), o que dava um ar de adesivo recortado. Um raio
+   único é mais coerente com o resto da interface. */
+#tutorial-overlay .tutorial-card {
+  border-radius: 16px !important;
 }

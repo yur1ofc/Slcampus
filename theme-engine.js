@@ -30,18 +30,18 @@
     light: {
       label: 'Claro', icon: '☀️',
       vars: {
-        '--bg-primary':    '#f0f4f8',
-        '--bg-secondary':  '#ffffff',
-        '--bg-tertiary':   '#e8edf3',
+        '--bg-primary':    '#f3f0e9',
+        '--bg-secondary':  '#fffdf8',
+        '--bg-tertiary':   '#eae5da',
         '--accent-primary':'#2563eb',
         '--accent-secondary':'#1d4ed8',
-        '--accent-success':'#059669',
-        '--accent-warning':'#d97706',
-        '--accent-danger': '#dc2626',
-        '--text-primary':  '#0f172a',
-        '--text-secondary':'#475569',
-        '--text-tertiary': '#94a3b8',
-        '--border':        '#cbd5e1',
+        '--accent-success':'#047857',
+        '--accent-warning':'#b45309',
+        '--accent-danger': '#b91c1c',
+        '--text-primary':  '#17150f',
+        '--text-secondary':'#4a463c',
+        '--text-tertiary': '#6b6659',
+        '--border':        '#ded7c9',
         '--font-size-base':'15px',
         '--radius-lg':     '16px',
         '--radius-md':     '12px',
@@ -64,9 +64,9 @@
         '--text-tertiary': '#38bdf8',
         '--border':        '#1e3a5f',
         '--font-size-base':'15px',
-        '--radius-lg':     '24px',
-        '--radius-md':     '16px',
-        '--radius-sm':     '12px',
+        '--radius-lg':     '16px',
+        '--radius-md':     '12px',
+        '--radius-sm':     '8px',
       }
     },
     forest: {
@@ -85,9 +85,9 @@
         '--text-tertiary': '#4ade80',
         '--border':        '#1f4428',
         '--font-size-base':'15px',
-        '--radius-lg':     '24px',
-        '--radius-md':     '16px',
-        '--radius-sm':     '12px',
+        '--radius-lg':     '16px',
+        '--radius-md':     '12px',
+        '--radius-sm':     '8px',
       }
     },
     rose: {
@@ -106,9 +106,9 @@
         '--text-tertiary': '#fb7185',
         '--border':        '#4d2235',
         '--font-size-base':'15px',
-        '--radius-lg':     '24px',
-        '--radius-md':     '16px',
-        '--radius-sm':     '12px',
+        '--radius-lg':     '16px',
+        '--radius-md':     '12px',
+        '--radius-sm':     '8px',
       }
     },
     slate: {
@@ -148,7 +148,7 @@
         '--text-tertiary': '#525252',
         '--border':        '#262626',
         '--font-size-base':'15px',
-        '--radius-lg':     '18px',
+        '--radius-lg':     '16px',
         '--radius-md':     '12px',
         '--radius-sm':     '8px',
       }
@@ -170,8 +170,8 @@
         '--border':        '#4a3624',
         '--font-size-base':'15px',
         '--radius-lg':     '16px',
-        '--radius-md':     '10px',
-        '--radius-sm':     '6px',
+        '--radius-md':     '12px',
+        '--radius-sm':     '8px',
       }
     },
     nord: {
@@ -211,9 +211,9 @@
         '--text-tertiary': '#9083b8',
         '--border':        '#453a63',
         '--font-size-base':'15px',
-        '--radius-lg':     '26px',
-        '--radius-md':     '18px',
-        '--radius-sm':     '14px',
+        '--radius-lg':     '16px',
+        '--radius-md':     '12px',
+        '--radius-sm':     '8px',
       }
     },
     neon: {
@@ -253,9 +253,9 @@
         '--text-tertiary': '#a8917e',
         '--border':        '#e6d3c1',
         '--font-size-base':'15px',
-        '--radius-lg':     '20px',
-        '--radius-md':     '14px',
-        '--radius-sm':     '10px',
+        '--radius-lg':     '16px',
+        '--radius-md':     '12px',
+        '--radius-sm':     '8px',
       }
     },
   };
@@ -312,7 +312,7 @@
     root.style.setProperty('--card-shadow',
       isDark
         ? '0 20px 25px -5px rgba(0,0,0,0.5), 0 10px 10px -5px rgba(0,0,0,0.3)'
-        : '0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -1px rgba(0,0,0,0.05)'
+        : '0 1px 2px rgba(23,21,15,.06), 0 10px 24px -18px rgba(23,21,15,.35)'
     );
     // Garante legibilidade de botões sobre accent-primary
     root.style.setProperty('--btn-text', getContrastColor(vars['--accent-primary'] || '#3b82f6'));
@@ -370,8 +370,8 @@
 
     return `
     <div class="card" id="theme-panel-card" style="margin-top:20px;">
-      <div class="card-header" style="display:flex;align-items:center;gap:10px;">
-        <span style="font-size:20px;">🎨</span>
+      <div class="card-header" style="display:flex;align-items:center;justify-content:flex-start;gap:10px;">
+        <i class="fas fa-palette" style="color:var(--text-tertiary);"></i>
         <h3 style="margin:0;">Personalizar Tema</h3>
       </div>
       <div class="card-body">
@@ -438,10 +438,10 @@
         <!-- Arredondamento -->
         <div style="margin-bottom:24px;">
           <label style="font-size:13px;color:var(--text-secondary);display:block;margin-bottom:8px;">
-            🔘 Arredondamento dos cards: <strong id="radius-label">${parseInt(mergedVars['--radius-lg']) || 24}px</strong>
+            🔘 Arredondamento dos cards: <strong id="radius-label">${parseInt(mergedVars['--radius-lg']) || 16}px</strong>
           </label>
           <input type="range" id="theme-radius" min="0" max="32" step="4"
-            value="${parseInt(mergedVars['--radius-lg']) || 24}"
+            value="${parseInt(mergedVars['--radius-lg']) || 16}"
             style="width:100%;accent-color:var(--accent-primary);">
           <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-tertiary);margin-top:4px;">
             <span>Quadrado</span><span>Médio</span><span>Bem arredondado</span>
@@ -538,14 +538,17 @@
     if (radiusSlider) {
       radiusSlider.addEventListener('input', () => {
         const v = parseInt(radiusSlider.value);
+        // Mantém a mesma escada dos presets: 16 → 12 → 8.
+        const md = Math.round(v * 0.75);
+        const sm = Math.round(v * 0.5);
         document.documentElement.style.setProperty('--radius-lg', v + 'px');
-        document.documentElement.style.setProperty('--radius-md', Math.max(0, v - 8) + 'px');
-        document.documentElement.style.setProperty('--radius-sm', Math.max(0, v - 12) + 'px');
+        document.documentElement.style.setProperty('--radius-md', md + 'px');
+        document.documentElement.style.setProperty('--radius-sm', sm + 'px');
         if (radiusLabel) radiusLabel.textContent = v + 'px';
         if (!cfg.custom) cfg.custom = {};
         cfg.custom['--radius-lg'] = v + 'px';
-        cfg.custom['--radius-md'] = Math.max(0, v - 8) + 'px';
-        cfg.custom['--radius-sm'] = Math.max(0, v - 12) + 'px';
+        cfg.custom['--radius-md'] = md + 'px';
+        cfg.custom['--radius-sm'] = sm + 'px';
       });
     }
 
