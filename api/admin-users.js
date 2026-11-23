@@ -4,6 +4,7 @@
 const admin = require('./_lib/admin-compat');
 const { getFirebaseAdmin, authenticateAdmin, sendAuthError } = require('./_lib/admin-auth');
 const quota = require('./_lib/gemini-admin-quota');
+const { collect, readMetrics } = require('./_lib/metrics-store');
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -80,6 +81,12 @@ module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
 
   const mode = String(req.query?.mode || '').toLowerCase();
+
+  // Contador anônimo de visitas (público, sem cookie). Servido por esta função
+  // pelo mesmo motivo do heartbeat: não criar outra Serverless Function.
+  if (mode === 'track') {
+    return collect(req, res);
+  }
 
   // Presence heartbeat is deliberately served from this already-authorized
   // function so it does not create another Vercel Serverless Function.
@@ -183,6 +190,11 @@ module.exports = async function handler(req, res) {
 
     const registrations = buildRegistrationSeries(users, 30);
     const activity = buildActivitySeries(allPresence, 14);
+    // Funil de lançamento: se falhar, o painel de usuários continua de pé.
+    const analytics = await readMetrics(14).catch((err) => {
+      console.error('[admin-users] métricas:', err && err.message);
+      return null;
+    });
 
     return res.status(200).json({
       generatedAt: new Date().toISOString(),
@@ -196,6 +208,7 @@ module.exports = async function handler(req, res) {
       },
       registrations,
       activity,
+      analytics,
       activeUsers: active
     });
   } catch (err) {

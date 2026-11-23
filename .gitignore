@@ -42,3 +42,6 @@ Thumbs.db
 
 # Relatorios de auditoria de seguranca (mapa de vulnerabilidades: nunca commitar)
 SECURITY-AUDIT-*.md
+
+# Relatorios internos de auditoria (SEO, medicao): ficam so no disco
+SEO-*.md

@@ -2039,6 +2039,7 @@ Regras:
 
       if (window.showToast) window.showToast('Configuração concluída! Bem-vindo(a)! 🚀');
       clearDraft();
+      if (window.slcTrack) window.slcTrack('setup_done');
 
     } catch (err) {
       console.error('[setup-wizard] Erro ao finalizar:', err);

@@ -40,6 +40,24 @@
       <div class="card kpi"><div class="label">Cadastros no ano</div><div id="year" class="value">—</div><div class="hint">ano atual</div></div>
     </section>
 
+    <section class="grid" style="margin-top:12px">
+      <div class="card kpi"><div class="label">Visitas (14 dias)</div><div id="fVisits" class="value">—</div><div class="hint">contagem anônima, sem cookies</div></div>
+      <div class="card kpi"><div class="label">Cliques em criar conta</div><div id="fCta" class="value">—</div><div class="hint">pessoas que tentaram entrar</div></div>
+      <div class="card kpi"><div class="label">Cadastros (14 dias)</div><div id="fSignups" class="value">—</div><div class="hint">contas criadas no Firebase</div></div>
+      <div class="card kpi"><div class="label">Visita → cadastro</div><div id="fConv" class="value">—</div><div class="hint">conversão do período</div></div>
+      <div class="card kpi"><div class="label">Setup concluído</div><div id="fSetup" class="value">—</div><div class="hint">terminaram a configuração</div></div>
+    </section>
+
+    <section class="card section">
+      <div class="sectionhead"><div><h2>De onde vêm as visitas</h2><div class="muted">Últimos 14 dias, agregado por site de origem</div></div></div>
+      <div class="tablewrap"><table><thead><tr><th>Origem</th><th>Visitas</th></tr></thead><tbody id="sourceRows"></tbody></table></div>
+    </section>
+
+    <section class="card section">
+      <div class="sectionhead"><div><h2>Páginas mais visitadas</h2><div class="muted">Últimos 14 dias</div></div></div>
+      <div class="tablewrap"><table><thead><tr><th>Página</th><th>Visitas</th></tr></thead><tbody id="pageRows"></tbody></table></div>
+    </section>
+
     <section class="card section">
       <div class="sectionhead"><div><h2>Novos cadastros</h2><div class="muted">Últimos 30 dias</div></div><div class="actions"><button class="btn" id="refresh">Atualizar</button></div></div>
       <div class="chart"><svg id="chart" viewBox="0 0 900 270" preserveAspectRatio="none" aria-label="Gráfico de cadastros"></svg></div>
@@ -75,6 +93,23 @@ function drawChart(points){
   points.forEach((v,i)=>{if(i%5===0||i===points.length-1){const tx=document.createElementNS(ns,'text');tx.setAttribute('x',x(i));tx.setAttribute('y',H-8);tx.setAttribute('text-anchor','middle');tx.setAttribute('class','axis');tx.textContent=new Date(v.date+'T00:00:00Z').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});svg.appendChild(tx);}});
 }
 
+async function loadFunnel(d){
+  if(!d)throw new Error('Métricas indisponíveis.');
+  const events=d.totals.events||{};
+  const visits=Number(d.totals.views)||0;
+  const cta=Number(events.cta_start)||0;
+  const setup=Number(events.setup_done)||0;
+  const signups=(d.registrations||[]).slice(-14).reduce((sum,row)=>sum+(Number(row.count)||0),0);
+  $('fVisits').textContent=visits;
+  $('fCta').textContent=cta;
+  $('fSignups').textContent=signups;
+  $('fSetup').textContent=setup;
+  $('fConv').textContent=visits>0?((signups/visits)*100).toFixed(1).replace('.',',')+'%':'—';
+  const rows=(list,label)=>list.length?list.map(x=>`<tr><td>${esc(x.name)}</td><td>${esc(x.count)}</td></tr>`).join(''):`<tr><td colspan="2" class="empty">Sem ${label} no período.</td></tr>`;
+  $('sourceRows').innerHTML=rows(d.totals.sources||[],'visitas');
+  $('pageRows').innerHTML=rows(d.totals.pages||[],'visitas');
+}
+
 async function loadData(){
   const token=await currentUser.getIdToken(true);
   const r=await fetch('/api/admin-users',{headers:{Authorization:'Bearer '+token}});
@@ -90,6 +125,8 @@ async function loadData(){
   drawChart(d.registrations);
   $('activeRows').innerHTML=d.activeUsers.length?d.activeUsers.map(u=>`<tr><td>${esc(u.displayName||'Sem nome')}</td><td>${esc(u.email)}</td><td>${esc(fmtDate(u.lastSeenAt))}</td><td class="online">● online</td></tr>`).join(''):'<tr><td colspan="4" class="empty">Nenhum usuário ativo neste momento.</td></tr>';
   $('status').classList.add('hidden'); $('app').classList.remove('hidden');
+  // O funil é acessório: se falhar, o painel de usuários continua funcionando.
+  try{ await loadFunnel(d.analytics); }catch(e){ ['fVisits','fCta','fSignups','fConv','fSetup'].forEach(id=>{ if($(id)) $(id).textContent='—'; }); }
 }
 $('refresh').addEventListener('click',async()=>{const b=$('refresh');b.disabled=true;try{await loadData();}catch(e){setStatus(e.message,'error');}finally{b.disabled=false;}});
 window.addEventListener('load',()=>{

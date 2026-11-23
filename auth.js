@@ -65,6 +65,15 @@ async function clearPresence() {
 
 async function handleSignedInUser(user) {
   currentUser = user;
+  // Conta a criação de conta no funil anônimo. O Firebase preenche
+  // creationTime no cadastro; se a conta tem minutos de vida, é conta nova
+  // (login por Google, então "entrar" e "criar" são o mesmo gesto).
+  try {
+    const created = Date.parse((user.metadata && user.metadata.creationTime) || '');
+    if (Number.isFinite(created) && Date.now() - created < 5 * 60 * 1000) {
+      window.slcTrack && window.slcTrack('signup_done');
+    }
+  } catch (_) {}
   startPresenceHeartbeat();
   hideLandingPage();
   setDisplay('login-screen', 'none');

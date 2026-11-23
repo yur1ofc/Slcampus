@@ -28,6 +28,10 @@
   ],
   "rewrites": [
     {
+      "source": "/api/track",
+      "destination": "/api/admin-users?mode=track"
+    },
+    {
       "source": "/api/admin-ai-usage",
       "destination": "/api/admin-users?mode=ai"
     },
