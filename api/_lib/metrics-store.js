@@ -99,15 +99,22 @@ async function collect(req, res) {
     const now = new Date();
     const bump = () => FieldValue.increment(1);
 
-    await db.collection('analyticsDaily').doc(dayKey(now)).set({
+    // Só a visita conta como visita. Clique, cadastro e setup entram apenas em
+    // `events`: se todos somassem em `views`, uma pessoa que clicasse em "criar
+    // conta" viraria duas visitas e a taxa de conversão sairia pela metade.
+    const payload = {
       date: dayKey(now),
       updatedAt: now,
-      views: bump(),
-      events: { [event]: bump() },
-      pages: { [page]: bump() },
-      sources: { [source]: bump() },
-      devices: { [device]: bump() }
-    }, { merge: true });
+      events: { [event]: bump() }
+    };
+    if (event === 'pageview') {
+      payload.views = bump();
+      payload.pages = { [page]: bump() };
+      payload.sources = { [source]: bump() };
+      payload.devices = { [device]: bump() };
+    }
+
+    await db.collection('analyticsDaily').doc(dayKey(now)).set(payload, { merge: true });
   } catch (err) {
     // Medição nunca pode atrapalhar a navegação: registra e devolve 204.
     console.error('[metrics] falha ao gravar:', err && err.message);
