@@ -1879,7 +1879,7 @@ class ViewRenderer {
                         <div class="card subject-card">
                             <div class="card-header">
                                 <h3>${this.esc(s.nome)}</h3>
-                                <span class="badge" style="background: ${this.getDificuldadeColor(s.dificuldade)};">${this.esc(this.getDificuldadeLabel(s))}</span>
+                                <span class="badge" style="background: ${this.getDificuldadeColor(s.dificuldade)};color:#fff;">${this.esc(this.getDificuldadeLabel(s))}</span>
                             </div>
                             <div class="card-body">
                                 <div class="subject-stats">
@@ -2051,13 +2051,13 @@ class ViewRenderer {
 
     getDificuldadeColor(dificuldade) {
         const cores = {
-            1: '#10b981',
-            2: '#34d399',
-            3: '#f59e0b',
-            4: '#f97316',
-            5: '#ef4444'
+            1: '#047857',
+            2: '#0f766e',
+            3: '#b45309',
+            4: '#c2410c',
+            5: '#b91c1c'
         };
-        return cores[dificuldade] || '#3b82f6';
+        return cores[dificuldade] || '#2563eb';
     }
 
     getResumoHorasEstudo() {

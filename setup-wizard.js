@@ -139,7 +139,7 @@
 }
 .wiz-card-title {
   font-size: 1.5rem;
-  font-weight: 800;
+  font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 4px;
 }
@@ -153,12 +153,10 @@
 .wiz-field { margin-bottom: 20px; }
 .wiz-field label {
   display: block;
-  font-size: .88rem;
+  font-size: .9rem;
   font-weight: 600;
   color: var(--text-secondary);
   margin-bottom: 6px;
-  text-transform: uppercase;
-  letter-spacing: .04em;
 }
 .wiz-field input,
 .wiz-field select,
@@ -227,7 +225,7 @@
 .wiz-tab.active {
   background: var(--bg-secondary);
   color: var(--text-primary);
-  box-shadow: 0 2px 8px rgba(0,0,0,.3);
+  box-shadow: var(--card-shadow);
 }
 
 .wiz-tab-panel { display: none; }
@@ -784,9 +782,9 @@ Regras:
   <button id="wiz-auto-ia-import" type="button" style="
     width:100%;display:flex;align-items:center;justify-content:center;gap:10px;
     padding:16px;border-radius:var(--radius-md);border:none;
-    background:linear-gradient(135deg,#1a73e8,#4f46e5);color:#fff;cursor:pointer;
+    background:var(--accent-primary);color:#fff;cursor:pointer;
     font-size:14.5px;font-weight:600;font-family:inherit;margin:16px 0 8px;
-    box-shadow:0 4px 14px rgba(79,70,229,.28);
+    box-shadow:none;
   ">
     <i class="fas fa-wand-magic-sparkles"></i> Importar PDF ou foto com IA (automático, grátis)
   </button>
@@ -1705,14 +1703,14 @@ Regras:
       wrap.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:1rem;';
       wrap.innerHTML = `
         <div style="background:var(--bg-secondary,#fff);color:var(--text-primary,#1e293b);border-radius:16px;width:100%;max-width:440px;box-shadow:0 8px 40px rgba(0,0,0,.3);overflow:hidden;">
-          <div style="padding:1.1rem 1.3rem;background:linear-gradient(135deg,#f59e0b,#ea580c);color:#fff;display:flex;align-items:center;gap:.6rem;">
-            <i class="fas fa-triangle-exclamation" style="font-size:1.1rem;"></i>
+          <div style="padding:1.1rem 1.3rem;background:var(--bg-tertiary);color:var(--text-primary);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.6rem;">
+            <i class="fas fa-triangle-exclamation" style="font-size:1.1rem;color:var(--accent-warning);"></i>
             <h3 style="margin:0;font-size:.98rem;">${esc(title)}</h3>
           </div>
           <div style="padding:1.2rem 1.3rem;font-size:.85rem;line-height:1.55;color:var(--text-secondary,#475569);">${bodyHtml}</div>
           <div style="padding:0 1.3rem 1.2rem;display:flex;gap:.6rem;justify-content:flex-end;">
             <button id="wiz-confirm-back" style="padding:.55rem 1rem;border-radius:8px;border:1px solid var(--border,#e2e8f0);background:transparent;color:inherit;cursor:pointer;font-size:.83rem;">Voltar e preencher</button>
-            <button id="wiz-confirm-go" style="padding:.55rem 1.1rem;border-radius:8px;border:none;background:#ea580c;color:#fff;cursor:pointer;font-size:.83rem;font-weight:600;">${esc(confirmLabel || 'Continuar mesmo assim')}</button>
+            <button id="wiz-confirm-go" style="padding:.55rem 1.1rem;border-radius:8px;border:none;background:var(--accent-primary);color:#fff;cursor:pointer;font-size:.83rem;font-weight:600;">${esc(confirmLabel || 'Continuar mesmo assim')}</button>
           </div>
         </div>`;
       document.body.appendChild(wrap);

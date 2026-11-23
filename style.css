@@ -5277,12 +5277,10 @@ body.sidebar-open #slc-bottom-nav {
 }
 .wiz-field label {
     display: block;
-    font-size: .82rem;
+    font-size: .9rem;
     font-weight: 600;
     color: var(--text-secondary);
     margin-bottom: 6px;
-    text-transform: uppercase;
-    letter-spacing: .04em;
 }
 .wiz-field input,
 .wiz-field select {

@@ -410,9 +410,9 @@
     if (document.getElementById('slc-adaptive-styles')) return;
     const s = document.createElement('style'); s.id = 'slc-adaptive-styles';
     s.textContent = `
-      .slc-adaptive-card{margin:0 0 18px;padding:18px;border-radius:22px;border:1px solid rgba(99,102,241,.20);background:linear-gradient(135deg,rgba(99,102,241,.10),rgba(16,185,129,.07));box-shadow:0 8px 24px rgba(2,6,23,.14)}
-      .slc-adaptive-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.slc-adaptive-head h3{margin:0 0 5px}.slc-adaptive-head p{margin:0;opacity:.78;font-size:.86rem}.slc-adaptive-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:rgba(15,23,42,.18);font-size:.78rem;font-weight:700}
-      .slc-adaptive-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-top:14px}.slc-adaptive-kpi{padding:11px 12px;border-radius:15px;background:rgba(15,23,42,.14)}.slc-adaptive-kpi span{display:block;font-size:.75rem;opacity:.72}.slc-adaptive-kpi strong{display:block;margin-top:4px;font-size:1.02rem}.slc-adaptive-copy{margin:13px 0 0;font-size:.84rem;opacity:.86;line-height:1.45}
+      .slc-adaptive-card{margin:0 0 18px;padding:18px;border-radius:var(--radius-lg);border:1px solid var(--border);background:var(--bg-secondary);box-shadow:var(--card-shadow)}
+      .slc-adaptive-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.slc-adaptive-head h3{margin:0 0 5px}.slc-adaptive-head p{margin:0;opacity:.78;font-size:.86rem}.slc-adaptive-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:var(--bg-tertiary);font-size:.78rem;font-weight:600}
+      .slc-adaptive-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-top:14px}.slc-adaptive-kpi{padding:11px 12px;border-radius:var(--radius-md);background:var(--bg-tertiary)}.slc-adaptive-kpi span{display:block;font-size:.75rem;opacity:.72}.slc-adaptive-kpi strong{display:block;margin-top:4px;font-size:1.02rem}.slc-adaptive-copy{margin:13px 0 0;font-size:.84rem;opacity:.86;line-height:1.45}
     `;
     document.head.appendChild(s);
   };

@@ -9,28 +9,29 @@
       #setup-screen{
         min-height:100vh;
         padding:32px 20px 40px;
-        background:radial-gradient(circle at top,#13284e 0%,#071427 62%,#06101f 100%);
+        background:var(--bg-primary);
         align-items:flex-start !important;
         justify-content:center;
       }
       #setup-screen .setup-card{
         width:min(1120px,100%);
         margin:0 auto;
-        background:linear-gradient(180deg,rgba(9,21,41,.96),rgba(8,18,33,.96));
-        border:1px solid rgba(148,163,184,.16);
-        border-radius:28px;
+        background:var(--bg-secondary);
+        border:1px solid var(--border);
+        border-radius:var(--radius-lg);
         padding:28px;
-        box-shadow:0 30px 90px rgba(0,0,0,.34);
+        box-shadow:var(--card-shadow);
       }
       #setup-screen .setup-header{
         padding:26px 26px 22px;
-        border-radius:24px;
-        background:linear-gradient(135deg,#0f172a,#1d4ed8);
-        color:#fff;
+        border-radius:var(--radius-lg);
+        background:var(--bg-tertiary);
+        border:1px solid var(--border);
+        color:var(--text-primary);
         margin-bottom:18px;
       }
-      #setup-screen .setup-header h1{font-size:2rem;margin:10px 0 6px;color:#fff}
-      #setup-screen .setup-header p{margin:0;color:rgba(255,255,255,.86);font-size:1rem}
+      #setup-screen .setup-header h1{font-size:2rem;margin:10px 0 6px;color:var(--text-primary)}
+      #setup-screen .setup-header p{margin:0;color:var(--text-secondary);font-size:1rem}
       #setup-screen .setup-header i{font-size:1.25rem}
       #setup-screen .setup-form{display:grid;gap:18px}
       #setup-screen .setup-smart-topbar{
@@ -41,28 +42,28 @@
       }
       #setup-screen .setup-smart-hero,
       #setup-screen .setup-progress-card{
-        background:rgba(255,255,255,.04);
-        border:1px solid rgba(148,163,184,.14);
-        border-radius:22px;
+        background:var(--bg-tertiary);
+        border:1px solid var(--border);
+        border-radius:var(--radius-lg);
         padding:18px 20px;
-        color:#e2e8f0;
+        color:var(--text-primary);
       }
       #setup-screen .setup-smart-hero h3,
-      #setup-screen .setup-progress-card h4{margin:0 0 8px;color:#fff}
+      #setup-screen .setup-progress-card h4{margin:0 0 8px;color:var(--text-primary)}
       #setup-screen .setup-smart-hero p,
-      #setup-screen .setup-progress-card p{margin:0;color:#cbd5e1;line-height:1.5}
-      #setup-screen .setup-progress-track{margin-top:14px;height:10px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
-      #setup-screen .setup-progress-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#60a5fa,#8b5cf6);width:0%;transition:width .25s ease}
-      #setup-screen .setup-progress-meta{margin-top:10px;font-size:.92rem;color:#cbd5e1}
+      #setup-screen .setup-progress-card p{margin:0;color:var(--text-secondary);line-height:1.5}
+      #setup-screen .setup-progress-track{margin-top:14px;height:10px;border-radius:999px;background:var(--border);overflow:hidden}
+      #setup-screen .setup-progress-fill{height:100%;border-radius:999px;background:var(--accent-primary);width:0%;transition:width .25s ease}
+      #setup-screen .setup-progress-meta{margin-top:10px;font-size:.92rem;color:var(--text-secondary)}
       #setup-screen .form-section{
-        background:#f8fafc;
-        border:1px solid #dbe4f0;
-        border-radius:24px;
+        background:var(--bg-tertiary);
+        border:1px solid var(--border);
+        border-radius:var(--radius-lg);
         padding:22px;
       }
       #setup-screen .form-section h2{
         margin:0 0 8px;
-        color:#0f172a;
+        color:var(--text-primary);
         display:flex;
         align-items:center;
         gap:10px;
@@ -72,12 +73,10 @@
         display:block;
         margin-bottom:10px;
         font-size:.78rem;
-        font-weight:800;
-        letter-spacing:.08em;
-        text-transform:uppercase;
-        color:#2563eb;
+        font-weight:600;
+        color:var(--accent-primary);
       }
-      #setup-screen .setup-section-help{margin:0 0 18px;color:#475569;line-height:1.5}
+      #setup-screen .setup-section-help{margin:0 0 18px;color:var(--text-secondary);line-height:1.5}
       #setup-screen .form-row{
         display:grid !important;
         grid-template-columns:repeat(2,minmax(0,1fr));
@@ -89,8 +88,8 @@
       #setup-screen .form-group label{
         display:block;
         margin-bottom:8px;
-        font-weight:700;
-        color:#0f172a;
+        font-weight:600;
+        color:var(--text-primary);
         line-height:1.35;
       }
       #setup-screen input,
@@ -100,16 +99,16 @@
         min-width:0 !important;
         height:auto !important;
         padding:13px 14px;
-        border-radius:14px;
-        border:1px solid #cbd5e1;
-        background:#fff;
-        color:#0f172a;
+        border-radius:var(--radius-md);
+        border:1px solid var(--border);
+        background:var(--bg-secondary);
+        color:var(--text-primary);
         font:inherit;
         box-sizing:border-box;
       }
       #setup-screen select{appearance:auto}
       #setup-screen input::placeholder,
-      #setup-screen textarea::placeholder{color:#94a3b8}
+      #setup-screen textarea::placeholder{color:var(--text-tertiary)}
       #setup-screen .checkbox-group{
         display:flex;
         flex-wrap:wrap;
@@ -122,9 +121,9 @@
         gap:8px;
         padding:10px 12px;
         border-radius:999px;
-        background:#eff6ff;
-        border:1px solid #bfdbfe;
-        color:#1e3a8a;
+        background:var(--bg-tertiary);
+        border:1px solid var(--border);
+        color:var(--text-primary);
         font-weight:600;
         cursor:pointer;
       }
@@ -133,11 +132,10 @@
       #setup-screen #aulas-container{display:grid;gap:14px}
       #setup-screen .materia-item,
       #setup-screen .aula-item{
-        background:#fff;
-        border:1px solid #dbe4f0;
-        border-radius:18px;
+        background:var(--bg-secondary);
+        border:1px solid var(--border);
+        border-radius:var(--radius-md);
         padding:16px;
-        box-shadow:0 8px 22px rgba(15,23,42,.05);
       }
       #setup-screen .setup-dynamic-grid{
         display:grid;
@@ -151,8 +149,8 @@
         display:block;
         margin-bottom:6px;
         font-size:.92rem;
-        font-weight:700;
-        color:#0f172a;
+        font-weight:600;
+        color:var(--text-primary);
       }
       #setup-screen .setup-dynamic-actions{
         display:flex;
@@ -163,8 +161,8 @@
         border:none;
         border-radius:12px;
         padding:10px 12px;
-        background:#fee2e2;
-        color:#991b1b;
+        background:rgba(185,28,28,.12);
+        color:var(--accent-danger);
         cursor:pointer;
         font-weight:700;
       }
@@ -172,15 +170,15 @@
       #setup-screen #add-aula,
       #setup-screen .form-actions .btn-primary{
         border:none;
-        border-radius:14px;
+        border-radius:var(--radius-md);
         padding:13px 16px;
-        font-weight:800;
+        font-weight:600;
         cursor:pointer;
       }
       #setup-screen #add-materia,
       #setup-screen #add-aula{
-        background:#e0e7ff;
-        color:#3730a3;
+        background:var(--bg-tertiary);
+        color:var(--text-primary);
         margin-top:12px;
       }
       #setup-screen .form-actions{
@@ -190,9 +188,9 @@
       }
       #setup-screen .form-actions .btn-primary{
         min-width:220px;
-        background:linear-gradient(90deg,#6366f1,#8b5cf6);
+        background:var(--accent-primary);
         color:#fff;
-        box-shadow:0 12px 28px rgba(99,102,241,.28);
+        box-shadow:none;
       }
       @media (max-width: 980px){
         #setup-screen .setup-smart-topbar{grid-template-columns:1fr}
