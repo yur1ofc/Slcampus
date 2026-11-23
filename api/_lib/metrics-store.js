@@ -53,6 +53,14 @@ function fieldKey(value, max) {
     .slice(0, max);
 }
 
+// Página e origem legíveis no painel: "/ferramentas/pomodoro" vira
+// "ferramentas_pomodoro" e a raiz vira "raiz", em vez de um "_" solto.
+function pageKey(value) {
+  const raw = String(value || '').toLowerCase().replace(/^\/+|\/+$/g, '');
+  if (!raw) return 'raiz';
+  return fieldKey(raw, 60) || 'raiz';
+}
+
 function readBody(req) {
   const body = req.body;
   if (!body) return {};
@@ -90,7 +98,7 @@ async function collect(req, res) {
   const event = String(body.e || '').trim();
   if (!EVENTS.has(event)) return res.status(204).end();
 
-  const page = fieldKey(body.p, 60) || 'raiz';
+  const page = pageKey(body.p);
   const source = fieldKey(body.r, 40) || 'direto';
   const device = DEVICES.has(body.w) ? body.w : 'desconhecido';
 
