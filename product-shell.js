@@ -252,8 +252,9 @@
 
   function polishLogin(){
     const s=document.getElementById('login-screen');if(!s||s.dataset.v14)return;s.dataset.v14='1';
-    const h=s.querySelector('.login-header h1');if(h)h.textContent='Seu espaço para estudar melhor.';
-    const p=s.querySelector('.login-header p');if(p)p.textContent='Planeje, estude e acompanhe sua evolução em um só lugar.';
+    // O título e o subtítulo do login são decididos em landing.js, que sabe se
+    // a pessoa é nova ("Crie seu espaço") ou está voltando ("Bem-vindo de
+    // volta"). Reescrever aqui apagava essa diferença.
     const hint=s.querySelector('.login-cta-hint');if(hint)hint.textContent='Entre com sua conta Google. Você não precisa preencher formulários.';
   }
 
