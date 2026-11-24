@@ -11,6 +11,12 @@ function setDisplay(id, value) {
 }
 
 function showLandingPage() {
+  // Quem chegou por /?entrar=1 (CTA das ferramentas) já leu a explicação lá:
+  // vai direto ao login em vez de ver a landing inteira de novo.
+  if (window.slcLanding && window.slcLanding.querLogin && window.slcLanding.querLogin()) {
+    window.slcLanding.showLogin();
+    return;
+  }
   setDisplay('landing-screen', 'block');
   setDisplay('login-screen', 'none');
 }
@@ -74,6 +80,9 @@ async function handleSignedInUser(user) {
       window.slcTrack && window.slcTrack('signup_done');
     }
   } catch (_) {}
+  // Marca que esta pessoa já entrou alguma vez, para a tela de login falar
+  // "Bem-vindo de volta" em vez de "Crie seu espaço" na próxima visita.
+  try { localStorage.setItem('slc_ja_entrou', '1'); } catch (_) {}
   startPresenceHeartbeat();
   hideLandingPage();
   setDisplay('login-screen', 'none');
